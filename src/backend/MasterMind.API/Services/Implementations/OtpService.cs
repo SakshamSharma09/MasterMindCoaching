@@ -13,14 +13,14 @@ namespace MasterMind.API.Services.Implementations;
 /// </summary>
 public class OtpService : IOtpService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly MasterMindDbContext _context;
     private readonly OtpSettings _settings;
     private readonly ISmsService _smsService;
     private readonly IEmailService _emailService;
     private readonly ILogger<OtpService> _logger;
 
     public OtpService(
-        ApplicationDbContext context,
+        MasterMindDbContext context,
         IOptions<OtpSettings> settings,
         ISmsService smsService,
         IEmailService emailService,

@@ -26,9 +26,11 @@ public class Student : BaseEntity
     public string? ParentEmail { get; set; }
     public string? ParentOccupation { get; set; }
     public int? ParentUserId { get; set; }
+    public int? SessionId { get; set; }
 
     // Navigation properties
     public User? ParentUser { get; set; }
+    public Session? Session { get; set; }
     public ICollection<StudentClass> StudentClasses { get; set; } = new List<StudentClass>();
     public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
     public ICollection<StudentFee> StudentFees { get; set; } = new List<StudentFee>();

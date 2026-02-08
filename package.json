@@ -1,0 +1,32 @@
+{
+  "name": "mastermind-coaching-sql",
+  "version": "1.0.0",
+  "description": "MasterMind Coaching SQL Server Database Setup",
+  "main": "sql-server-setup.js",
+  "scripts": {
+    "setup": "node database-setup.js",
+    "setup-db": "node database-setup.js",
+    "start": "node app-server.js",
+    "test": "node test-api.js",
+    "test-db": "node test-db-connection.js",
+    "check-sql": "node check-sql-server.js",
+    "import-data": "node database-integration.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "mssql": "^9.3.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "sql-server",
+    "database",
+    "mastermind",
+    "coaching",
+    "students"
+  ],
+  "author": "MasterMind Coaching",
+  "license": "MIT"
+}

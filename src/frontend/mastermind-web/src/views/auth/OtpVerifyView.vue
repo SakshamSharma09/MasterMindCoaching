@@ -1,159 +1,303 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
-      <!-- Header -->
-      <div class="text-center">
-        <div class="mx-auto h-16 w-16 bg-indigo-600 rounded-full flex items-center justify-center">
-          <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
+  <div
+    class="min-h-screen flex items-center justify-center p-4
+           bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600
+           relative overflow-hidden"
+  >
+    <!-- Animated Background Elements -->
+    <div class="absolute inset-0">
+      <!-- Floating orbs -->
+      <div class="absolute top-20 left-20 w-72 h-72 bg-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
+      <div class="absolute top-40 right-32 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      <div class="absolute bottom-32 left-1/2 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
+      
+      <!-- Animated particles -->
+      <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-white/40 rounded-full animate-ping delay-300"></div>
+      <div class="absolute top-3/4 right-1/3 w-1 h-1 bg-white/60 rounded-full animate-ping delay-700"></div>
+      <div class="absolute bottom-1/4 left-1/3 w-1.5 h-1.5 bg-white/50 rounded-full animate-ping delay-1100"></div>
+      
+      <!-- Gradient mesh -->
+      <div class="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent"></div>
+    </div>
+
+    <div class="relative w-full max-w-md animate-slide-in-bottom">
+      <!-- Main Card with Enhanced Glass Effect -->
+      <div
+        class="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden
+               border border-white/30
+               transform transition-all duration-500 hover:scale-[1.02]
+               relative animate-glow-pulse"
+      >
+        <!-- Subtle glow effect -->
+        <div class="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 rounded-3xl"></div>
+        
+        <!-- Header with Enhanced Design -->
+        <div
+          class="px-8 pt-10 pb-8 text-center
+                 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600
+                 relative overflow-hidden"
+        >
+          <!-- Animated background pattern -->
+          <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-0 left-0 w-full h-full bg-white/20"></div>
+          </div>
+          
+          <div
+            class="relative mx-auto w-20 h-20 bg-white rounded-3xl
+                   flex items-center justify-center shadow-2xl mb-5
+                   transition-all duration-300 hover:scale-110 hover:rotate-6
+                   border-2 border-white/50"
+          >
+            <i class="fas fa-shield-check text-4xl bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text text-transparent"></i>
+          </div>
+
+          <h1 class="text-3xl font-bold text-white tracking-wide mb-2">
+            Verify Your Account
+          </h1>
+          <p class="text-indigo-100 text-sm mb-4">
+            We've sent a 6-digit OTP to
+          </p>
+          <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl backdrop-blur-sm">
+            <i class="fas fa-envelope text-white/80"></i>
+            <span class="text-white font-semibold">{{ identifier }}</span>
+          </div>
         </div>
-        <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
-          Verify Your Account
-        </h2>
-        <p class="mt-2 text-sm text-gray-600">
-          We've sent a 6-digit OTP to <strong>{{ identifier }}</strong>
-        </p>
-      </div>
 
-      <!-- OTP Form -->
-      <div class="bg-white py-8 px-6 shadow-lg rounded-lg">
-        <form @submit.prevent="handleSubmit" class="space-y-6">
-          <!-- OTP Input -->
-          <div>
-            <label for="otp" class="block text-sm font-medium text-gray-700">
-              Enter OTP
-            </label>
-            <div class="mt-1">
-              <input
-                id="otp"
-                v-model="form.otp"
-                type="text"
-                maxlength="6"
-                required
-                class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm text-center text-2xl tracking-widest"
-                placeholder="000000"
-                :disabled="isLoading"
-                @input="handleOtpInput"
-              />
-            </div>
-            <p class="mt-2 text-sm text-gray-500">
-              OTP expires in {{ countdown }} seconds
-            </p>
-          </div>
-
-          <!-- User Registration Fields (for new users) -->
-          <div v-if="isNewUser" class="space-y-4 border-t border-gray-200 pt-4">
-            <h3 class="text-lg font-medium text-gray-900">Complete Your Registration</h3>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="firstName" class="block text-sm font-medium text-gray-700">
-                  First Name
-                </label>
-                <input
-                  id="firstName"
-                  v-model="form.firstName"
-                  type="text"
-                  required
-                  class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="John"
-                  :disabled="isLoading"
-                />
-              </div>
-              <div>
-                <label for="lastName" class="block text-sm font-medium text-gray-700">
-                  Last Name
-                </label>
-                <input
-                  id="lastName"
-                  v-model="form.lastName"
-                  type="text"
-                  required
-                  class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Doe"
-                  :disabled="isLoading"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label for="role" class="block text-sm font-medium text-gray-700">
-                Role
-              </label>
-              <select
-                id="role"
-                v-model="form.role"
-                required
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                :disabled="isLoading"
+        <!-- Form Section -->
+        <div class="px-8 py-8 relative">
+          <form @submit.prevent="handleSubmit" class="space-y-6">
+            <!-- Enhanced OTP Input -->
+            <div class="space-y-3">
+              <label
+                for="otp"
+                class="block text-sm font-semibold text-gray-700 flex items-center gap-2"
               >
-                <option value="">Select Role</option>
-                <option value="Admin">Administrator</option>
-                <option value="Teacher">Teacher</option>
-                <option value="Parent">Parent</option>
-              </select>
-            </div>
-          </div>
+                <i class="fas fa-key text-indigo-500"></i>
+                Enter One-Time Password
+              </label>
 
-          <!-- Error Message -->
-          <div v-if="error" class="rounded-md bg-red-50 p-4">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
+              <div class="relative group">
+                <input
+                  id="otp"
+                  v-model="form.otp"
+                  type="text"
+                  maxlength="6"
+                  required
+                  :disabled="isLoading"
+                  placeholder="000000"
+                  @input="handleOtpInput"
+                  class="w-full px-6 py-5 rounded-2xl text-center
+                         border-2 border-gray-200
+                         focus:ring-2 focus:ring-indigo-500/50
+                         focus:border-indigo-500
+                         transition-all duration-300
+                         disabled:bg-gray-50
+                         bg-gray-50/50
+                         hover:bg-white
+                         focus:bg-white
+                         shadow-sm hover:shadow-md
+                         focus:shadow-lg
+                         text-3xl font-mono tracking-widest
+                         letter-spacing: 0.2em"
+                />
+                
+                <!-- Animated input border -->
+                <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 
+                            group-focus-within:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
               </div>
-              <div class="ml-3">
-                <p class="text-sm font-medium text-red-800">
-                  {{ error }}
-                </p>
+              
+              <!-- Countdown Timer -->
+              <div class="flex items-center justify-center gap-2 text-sm">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="text-gray-600 font-medium">
+                  OTP expires in <span class="text-indigo-600 font-bold">{{ countdown }}</span> seconds
+                </span>
               </div>
             </div>
-          </div>
 
-          <!-- Submit Button -->
-          <div>
+            <!-- User Registration Fields (for new users) -->
+            <div v-if="isNewUser" class="space-y-5 border-t border-gray-200/60 pt-6 animate-slide-in-bottom">
+              <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <i class="fas fa-user-plus text-indigo-500"></i>
+                Complete Your Registration
+              </h3>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <label for="firstName" class="block text-sm font-semibold text-gray-700">
+                    First Name
+                  </label>
+                  <div class="relative group">
+                    <input
+                      id="firstName"
+                      v-model="form.firstName"
+                      type="text"
+                      required
+                      placeholder="John"
+                      :disabled="isLoading"
+                      class="w-full px-4 py-3 rounded-xl
+                             border border-gray-200
+                             focus:ring-2 focus:ring-indigo-500/50
+                             focus:border-indigo-500
+                             transition-all duration-300
+                             disabled:bg-gray-50
+                             bg-gray-50/50
+                             hover:bg-white
+                             focus:bg-white
+                             shadow-sm"
+                    />
+                  </div>
+                </div>
+                
+                <div class="space-y-2">
+                  <label for="lastName" class="block text-sm font-semibold text-gray-700">
+                    Last Name
+                  </label>
+                  <div class="relative group">
+                    <input
+                      id="lastName"
+                      v-model="form.lastName"
+                      type="text"
+                      required
+                      placeholder="Doe"
+                      :disabled="isLoading"
+                      class="w-full px-4 py-3 rounded-xl
+                             border border-gray-200
+                             focus:ring-2 focus:ring-indigo-500/50
+                             focus:border-indigo-500
+                             transition-all duration-300
+                             disabled:bg-gray-50
+                             bg-gray-50/50
+                             hover:bg-white
+                             focus:bg-white
+                             shadow-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <label for="role" class="block text-sm font-semibold text-gray-700">
+                  <i class="fas fa-user-tag text-indigo-500 mr-2"></i>
+                  Select Your Role
+                </label>
+                <div class="relative group">
+                  <select
+                    id="role"
+                    v-model="form.role"
+                    required
+                    :disabled="isLoading"
+                    class="w-full px-4 py-3 rounded-xl
+                           border border-gray-200 bg-white
+                           focus:ring-2 focus:ring-indigo-500/50
+                           focus:border-indigo-500
+                           transition-all duration-300
+                           disabled:bg-gray-50
+                           shadow-sm appearance-none
+                           cursor-pointer"
+                  >
+                    <option value="">Choose your role...</option>
+                    <option value="Admin">🛡️ Administrator</option>
+                    <option value="Teacher">👨‍🏫 Teacher</option>
+                    <option value="Parent">👨‍👩‍👧‍👦 Parent</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <i class="fas fa-chevron-down text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Enhanced Error Message -->
+            <div
+              v-if="error"
+              class="flex items-start gap-3 p-4
+                     rounded-2xl bg-red-50/80 border border-red-200/50
+                     backdrop-blur-sm animate-shake"
+            >
+              <div class="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <i class="fas fa-exclamation text-red-600 text-xs"></i>
+              </div>
+              <p class="text-sm text-red-700 font-medium">{{ error }}</p>
+            </div>
+
+            <!-- Enhanced Submit Button -->
             <button
               type="submit"
               :disabled="isLoading || !form.otp || (isNewUser && (!form.firstName || !form.lastName || !form.role))"
-              class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full py-4 rounded-2xl font-bold text-white text-base
+                     bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600
+                     hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700
+                     focus:ring-4 focus:ring-indigo-500/25
+                     transition-all duration-300 disabled:opacity-50
+                     flex items-center justify-center gap-3
+                     shadow-lg hover:shadow-xl
+                     transform hover:scale-[1.02]
+                     relative overflow-hidden group"
             >
-              <span v-if="isLoading" class="absolute left-1/2 transform -translate-x-1/2">
-                <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </span>
-              <span v-else>
-                {{ isNewUser ? 'Complete Registration' : 'Verify OTP' }}
-              </span>
-            </button>
-          </div>
+              <!-- Button shimmer effect -->
+              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                          -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              
+              <svg
+                v-if="isLoading"
+                class="w-5 h-5 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                />
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4
+                     0 00-4 4H4z"
+                />
+              </svg>
 
-          <!-- Resend OTP -->
-          <div class="text-center">
-            <button
-              type="button"
-              @click="resendOtp"
-              :disabled="isResending || countdown > 0"
-              class="text-sm text-indigo-600 hover:text-indigo-500 disabled:text-gray-400 disabled:cursor-not-allowed"
+              <i v-else class="fas fa-check-circle"></i>
+              <span>{{ isLoading ? 'Verifying…' : (isNewUser ? 'Complete Registration' : 'Verify OTP') }}</span>
+            </button>
+
+            <!-- Enhanced Resend OTP -->
+            <div class="text-center">
+              <button
+                type="button"
+                @click="resendOtp"
+                :disabled="isResending || countdown > 0"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl
+                       text-sm font-medium text-indigo-600
+                       hover:text-indigo-700 hover:bg-indigo-50
+                       disabled:text-gray-400 disabled:cursor-not-allowed
+                       transition-all duration-300"
+              >
+                <i v-if="isResending" class="fas fa-spinner animate-spin"></i>
+                <i v-else class="fas fa-redo"></i>
+                <span v-if="isResending">Resending...</span>
+                <span v-else-if="countdown > 0">Resend OTP in {{ countdown }}s</span>
+                <span v-else>Resend OTP</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Enhanced Back to Login -->
+          <div class="mt-6 text-center">
+            <router-link
+              to="/login"
+              class="inline-flex items-center gap-2 text-sm text-gray-500 
+                     hover:text-indigo-600 transition-colors duration-300
+                     group"
             >
-              <span v-if="isResending">Resending...</span>
-              <span v-else-if="countdown > 0">Resend OTP in {{ countdown }}s</span>
-              <span v-else>Resend OTP</span>
-            </button>
+              <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform duration-300"></i>
+              <span>Back to Login</span>
+            </router-link>
           </div>
-        </form>
-
-        <!-- Back to Login -->
-        <div class="mt-6 text-center">
-          <router-link
-            to="/login"
-            class="text-sm text-gray-600 hover:text-gray-900"
-          >
-            ← Back to Login
-          </router-link>
         </div>
       </div>
     </div>

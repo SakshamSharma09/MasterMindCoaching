@@ -9,6 +9,8 @@ public class Attendance : BaseEntity
     public int ClassId { get; set; }
     public DateOnly Date { get; set; }
     public AttendanceStatus Status { get; set; }
+    public TimeOnly? CheckInTime { get; set; }
+    public TimeOnly? CheckOutTime { get; set; }
     public string? Remarks { get; set; }
     public int? MarkedByUserId { get; set; }
     public DateTime MarkedAt { get; set; } = DateTime.UtcNow;

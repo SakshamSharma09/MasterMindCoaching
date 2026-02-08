@@ -19,4 +19,5 @@ public class User : BaseEntity
     // Navigation properties
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+    public ICollection<UserDevice> Devices { get; set; } = new List<UserDevice>();
 }
