@@ -13,7 +13,7 @@ namespace MasterMind.API.Services.Implementations;
 /// </summary>
 public class AuthService : IAuthService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly MasterMindDbContext _context;
     private readonly IOtpService _otpService;
     private readonly IJwtService _jwtService;
     private readonly IUserService _userService;
@@ -24,7 +24,7 @@ public class AuthService : IAuthService
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AuthService(
-        ApplicationDbContext context,
+        MasterMindDbContext context,
         IOtpService otpService,
         IJwtService jwtService,
         IUserService userService,

@@ -33,8 +33,8 @@ builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection(OtpSett
 builder.Services.Configure<SmsSettings>(builder.Configuration.GetSection(SmsSettings.SectionName));
 
 // Database Context
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<MasterMindDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -107,6 +107,8 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IDeviceService, DeviceService>();
+builder.Services.AddScoped<IFinanceService, FinanceService>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(Program));
@@ -116,7 +118,11 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<OtpRequestValidator>();
 
 // Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 
 // CORS
 var corsOrigins = builder.Configuration["Cors:AllowedOrigins"]?.Split(',') ?? new[] { "http://localhost:3000" };
@@ -237,18 +243,20 @@ app.MapGet("/", () => Results.Ok(new
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<MasterMindDbContext>();
     try
     {
+        // Enable migrations to create the database
         dbContext.Database.Migrate();
         Log.Information("Database migrations applied successfully");
         
-        // Seed admin user if not exists
-        await SeedAdminUserAsync(dbContext);
+        // Skip seeding for now to test basic functionality
+        // await SeedAdminUserAsync(dbContext);
+        Log.Information("Database seeding skipped for testing");
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "An error occurred while applying database migrations");
+        Log.Error(ex, "An error occurred during database setup");
     }
 }
 
@@ -257,7 +265,7 @@ Log.Information("MasterMind Coaching Classes API started successfully");
 app.Run();
 
 // Seed admin user method
-static async Task SeedAdminUserAsync(ApplicationDbContext context)
+static async Task SeedAdminUserAsync(MasterMindDbContext context)
 {
     // Check if admin user exists
     var adminExists = await context.Users.AnyAsync(u => u.Email == "admin@mastermind-coaching.com");

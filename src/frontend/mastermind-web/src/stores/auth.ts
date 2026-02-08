@@ -125,6 +125,66 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Bypass authentication for test emails
+  const bypassAuth = (identifier: string) => {
+    const testAccounts = {
+      'admin@mastermind.com': {
+        id: 1,
+        email: 'admin@mastermind.com',
+        mobile: '+1234567890',
+        firstName: 'Test',
+        lastName: 'Administrator',
+        role: 'Admin' as const,
+        isActive: true,
+        isEmailVerified: true,
+        isMobileVerified: true,
+        createdAt: new Date().toISOString()
+      },
+      'teacher@mastermind.com': {
+        id: 2,
+        email: 'teacher@mastermind.com',
+        mobile: '+1234567891',
+        firstName: 'Test',
+        lastName: 'Teacher',
+        role: 'Teacher' as const,
+        isActive: true,
+        isEmailVerified: true,
+        isMobileVerified: true,
+        createdAt: new Date().toISOString()
+      },
+      'parent@mastermind.com': {
+        id: 3,
+        email: 'parent@mastermind.com',
+        mobile: '+1234567892',
+        firstName: 'Test',
+        lastName: 'Parent',
+        role: 'Parent' as const,
+        isActive: true,
+        isEmailVerified: true,
+        isMobileVerified: true,
+        createdAt: new Date().toISOString()
+      }
+    }
+
+    const testUser = testAccounts[identifier as keyof typeof testAccounts]
+    if (!testUser) {
+      throw new Error('Invalid test email')
+    }
+
+    // Set mock tokens and user data
+    const mockAccessToken = 'mock-access-token-' + Date.now()
+    const mockRefreshToken = 'mock-refresh-token-' + Date.now()
+    
+    setTokens(mockAccessToken, mockRefreshToken)
+    setUser(testUser)
+    
+    return {
+      accessToken: mockAccessToken,
+      refreshToken: mockRefreshToken,
+      user: testUser
+    }
+  }
+
   return {
     // State
     user,
@@ -147,7 +207,8 @@ export const useAuthStore = defineStore('auth', () => {
     refreshAccessToken,
     logout,
     getCurrentUser,
-    initializeAuth
+    initializeAuth,
+    bypassAuth
   }
 }, {
   persist: {

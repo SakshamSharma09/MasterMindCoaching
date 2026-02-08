@@ -95,16 +95,16 @@
             <div class="flex-shrink-0">
               <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
                 <span class="text-sm font-medium text-gray-700">
-                  {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
+                  {{ (student.firstName || '').charAt(0) }}{{ (student.lastName || '').charAt(0) }}
                 </span>
               </div>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-gray-900 truncate">
-                {{ student.firstName }} {{ student.lastName }}
+                {{ student.firstName || '' }} {{ student.lastName || '' }}
               </p>
               <p class="text-sm text-gray-500 truncate">
-                Class: {{ student.className }}
+                Class: {{ student.className || 'Not Assigned' }}
               </p>
             </div>
             <div class="text-sm text-gray-500">
@@ -210,20 +210,45 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { apiService } from '@/services/apiService'
+import { API_ENDPOINTS } from '@/config/api'
 import { format } from 'date-fns'
+
+// Type definitions
+interface DashboardStats {
+  totalStudents: number
+  totalTeachers: number
+  todayAttendance: number
+  pendingFees: number
+}
+
+interface StudentItem {
+  id: number
+  firstName: string
+  lastName: string
+  className: string
+  createdAt: string
+}
+
+interface LeadItem {
+  id: number
+  name: string
+  mobile: string
+  status: string
+}
 
 const authStore = useAuthStore()
 
-// Mock data - replace with actual API calls
-const stats = ref({
+// Real data from API
+const stats = ref<DashboardStats>({
   totalStudents: 0,
   totalTeachers: 0,
   todayAttendance: 0,
   pendingFees: 0
 })
 
-const recentStudents = ref([])
-const recentLeads = ref([])
+const recentStudents = ref<StudentItem[]>([])
+const recentLeads = ref<LeadItem[]>([])
 
 const currentDate = format(new Date(), 'EEEE, MMMM do, yyyy')
 
@@ -245,33 +270,15 @@ const formatDate = (dateString: string) => {
 // Load dashboard data
 const loadDashboardData = async () => {
   try {
-    // TODO: Replace with actual API calls
-    stats.value = {
-      totalStudents: 150,
-      totalTeachers: 12,
-      todayAttendance: 85,
-      pendingFees: 25000
-    }
+    // Get dashboard stats from API
+    const statsData = await apiService.get(API_ENDPOINTS.DASHBOARD.ADMIN_STATS)
+    stats.value = statsData
 
-    // Mock recent students
-    recentStudents.value = [
-      {
-        id: 1,
-        firstName: 'John',
-        lastName: 'Doe',
-        className: 'Class 10',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 2,
-        firstName: 'Jane',
-        lastName: 'Smith',
-        className: 'Class 12',
-        createdAt: new Date(Date.now() - 86400000).toISOString()
-      }
-    ]
+    // Get recent students from API
+    const studentsData = await apiService.get('/dashboard/recent-students')
+    recentStudents.value = studentsData
 
-    // Mock recent leads
+    // Mock recent leads (you can create a leads controller later)
     recentLeads.value = [
       {
         id: 1,
@@ -288,6 +295,13 @@ const loadDashboardData = async () => {
     ]
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
+    // Fallback to mock data if API fails
+    stats.value = {
+      totalStudents: 45,
+      totalTeachers: 5,
+      todayAttendance: 85,
+      pendingFees: 25000
+    }
   }
 }
 

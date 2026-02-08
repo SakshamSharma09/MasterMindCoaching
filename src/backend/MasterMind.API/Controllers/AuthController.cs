@@ -15,11 +15,13 @@ namespace MasterMind.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IDeviceService _deviceService;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger)
+    public AuthController(IAuthService authService, IDeviceService deviceService, ILogger<AuthController> logger)
     {
         _authService = authService;
+        _deviceService = deviceService;
         _logger = logger;
     }
 
@@ -229,6 +231,100 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Get user's registered devices
+    /// </summary>
+    /// <returns>List of user devices</returns>
+    [HttpGet("devices")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetUserDevices()
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
+
+            var devices = await _deviceService.GetUserDevicesAsync(userId.Value);
+            var deviceDtos = devices.Select(d => new
+            {
+                d.DeviceId,
+                d.DeviceName,
+                d.DeviceType,
+                d.IsTrusted,
+                d.LastUsedAt,
+                d.CreatedAt
+            }).ToList();
+
+            return Ok(deviceDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user devices");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Trust a device for OTP-free login
+    /// </summary>
+    /// <param name="request">Device trust request</param>
+    /// <returns>Trust status</returns>
+    [HttpPost("device/trust")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> TrustDevice([FromBody] TrustDeviceRequest request)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
+
+            await _deviceService.TrustDeviceAsync(userId.Value, request.DeviceId);
+            
+            return Ok(new { message = "Device trusted successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error trusting device");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Revoke device access
+    /// </summary>
+    /// <param name="request">Device revoke request</param>
+    /// <returns>Revoke status</returns>
+    [HttpPost("device/revoke")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RevokeDevice([FromBody] RevokeDeviceRequest request)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
+
+            await _deviceService.RevokeDeviceAsync(userId.Value, request.DeviceId);
+            
+            return Ok(new { message = "Device revoked successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error revoking device");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
     private int? GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) 
@@ -242,4 +338,15 @@ public class AuthController : ControllerBase
 
         return null;
     }
+}
+
+// DTOs for device management
+public class TrustDeviceRequest
+{
+    public string DeviceId { get; set; } = string.Empty;
+}
+
+public class RevokeDeviceRequest
+{
+    public string DeviceId { get; set; } = string.Empty;
 }

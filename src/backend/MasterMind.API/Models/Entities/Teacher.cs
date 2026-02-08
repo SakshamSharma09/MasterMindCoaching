@@ -17,6 +17,7 @@ public class Teacher : BaseEntity
     public string? PinCode { get; set; }
     public string? Qualification { get; set; }
     public string? Specialization { get; set; }
+    public string? Subjects { get; set; } // Comma-separated list of subjects the teacher teaches
     public int? ExperienceYears { get; set; }
     public DateTime JoiningDate { get; set; } = DateTime.UtcNow;
     public DateTime? LeavingDate { get; set; }
@@ -25,9 +26,11 @@ public class Teacher : BaseEntity
     public string? EmployeeId { get; set; }
     public bool IsActive { get; set; } = true;
     public int? UserId { get; set; }
+    public int? SessionId { get; set; }
 
     // Navigation properties
     public User? User { get; set; }
+    public Session? Session { get; set; }
     public ICollection<TeacherClass> TeacherClasses { get; set; } = new List<TeacherClass>();
     public ICollection<TeacherAttendance> TeacherAttendances { get; set; } = new List<TeacherAttendance>();
     public ICollection<TeacherSalary> TeacherSalaries { get; set; } = new List<TeacherSalary>();

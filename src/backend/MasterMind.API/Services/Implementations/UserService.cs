@@ -11,10 +11,10 @@ namespace MasterMind.API.Services.Implementations;
 /// </summary>
 public class UserService : IUserService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly MasterMindDbContext _context;
     private readonly ILogger<UserService> _logger;
 
-    public UserService(ApplicationDbContext context, ILogger<UserService> logger)
+    public UserService(MasterMindDbContext context, ILogger<UserService> logger)
     {
         _context = context;
         _logger = logger;

@@ -16,10 +16,15 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserRole> UserRoles { get; set; } = null!;
     public DbSet<OtpRecord> OtpRecords { get; set; } = null!;
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public DbSet<UserDevice> UserDevices { get; set; } = null!;
+    public DbSet<UserSession> UserSessions { get; set; } = null!;
 
     // Student Management
     public DbSet<Student> Students { get; set; } = null!;
     public DbSet<Class> Classes { get; set; } = null!;
+    public DbSet<Session> Sessions { get; set; } = null!;
+    public DbSet<Subject> Subjects { get; set; } = null!;
+    public DbSet<ClassSubject> ClassSubjects { get; set; } = null!;
     public DbSet<StudentClass> StudentClasses { get; set; } = null!;
 
     // Attendance
@@ -96,6 +101,47 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(tc => tc.Class)
                 .WithMany(c => c.TeacherClasses)
                 .HasForeignKey(tc => tc.ClassId);
+        });
+
+        // Teacher Configuration
+        modelBuilder.Entity<Teacher>(entity =>
+        {
+            entity.HasOne(t => t.Session)
+                .WithMany(s => s.Teachers)
+                .HasForeignKey(t => t.SessionId);
+        });
+
+        // ClassSubject Configuration (Many-to-Many)
+        modelBuilder.Entity<ClassSubject>(entity =>
+        {
+            entity.HasKey(cs => new { cs.ClassId, cs.SubjectId });
+
+            entity.HasOne(cs => cs.Class)
+                .WithMany(c => c.ClassSubjects)
+                .HasForeignKey(cs => cs.ClassId);
+
+            entity.HasOne(cs => cs.Subject)
+                .WithMany(s => s.ClassSubjects)
+                .HasForeignKey(cs => cs.SubjectId);
+        });
+
+        // Subject Configuration
+        modelBuilder.Entity<Subject>(entity =>
+        {
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // Session Configuration
+        modelBuilder.Entity<Session>(entity =>
+        {
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+        });
+
+        // Class Configuration
+        modelBuilder.Entity<Class>(entity =>
+        {
+            // No session foreign key for now
         });
 
         // Seed default roles
