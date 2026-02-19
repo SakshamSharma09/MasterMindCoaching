@@ -4,7 +4,7 @@ FROM node:20-alpine AS frontend-build
 # Build frontend
 WORKDIR /app/frontend
 COPY src/frontend/mastermind-web/package*.json ./
-RUN npm ci --only=production
+RUN npm ci --legacy-peer-deps
 COPY src/frontend/mastermind-web/ .
 RUN npm run build
 
@@ -41,14 +41,39 @@ COPY --from=frontend-build /app/dist ./frontend
 # Copy nginx configuration
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 
-# Create startup script
+# Create startup script with health checks
 RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Function to wait for API to be ready\n\
+wait_for_api() {\n\
+    echo "Waiting for API to be ready..."\n\
+    for i in {1..30}; do\n\
+        if curl -f http://localhost:5000/api/status > /dev/null 2>&1; then\n\
+            echo "API is ready!"\n\
+            return 0\n\
+        fi\n\
+        echo "Attempt $i/30: API not ready, waiting..."\n\
+        sleep 2\n\
+    done\n\
+    echo "API failed to start within 60 seconds"\n\
+    exit 1\n\
+}\n\
+\n\
 # Start the .NET API in background\n\
 cd /app/backend\n\
 dotnet MasterMind.API.dll &\n\
+API_PID=$!\n\
 \n\
-# Start nginx\n\
-nginx -g "daemon off;"' > /app/start.sh && chmod +x /app/start.sh
+# Wait for API to be ready\n\
+wait_for_api\n\
+\n\
+# Start nginx in foreground\n\
+nginx -g "daemon off;" &\n\
+NGINX_PID=$!\n\
+\n\
+# Wait for both processes\n\
+wait $API_PID $NGINX_PID' > /app/start.sh && chmod +x /app/start.sh
 
 # Create non-root user
 RUN adduser --disabled-password --gecos '' appuser && \
