@@ -269,6 +269,9 @@ import { ref, computed, onMounted } from 'vue'
 import { financeService, type Student, type StudentFeeDetails, type FeeReceipt, type CollectPaymentRequest, type PaymentFeeItem } from '@/services/financeService'
 import FeeSetupForm from '@/components/FeeSetupForm.vue'
 import ReceiptViewer from '@/components/ReceiptViewer.vue'
+import { useToast } from '@/composables/useToast'
+
+const toast = useToast()
 
 // Reactive data
 const students = ref<Student[]>([])
@@ -378,7 +381,7 @@ const collectPayment = async () => {
     await loadStudentFeeDetails(selectedStudent.value.id)
   } catch (error) {
     console.error('Error collecting payment:', error)
-    alert('Error collecting payment. Please try again.')
+    toast.error('Payment failed', 'Error collecting payment. Please try again.')
   } finally {
     isProcessing.value = false
   }

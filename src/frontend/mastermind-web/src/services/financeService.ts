@@ -58,6 +58,130 @@ export interface CreateExpenseDto {
   receiptNumber?: string
 }
 
+export interface UpdateFeeRequest {
+  dueDate?: string
+  discountAmount?: number
+  description?: string
+}
+
+export interface UpdateExpenseDto {
+  category: string
+  description: string
+  amount: number
+  paidTo: string
+  date: string
+  receiptNumber?: string
+}
+
+export interface Student {
+  id: number
+  name: string
+  class: string
+  email?: string
+  mobile?: string
+  parentName?: string
+}
+
+export interface StudentFeeDetails {
+  studentId: number
+  studentName: string
+  studentClass: string
+  parentName: string
+  parentEmail: string
+  parentMobile: string
+  pendingFees: PendingFee[]
+}
+
+export interface PendingFee {
+  studentFeeId: number
+  feeType: string
+  feeCategory?: string
+  amount: number
+  paidAmount: number
+  balanceAmount: number
+  dueDate: string
+  month?: string
+  status: string
+  isOverdue: boolean
+}
+
+export interface FeeReceipt {
+  id: number
+  receiptNumber: string
+  studentName: string
+  studentClass: string
+  parentName: string
+  parentEmail: string
+  parentMobile: string
+  totalAmount: number
+  paidAmount: number
+  balanceAmount: number
+  paymentMethod: string
+  receiptDate: string
+  paymentStatus: string
+  collectedBy: string
+  remarks: string
+  isEmailSent?: boolean
+  receiptItems: ReceiptItem[]
+}
+
+export interface ReceiptItem {
+  itemDescription: string
+  itemAmount: number
+  discountAmount?: number
+  finalAmount: number
+}
+
+export interface CollectPaymentRequest {
+  studentId: number
+  paymentMethod: string
+  transactionId?: string
+  remarks?: string
+  feeItems: PaymentFeeItem[]
+}
+
+export interface PaymentFeeItem {
+  studentFeeId: number
+  description: string
+  itemAmount: number
+  amount: number
+  period?: string
+}
+
+export interface FeeStructure {
+  id: number
+  name: string
+  type: string
+  category: string
+  amount: number
+  frequency: string
+  className: string
+  description: string
+  academicYear: string
+}
+
+export interface SetupStudentFeeRequest {
+  studentId: number
+  feeStructureId: number
+  startDate: string
+  endDate?: string
+  dueDate?: string
+  numberOfMonths?: number
+  academicYear: string
+}
+
+export interface StudentFeeSetup {
+  studentId: number
+  studentName: string
+  feeType: string
+  totalAmount: number
+  monthlyAmount?: number
+  numberOfInstallments?: number
+  startDate: string
+  endDate?: string
+  status: string
+}
+
 export const financeService = {
   // ===== FINANCIAL SUMMARY METHODS =====
 
@@ -158,6 +282,39 @@ export const financeService = {
 
     const response = await apiService.post('/finance/fees', data)
     return response.data
+  },
+
+  // Update an existing fee
+  async updateFee(id: number, data: UpdateFeeRequest): Promise<Fee> {
+    if (USE_MOCK_API) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      return {
+        id,
+        studentId: 1,
+        studentName: 'John Doe',
+        classId: 1,
+        className: 'Class 10',
+        feeType: 'Tuition Fee',
+        amount: 5000,
+        dueDate: data.dueDate || '2024-01-15',
+        status: 'Pending',
+        description: data.description
+      }
+    }
+
+    const response = await apiService.put(`/fees/${id}`, data)
+    return response.data
+  },
+
+  // Delete a fee
+  async deleteFee(id: number): Promise<boolean> {
+    if (USE_MOCK_API) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      return true
+    }
+
+    await apiService.delete(`/fees/${id}`)
+    return true
   },
 
   // Get all fees
@@ -286,6 +443,36 @@ export const financeService = {
 
     const response = await apiService.post('/finance/expenses', data)
     return response.data
+  },
+
+  // Update an existing expense
+  async updateExpense(id: number, data: UpdateExpenseDto): Promise<Expense> {
+    if (USE_MOCK_API) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      return {
+        id,
+        category: data.category,
+        description: data.description,
+        amount: data.amount,
+        paidTo: data.paidTo,
+        date: data.date,
+        receiptNumber: data.receiptNumber
+      }
+    }
+
+    const response = await apiService.put(`/expenses/${id}`, data)
+    return response.data
+  },
+
+  // Delete an expense
+  async deleteExpense(id: number): Promise<boolean> {
+    if (USE_MOCK_API) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      return true
+    }
+
+    await apiService.delete(`/expenses/${id}`)
+    return true
   },
 
   // ===== REPORT METHODS =====
