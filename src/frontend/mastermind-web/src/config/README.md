@@ -4,6 +4,7 @@ This directory contains the centralized API configuration for THE MASTERMIND COA
 
 ## 📁 Files
 
+
 ### `api.ts`
 Central configuration file for all API-related settings and endpoints.
 
