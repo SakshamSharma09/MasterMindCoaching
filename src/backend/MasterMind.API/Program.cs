@@ -229,6 +229,13 @@ builder.Services.AddSwaggerGen(options =>
     }
 });
 
+// Configure Kestrel
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5000); // HTTP
+    options.ListenAnyIP(5001, configure => configure.UseHttps()); // HTTPS
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
