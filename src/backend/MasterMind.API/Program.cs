@@ -32,9 +32,19 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSett
 builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection(OtpSettings.SectionName));
 builder.Services.Configure<SmsSettings>(builder.Configuration.GetSection(SmsSettings.SectionName));
 
-// Database Context
+// Database Context - Handle Railway's environment variables
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Ensure we have a connection string
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Database connection string not found. Please set DATABASE_URL or ConnectionStrings__DefaultConnection environment variable.");
+}
+
 builder.Services.AddDbContext<MasterMindDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
