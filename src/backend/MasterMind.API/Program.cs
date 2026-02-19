@@ -232,8 +232,7 @@ builder.Services.AddSwaggerGen(options =>
 // Configure Kestrel
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(5000); // HTTP
-    options.ListenAnyIP(5001, configure => configure.UseHttps()); // HTTPS
+    options.ListenAnyIP(5000); // HTTP only - HTTPS certificate not available in container
 });
 
 var app = builder.Build();
