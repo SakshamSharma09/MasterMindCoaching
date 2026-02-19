@@ -58,7 +58,11 @@ if (!string.IsNullOrEmpty(databaseUrl) && (databaseUrl.StartsWith("postgres://")
     Log.Information("Parsed connection string: Host={Host};Port={Port};Username={Username};Database={Database}", uri.Host, uri.Port, userInfo[0], db);
     
     builder.Services.AddDbContext<MasterMindDbContext>(options =>
-        options.UseNpgsql(connectionString));
+    {
+        options.UseNpgsql(connectionString);
+        // Suppress pending model changes warning for Railway deployment
+        options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+    });
 }
 else
 {
