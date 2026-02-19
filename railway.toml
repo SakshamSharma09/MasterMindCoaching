@@ -1,0 +1,8 @@
+# Railway service configuration
+[build]
+builder = "dockerfile"
+
+[deploy]
+healthcheckPath = "/api/status"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
