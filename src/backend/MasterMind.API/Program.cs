@@ -38,6 +38,13 @@ var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 Log.Information("DATABASE_URL environment variable: {DatabaseUrl}", 
     string.IsNullOrEmpty(databaseUrl) ? "NOT SET" : "SET");
 
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    Log.Information("DATABASE_URL length: {Length}", databaseUrl.Length);
+    Log.Information("DATABASE_URL starts with postgres://: {StartsWith}", databaseUrl.StartsWith("postgres://"));
+    Log.Information("DATABASE_URL first 50 chars: {FirstChars}", databaseUrl.Length > 50 ? databaseUrl.Substring(0, 50) + "..." : databaseUrl);
+}
+
 if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres://"))
 {
     Log.Information("Parsing PostgreSQL connection string from Railway format");
@@ -55,7 +62,7 @@ if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres://"))
 }
 else
 {
-    Log.Information("No DATABASE_URL found, using fallback connection string");
+    Log.Information("No DATABASE_URL found or not in postgres:// format, using fallback connection string");
     // For Railway without database service, use SQLite as fallback
     var connectionString = "Data Source=mastermind.db";
     Log.Information("Using SQLite database as fallback");

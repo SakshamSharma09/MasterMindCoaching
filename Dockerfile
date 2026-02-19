@@ -59,11 +59,6 @@ wait_for_api() {\n\
             echo "API health endpoint responding!"\n\
             return 0\n\
         fi\n\
-        # Check if the process is running\n\
-        if ! ps aux | grep "dotnet MasterMind.API.dll" | grep -v grep > /dev/null; then\n\
-            echo "API process is not running!"\n\
-            return 1\n\
-        fi\n\
         echo "API not ready yet, waiting 2 seconds..."\n\
         sleep 2\n\
     done\n\
