@@ -230,6 +230,15 @@ app.MapGet("/health", () => Results.Ok(new
     Environment = app.Environment.EnvironmentName
 }));
 
+// API Status Endpoint for Railway Health Check
+app.MapGet("/api/status", () => Results.Ok(new 
+{ 
+    Status = "Healthy", 
+    Timestamp = DateTime.UtcNow,
+    Version = "1.0.0",
+    Environment = app.Environment.EnvironmentName
+}));
+
 // API Info Endpoint
 app.MapGet("/", () => Results.Ok(new
 {
@@ -239,25 +248,22 @@ app.MapGet("/", () => Results.Ok(new
     Health = "/health"
 }));
 
-// Apply Migrations and Seed Data on Startup (Development only)
-if (app.Environment.IsDevelopment())
+// Apply Migrations and Seed Data on Startup (both Development and Production)
+using var scope = app.Services.CreateScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<MasterMindDbContext>();
+try
 {
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<MasterMindDbContext>();
-    try
-    {
-        // Enable migrations to create the database
-        dbContext.Database.Migrate();
-        Log.Information("Database migrations applied successfully");
-        
-        // Skip seeding for now to test basic functionality
-        // await SeedAdminUserAsync(dbContext);
-        Log.Information("Database seeding skipped for testing");
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "An error occurred during database setup");
-    }
+    // Enable migrations to create the database
+    dbContext.Database.Migrate();
+    Log.Information("Database migrations applied successfully");
+    
+    // Skip seeding for now to test basic functionality
+    // await SeedAdminUserAsync(dbContext);
+    Log.Information("Database seeding skipped for testing");
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "An error occurred during database setup");
 }
 
 Log.Information("MasterMind Coaching Classes API started successfully");
