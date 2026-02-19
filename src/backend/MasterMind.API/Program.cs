@@ -41,14 +41,14 @@ Log.Information("DATABASE_URL environment variable: {DatabaseUrl}",
 if (!string.IsNullOrEmpty(databaseUrl))
 {
     Log.Information("DATABASE_URL length: {Length}", databaseUrl.Length);
-    Log.Information("DATABASE_URL starts with postgres://: {StartsWith}", databaseUrl.StartsWith("postgres://"));
+    Log.Information("DATABASE_URL starts with postgres:// or postgresql://: {StartsWith}", databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://"));
     Log.Information("DATABASE_URL first 50 chars: {FirstChars}", databaseUrl.Length > 50 ? databaseUrl.Substring(0, 50) + "..." : databaseUrl);
 }
 
-if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgres://"))
+if (!string.IsNullOrEmpty(databaseUrl) && (databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://")))
 {
     Log.Information("Parsing PostgreSQL connection string from Railway format");
-    // Parse Railway's postgres:// URL format
+    // Parse Railway's postgres:// or postgresql:// URL format
     var uri = new Uri(databaseUrl);
     var userInfo = uri.UserInfo.Split(':');
     var db = uri.AbsolutePath.TrimStart('/');
