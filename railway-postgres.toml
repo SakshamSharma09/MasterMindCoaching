@@ -1,0 +1,8 @@
+# Railway PostgreSQL Database Service
+[postgres]
+service = "postgres"
+
+[postgres.environment]
+POSTGRES_USER = "postgres"
+POSTGRES_PASSWORD = "postgres"
+POSTGRES_DB = "mastermind"
