@@ -34,7 +34,7 @@ builder.Services.Configure<SmsSettings>(builder.Configuration.GetSection(SmsSett
 
 // Database Context
 builder.Services.AddDbContext<MasterMindDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
