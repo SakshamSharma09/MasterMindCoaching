@@ -48,32 +48,66 @@ set -e\n\
 # Function to wait for API to be ready\n\
 wait_for_api() {\n\
     echo "Waiting for API to be ready..."\n\
-    for i in {1..30}; do\n\
+    for i in {1..60}; do\n\
+        echo "Attempt $i/60: Checking API health..."\n\
         if curl -f http://localhost:5000/api/status > /dev/null 2>&1; then\n\
             echo "API is ready!"\n\
             return 0\n\
         fi\n\
-        echo "Attempt $i/30: API not ready, waiting..."\n\
+        # Also try the basic health endpoint\n\
+        if curl -f http://localhost:5000/health > /dev/null 2>&1; then\n\
+            echo "API health endpoint responding!"\n\
+            return 0\n\
+        fi\n\
+        # Check if the process is running\n\
+        if ! pgrep -f "dotnet MasterMind.API.dll" > /dev/null; then\n\
+            echo "API process is not running!"\n\
+            return 1\n\
+        fi\n\
+        echo "API not ready yet, waiting 2 seconds..."\n\
         sleep 2\n\
     done\n\
-    echo "API failed to start within 60 seconds"\n\
-    exit 1\n\
+    echo "API failed to start within 120 seconds"\n\
+    return 1\n\
 }\n\
 \n\
 # Start the .NET API in background\n\
 cd /app/backend\n\
+echo "Starting .NET API..."\n\
 dotnet MasterMind.API.dll &\n\
 API_PID=$!\n\
+echo "API PID: $API_PID"\n\
+\n\
+# Give API a moment to start\n\
+sleep 5\n\
+\n\
+# Check if frontend files exist\n\
+echo "Checking frontend files..."\n\
+if [ -f "/app/frontend/index.html" ]; then\n\
+    echo "✅ Frontend index.html found"\n\
+    ls -la /app/frontend/ | head -10\n\
+else\n\
+    echo "❌ Frontend index.html NOT found"\n\
+    echo "Contents of /app:"\n\
+    ls -la /app/\n\
+    echo "Contents of /app/frontend:"\n\
+    ls -la /app/frontend/ || echo "Frontend directory does not exist"\n\
+fi\n\
 \n\
 # Wait for API to be ready\n\
-wait_for_api\n\
-\n\
-# Start nginx in foreground\n\
-nginx -g "daemon off;" &\n\
-NGINX_PID=$!\n\
-\n\
-# Wait for both processes\n\
-wait $API_PID $NGINX_PID' > /app/start.sh && chmod +x /app/start.sh
+if wait_for_api; then\n\
+    echo "API is ready, starting nginx..."\n\
+    # Start nginx in foreground\n\
+    nginx -g "daemon off;" &\n\
+    NGINX_PID=$!\n\
+    echo "Nginx PID: $NGINX_PID"\n\
+    \n\
+    # Wait for both processes\n\
+    wait $API_PID $NGINX_PID\n\
+else\n\
+    echo "API failed to start, exiting..."\n\
+    exit 1\n\
+fi' > /app/start.sh && chmod +x /app/start.sh
 
 # Create non-root user
 RUN adduser --disabled-password --gecos '' appuser && \
