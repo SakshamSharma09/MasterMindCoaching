@@ -50,8 +50,39 @@ const router = createRouter({
         },
         {
           path: 'finance',
-          name: 'AdminFinance',
-          component: () => import('@/views/admin/FinanceView.vue')
+          component: () => import('@/layouts/FinanceLayout.vue'),
+          children: [
+            {
+              path: '',
+              name: 'FinanceOverview',
+              component: () => import('@/views/admin/finance/FinanceOverview.vue')
+            },
+            {
+              path: 'fees',
+              name: 'FeesManagement',
+              component: () => import('@/views/admin/finance/FeesManagementView.vue')
+            },
+            {
+              path: 'fee-collection',
+              name: 'FeeCollection',
+              component: () => import('@/views/admin/FeeCollectionView.vue')
+            },
+            {
+              path: 'expenses',
+              name: 'ExpensesManagement',
+              component: () => import('@/views/admin/finance/ExpensesView.vue')
+            },
+            {
+              path: 'overdue',
+              name: 'OverdueFees',
+              component: () => import('@/views/admin/finance/OverdueFeesView.vue')
+            },
+            {
+              path: 'reports',
+              name: 'FinanceReports',
+              component: () => import('@/views/admin/finance/FinanceReportsView.vue')
+            }
+          ]
         },
         {
           path: 'teachers',

@@ -66,18 +66,18 @@
             :to="item.href"
             class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 group animate-fade-in"
             :class="[
-              $route.name === item.name
+              isNavActive(item)
                 ? 'glass-active text-white shadow-glass-lg transform scale-105'
                 : 'text-surface-600 hover:glass-hover hover:text-surface-900 hover:translate-x-1'
             ]"
           >
             <component :is="item.icon" 
               :class="[
-                $route.name === item.name ? 'text-white' : 'text-gray-400 group-hover:text-indigo-600'
+                isNavActive(item) ? 'text-white' : 'text-gray-400 group-hover:text-indigo-600'
               ]" 
               class="mr-3 h-5 w-5 transition-colors duration-200" />
             <span class="truncate">{{ item.name }}</span>
-            <div v-if="$route.name === item.name" class="ml-auto">
+            <div v-if="isNavActive(item)" class="ml-auto">
               <div class="h-2 w-2 bg-white rounded-full animate-pulse"></div>
             </div>
           </router-link>
@@ -189,7 +189,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 // Icon components
@@ -222,6 +222,7 @@ const PhoneIcon = () => h('svg', { class: 'h-5 w-5', fill: 'none', stroke: 'curr
 ])
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const sidebarOpen = ref(false)
@@ -239,6 +240,14 @@ const navigation = [
   { name: 'Teachers', href: '/admin/teachers', icon: UserGroupIcon },
   { name: 'Leads', href: '/admin/leads', icon: PhoneIcon }
 ]
+
+const isNavActive = (item: { name: string; href: string }) => {
+  const path = route.path
+  if (item.href === '/admin') {
+    return path === '/admin' || path === '/admin/'
+  }
+  return path.startsWith(item.href)
+}
 
 const userInitials = computed(() => {
   const user = authStore.user

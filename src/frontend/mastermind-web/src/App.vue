@@ -11,11 +11,15 @@
     <div class="relative z-10">
       <RouterView />
     </div>
+
+    <!-- Global Toast Notifications -->
+    <ToastContainer />
   </div>
 </template>
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import ToastContainer from '@/components/common/ToastContainer.vue'
 </script>
 
 <style scoped>

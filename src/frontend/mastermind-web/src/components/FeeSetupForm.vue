@@ -231,11 +231,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { financeService, type FeeStructure, type Student, type SetupStudentFeeRequest, type StudentFeeSetup } from '@/services/financeService'
+import { useToast } from '@/composables/useToast'
 
 const emit = defineEmits<{
   success: []
   cancel: []
 }>()
+
+const toast = useToast()
 
 // Reactive data
 const students = ref<Student[]>([])
@@ -346,12 +349,12 @@ const submitForm = async () => {
     const result = await financeService.setupStudentFee(requestData)
     
     // Show success message
-    alert(`Fee setup completed successfully!\n\nStudent: ${result.studentName}\nFee Type: ${result.feeType}\nTotal Amount: ₹${formatCurrency(result.totalAmount)}`)
+    toast.success('Fee setup completed', `${result.studentName} — ${result.feeType} — ₹${formatCurrency(result.totalAmount)}`)
     
     emit('success')
   } catch (error) {
     console.error('Error setting up fee:', error)
-    alert('Error setting up fee. Please try again.')
+    toast.error('Fee setup failed', 'Please try again.')
   } finally {
     isSubmitting.value = false
   }
