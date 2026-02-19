@@ -81,6 +81,19 @@ echo "API PID: $API_PID"\n\
 # Give API a moment to start\n\
 sleep 5\n\
 \n\
+# Check if frontend files exist\n\
+echo "Checking frontend files..."\n\
+if [ -f "/app/frontend/index.html" ]; then\n\
+    echo "✅ Frontend index.html found"\n\
+    ls -la /app/frontend/ | head -10\n\
+else\n\
+    echo "❌ Frontend index.html NOT found"\n\
+    echo "Contents of /app:"\n\
+    ls -la /app/\n\
+    echo "Contents of /app/frontend:"\n\
+    ls -la /app/frontend/ || echo "Frontend directory does not exist"\n\
+fi\n\
+\n\
 # Wait for API to be ready\n\
 if wait_for_api; then\n\
     echo "API is ready, starting nginx..."\n\
