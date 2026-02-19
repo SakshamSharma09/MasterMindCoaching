@@ -33,16 +33,48 @@ builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection(OtpSett
 builder.Services.Configure<SmsSettings>(builder.Configuration.GetSection(SmsSettings.SectionName));
 
 // Database Context - Handle Railway's environment variables
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+Log.Information("DATABASE_URL environment variable: {DatabaseUrl}", 
+    string.IsNullOrEmpty(databaseUrl) ? "NOT SET" : "SET (length: " + databaseUrl.Length + ")");
+
+if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgres://"))
+{
+    Log.Information("Parsing PostgreSQL connection string from Railway format");
+    // Parse Railway's postgres:// URL format
+    var uri = new Uri(connectionString);
+    var userInfo = uri.UserInfo.Split(':');
+    var db = uri.AbsolutePath.TrimStart('/');
+    if (string.IsNullOrEmpty(db)) db = "postgres";
+    
+    connectionString = $"Host={uri.Host};Port={uri.Port};Username={userInfo[0]};Password={userInfo[1]};Database={db};SSL Mode=Require;Trust Server Certificate=true";
+    Log.Information("Parsed connection string: Host={Host};Port={Port};Username={Username};Database={Database}", uri.Host, uri.Port, userInfo[0], db);
+}
+else
+{
+    Log.Information("DATABASE_URL not in postgres:// format, checking other sources");
+    // Try other environment variables or fallback
+    connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+        ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    
+    // Convert SQL Server connection string to PostgreSQL if needed
+    if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("Data Source="))
+    {
+        // This is a SQL Server connection string, we need PostgreSQL
+        Log.Error("SQL Server connection string detected: {ConnectionString}", connectionString);
+        throw new InvalidOperationException("SQL Server connection string detected. Please configure PostgreSQL connection string for Railway deployment.");
+    }
+}
 
 // Ensure we have a connection string
 if (string.IsNullOrEmpty(connectionString))
 {
-    throw new InvalidOperationException("Database connection string not found. Please set DATABASE_URL or ConnectionStrings__DefaultConnection environment variable.");
+    Log.Error("No database connection string found in any environment variable");
+    throw new InvalidOperationException("Database connection string not found. Please set DATABASE_URL environment variable in Railway.");
 }
 
+Log.Information("Using PostgreSQL connection string for database context");
 builder.Services.AddDbContext<MasterMindDbContext>(options =>
     options.UseNpgsql(connectionString));
 
