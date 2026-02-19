@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y nginx curl && rm -rf /var/lib/apt/lists
 COPY --from=backend-publish /app/publish ./backend
 
 # Copy built frontend
-COPY --from=frontend-build /app/dist ./frontend
+COPY --from=frontend-build /app/frontend/dist ./frontend
 
 # Copy nginx configuration
 COPY docker/nginx.conf /etc/nginx/nginx.conf
