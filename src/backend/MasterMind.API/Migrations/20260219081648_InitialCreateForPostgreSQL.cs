@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MasterMind.API.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreateForFallback : Migration
+    public partial class InitialCreateForPostgreSQL : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

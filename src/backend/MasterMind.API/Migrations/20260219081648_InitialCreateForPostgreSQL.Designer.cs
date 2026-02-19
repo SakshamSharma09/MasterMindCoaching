@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MasterMind.API.Migrations
 {
     [DbContext(typeof(MasterMindDbContext))]
-    [Migration("20260219063221_InitialCreateForFallback")]
-    partial class InitialCreateForFallback
+    [Migration("20260219081648_InitialCreateForPostgreSQL")]
+    partial class InitialCreateForPostgreSQL
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
