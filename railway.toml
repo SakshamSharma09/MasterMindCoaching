@@ -6,3 +6,4 @@ builder = "dockerfile"
 healthcheckPath = "/api/status"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+port = 8080
