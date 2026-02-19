@@ -288,14 +288,13 @@ app.MapGet("/", () => Results.Ok(new
     Health = "/health"
 }));
 
-// Apply Migrations and Seed Data on Startup (both Development and Production)
+// Apply Migrations and Seed Data on Startup (both Development and Production) - DISABLED TEMPORARILY
 using var scope = app.Services.CreateScope();
 var dbContext = scope.ServiceProvider.GetRequiredService<MasterMindDbContext>();
 try
 {
-    // Enable migrations to create the database
-    dbContext.Database.Migrate();
-    Log.Information("Database migrations applied successfully");
+    // Skip migrations for now to allow API to start
+    Log.Information("Database migrations skipped temporarily to allow API startup");
     
     // Skip seeding for now to test basic functionality
     // await SeedAdminUserAsync(dbContext);
