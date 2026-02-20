@@ -294,31 +294,51 @@ app.MapGet("/", () => Results.Ok(new
     Health = "/health"
 }));
 
-// Apply Migrations and Seed Data on Startup (both Development and Production) - DISABLED TEMPORARILY
+// Apply Migrations and Seed Data on Startup (both Development and Production)
 using var scope = app.Services.CreateScope();
 var dbContext = scope.ServiceProvider.GetRequiredService<MasterMindDbContext>();
 try
 {
-    // Skip migrations for now to allow API to start
-    Log.Information("Database migrations skipped temporarily to allow API startup");
+    Log.Information("Ensuring database exists and creating tables if needed...");
     
-    // Skip seeding for now to test basic functionality
-    // await SeedAdminUserAsync(dbContext);
-    Log.Information("Database seeding skipped for testing");
+    // Create database and tables if they don't exist (for PostgreSQL use EnsureCreated)
+    // This is equivalent to running migrations
+    await dbContext.Database.EnsureCreatedAsync();
+    Log.Information("Database schema created/verified successfully");
+    
+    // Seed initial data
+    await SeedInitialDataAsync(dbContext);
+    Log.Information("Database seeding completed successfully");
 }
 catch (Exception ex)
 {
     Log.Error(ex, "An error occurred during database setup");
+    // Don't throw - allow the API to start even if database setup fails
+    // This helps with debugging connection issues
 }
 
 Log.Information("MasterMind Coaching Classes API started successfully");
 
 app.Run();
 
-// Seed admin user method
-static async Task SeedAdminUserAsync(MasterMindDbContext context)
+// Seed initial data method
+static async Task SeedInitialDataAsync(MasterMindDbContext context)
 {
-    // Check if admin user exists
+    // Seed Roles
+    if (!await context.Roles.AnyAsync())
+    {
+        var roles = new[]
+        {
+            new MasterMind.API.Models.Entities.Role { Name = "Admin", Description = "Administrator with full access" },
+            new MasterMind.API.Models.Entities.Role { Name = "Teacher", Description = "Teacher with limited access" },
+            new MasterMind.API.Models.Entities.Role { Name = "Parent", Description = "Parent with read-only access" }
+        };
+        context.Roles.AddRange(roles);
+        await context.SaveChangesAsync();
+        Log.Information("Roles seeded successfully");
+    }
+
+    // Seed Admin User
     var adminExists = await context.Users.AnyAsync(u => u.Email == "admin@mastermind-coaching.com");
     if (!adminExists)
     {
@@ -352,4 +372,55 @@ static async Task SeedAdminUserAsync(MasterMindDbContext context)
 
         Log.Information("Admin user seeded successfully");
     }
+
+    // Seed Sample Session
+    if (!await context.Sessions.AnyAsync())
+    {
+        var session = new MasterMind.API.Models.Entities.Session
+        {
+            Name = "2024-2025",
+            DisplayName = "Academic Year 2024-25",
+            StartDate = new DateTime(2024, 4, 1),
+            EndDate = new DateTime(2025, 3, 31),
+            AcademicYear = "2024-25",
+            IsActive = true,
+            Status = MasterMind.API.Models.Entities.SessionStatus.Active
+        };
+        context.Sessions.Add(session);
+        await context.SaveChangesAsync();
+        Log.Information("Session seeded successfully");
+    }
+
+    // Seed Sample Classes
+    if (!await context.Classes.AnyAsync())
+    {
+        var classes = new[]
+        {
+            new MasterMind.API.Models.Entities.Class { Name = "Class 9 - Science", Medium = "English", Board = "CBSE", AcademicYear = "2024-25", IsActive = true, CreatedAt = DateTime.UtcNow },
+            new MasterMind.API.Models.Entities.Class { Name = "Class 10 - Science", Medium = "English", Board = "CBSE", AcademicYear = "2024-25", IsActive = true, CreatedAt = DateTime.UtcNow },
+            new MasterMind.API.Models.Entities.Class { Name = "Class 11 - Science", Medium = "English", Board = "CBSE", AcademicYear = "2024-25", IsActive = true, CreatedAt = DateTime.UtcNow },
+            new MasterMind.API.Models.Entities.Class { Name = "Class 12 - Science", Medium = "English", Board = "CBSE", AcademicYear = "2024-25", IsActive = true, CreatedAt = DateTime.UtcNow }
+        };
+        context.Classes.AddRange(classes);
+        await context.SaveChangesAsync();
+        Log.Information("Classes seeded successfully");
+    }
+
+    // Seed Sample Subjects
+    if (!await context.Subjects.AnyAsync())
+    {
+        var subjects = new[]
+        {
+            new MasterMind.API.Models.Entities.Subject { Name = "Mathematics", Code = "MATH", Description = "Mathematics for all classes", CreatedAt = DateTime.UtcNow },
+            new MasterMind.API.Models.Entities.Subject { Name = "Physics", Code = "PHY", Description = "Physics for science stream", CreatedAt = DateTime.UtcNow },
+            new MasterMind.API.Models.Entities.Subject { Name = "Chemistry", Code = "CHEM", Description = "Chemistry for science stream", CreatedAt = DateTime.UtcNow },
+            new MasterMind.API.Models.Entities.Subject { Name = "Biology", Code = "BIO", Description = "Biology for science stream", CreatedAt = DateTime.UtcNow },
+            new MasterMind.API.Models.Entities.Subject { Name = "English", Code = "ENG", Description = "English language", CreatedAt = DateTime.UtcNow }
+        };
+        context.Subjects.AddRange(subjects);
+        await context.SaveChangesAsync();
+        Log.Information("Subjects seeded successfully");
+    }
+
+    Log.Information("All initial data seeding completed");
 }
