@@ -32,6 +32,12 @@ WORKDIR /app
 # Install nginx and curl
 RUN apt-get update && apt-get install -y nginx curl && rm -rf /var/lib/apt/lists/*
 
+# Create nginx directories with proper permissions for non-root user
+RUN mkdir -p /var/lib/nginx/body /var/lib/nginx/proxy /var/lib/nginx/fastcgi /var/lib/nginx/uwsgi /var/lib/nginx/scgi \
+    && mkdir -p /var/log/nginx \
+    && mkdir -p /run/nginx \
+    && chown -R 1000:1000 /var/lib/nginx /var/log/nginx /run/nginx
+
 # Copy published backend
 COPY --from=backend-publish /app/publish ./backend
 
@@ -104,9 +110,11 @@ else\n\
     exit 1\n\
 fi' > /app/start.sh && chmod +x /app/start.sh
 
-# Create non-root user
-RUN adduser --disabled-password --gecos '' appuser && \
-    chown -R appuser:appuser /app
+# Create non-root user with specific UID/GID matching nginx directories
+RUN groupadd -g 1000 appgroup && \
+    adduser --disabled-password --gecos '' --uid 1000 --gid 1000 appuser && \
+    chown -R appuser:appgroup /app && \
+    chown -R appuser:appgroup /var/lib/nginx /var/log/nginx /run/nginx
 
 # Expose ports
 EXPOSE 8080 5000
