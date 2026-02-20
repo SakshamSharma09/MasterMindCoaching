@@ -1,11 +1,11 @@
 // API Configuration for THE MASTERMIND COACHING CLASSES
 // Change this URL to connect to different backend environments
 
-// For local development
-export const API_BASE_URL = 'https://localhost:49627/api'
+// For production deployment - use relative URL since nginx proxies /api to backend
+export const API_BASE_URL = '/api'
 
-// For production deployment (uncomment when deploying)
-// export const API_BASE_URL = 'https://your-production-domain.com/api'
+// For local development (uncomment when developing locally)
+// export const API_BASE_URL = 'https://localhost:49627/api'
 
 // For staging environment (uncomment when needed)
 // export const API_BASE_URL = 'https://staging.mastermindcoaching.com/api'
