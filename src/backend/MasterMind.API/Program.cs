@@ -313,10 +313,95 @@ try
 {
     Log.Information("Ensuring database exists and creating tables if needed...");
     
-    // Create database and tables if they don't exist (for PostgreSQL use EnsureCreated)
-    // This is equivalent to running migrations
-    await dbContext.Database.EnsureCreatedAsync();
-    Log.Information("Database schema created/verified successfully");
+    // Check if we're using PostgreSQL or SQLite
+    var isPostgreSql = dbContext.Database.IsNpgsql();
+    Log.Information("Database provider: {Provider}", isPostgreSql ? "PostgreSQL" : "SQLite");
+    
+    if (isPostgreSql)
+    {
+        // For PostgreSQL, create tables directly using raw SQL
+        Log.Information("Creating PostgreSQL tables if they don't exist...");
+        
+        await dbContext.Database.ExecuteSqlRawAsync(@"
+            -- Create Users table
+            CREATE TABLE IF NOT EXISTS ""Users"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Email"" VARCHAR(255),
+                ""Mobile"" VARCHAR(20),
+                ""FirstName"" VARCHAR(100) NOT NULL,
+                ""LastName"" VARCHAR(100) NOT NULL,
+                ""ProfileImageUrl"" VARCHAR(500),
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                ""IsEmailVerified"" BOOLEAN NOT NULL DEFAULT false,
+                ""IsMobileVerified"" BOOLEAN NOT NULL DEFAULT false,
+                ""LastLoginAt"" TIMESTAMP,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP,
+                ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false
+            );
+            
+            -- Create Roles table
+            CREATE TABLE IF NOT EXISTS ""Roles"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Name"" VARCHAR(50) NOT NULL,
+                ""Description"" VARCHAR(200)
+            );
+            
+            -- Create UserRole table (many-to-many)
+            CREATE TABLE IF NOT EXISTS ""UserRoles"" (
+                ""UserId"" INTEGER NOT NULL,
+                ""RoleId"" INTEGER NOT NULL,
+                ""AssignedAt"" TIMESTAMP NOT NULL,
+                PRIMARY KEY (""UserId"", ""RoleId"")
+            );
+            
+            -- Create OtpRecords table
+            CREATE TABLE IF NOT EXISTS ""OtpRecords"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Identifier"" VARCHAR(255) NOT NULL,
+                ""OtpCode"" VARCHAR(255) NOT NULL,
+                ""Type"" INTEGER NOT NULL,
+                ""Purpose"" INTEGER NOT NULL,
+                ""ExpiresAt"" TIMESTAMP NOT NULL,
+                ""IsUsed"" BOOLEAN NOT NULL DEFAULT false,
+                ""AttemptCount"" INTEGER NOT NULL DEFAULT 0,
+                ""UserId"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP
+            );
+            
+            -- Create RefreshTokens table
+            CREATE TABLE IF NOT EXISTS ""RefreshTokens"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Token"" VARCHAR(500) NOT NULL,
+                ""UserId"" INTEGER NOT NULL,
+                ""ExpiresAt"" TIMESTAMP NOT NULL,
+                ""IsRevoked"" BOOLEAN NOT NULL DEFAULT false,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""RevokedAt"" TIMESTAMP
+            );
+            
+            -- Create UserDevices table
+            CREATE TABLE IF NOT EXISTS ""UserDevices"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""UserId"" INTEGER NOT NULL,
+                ""DeviceId"" VARCHAR(200) NOT NULL,
+                ""DeviceName"" VARCHAR(200),
+                ""DeviceType"" VARCHAR(50),
+                ""IsTrusted"" BOOLEAN NOT NULL DEFAULT false,
+                ""LastUsedAt"" TIMESTAMP,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+        ");
+        
+        Log.Information("PostgreSQL tables created/verified successfully");
+    }
+    else
+    {
+        // For SQLite, EnsureCreated works fine
+        var created = await dbContext.Database.EnsureCreatedAsync();
+        Log.Information("Database schema created/verified: {Created}", created);
+    }
     
     // Seed initial data
     await SeedInitialDataAsync(dbContext);
