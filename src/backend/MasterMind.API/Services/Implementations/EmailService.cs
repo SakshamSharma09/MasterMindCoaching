@@ -36,13 +36,22 @@ public class EmailService : IEmailService
             var smtpServer = emailSettings["SmtpServer"];
             var port = int.Parse(emailSettings["Port"] ?? "587");
             var useSsl = bool.Parse(emailSettings["UseSsl"] ?? "true");
+            var useSandbox = bool.Parse(emailSettings["UseSandbox"] ?? "false");
             var username = emailSettings["Username"];
             var password = emailSettings["Password"];
             var fromEmail = emailSettings["FromEmail"];
             var fromName = emailSettings["FromName"];
 
-            _logger.LogInformation("EmailService: SMTP Server: {SmtpServer}, Port: {Port}, UseSsl: {UseSsl}, Username: {Username}", 
-                smtpServer, port, useSsl, username);
+            _logger.LogInformation("EmailService: SMTP Server: {SmtpServer}, Port: {Port}, UseSsl: {UseSsl}, Username: {Username}, Sandbox: {Sandbox}", 
+                smtpServer, port, useSsl, username, useSandbox);
+
+            // If sandbox mode, just log and return (for testing)
+            if (useSandbox)
+            {
+                _logger.LogInformation("SANDBOX MODE - Email would be sent to {To}: {Subject}", to, subject);
+                _logger.LogInformation("SANDBOX MODE - OTP in email: {Body}", body);
+                return true;
+            }
 
             // If credentials are not configured, log and return (sandbox mode)
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
