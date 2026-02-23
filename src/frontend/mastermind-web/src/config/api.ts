@@ -16,9 +16,9 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
-    REQUEST_OTP: '/auth/request-otp',
-    VERIFY_OTP: '/auth/verify-otp',
-    REFRESH_TOKEN: '/auth/refresh-token',
+    REQUEST_OTP: '/auth/otp/request',
+    VERIFY_OTP: '/auth/otp/verify',
+    REFRESH_TOKEN: '/auth/token/refresh',
     LOGOUT: '/auth/logout',
     CURRENT_USER: '/auth/me'
   },

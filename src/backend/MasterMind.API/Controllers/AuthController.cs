@@ -31,6 +31,7 @@ public class AuthController : ControllerBase
     /// <param name="request">OTP request details</param>
     /// <returns>OTP response with masked identifier and expiry info</returns>
     [HttpPost("otp/request")]
+    [HttpPost("request-otp")] // Alias for backward compatibility
     [ProducesResponseType(typeof(OtpResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(OtpResponseDto), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(OtpResponseDto), StatusCodes.Status429TooManyRequests)]
@@ -65,6 +66,7 @@ public class AuthController : ControllerBase
     /// <param name="request">OTP verification details</param>
     /// <returns>Authentication response with tokens and user info</returns>
     [HttpPost("otp/verify")]
+    [HttpPost("verify-otp")] // Alias for backward compatibility
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status401Unauthorized)]
@@ -102,6 +104,7 @@ public class AuthController : ControllerBase
     /// <param name="request">Refresh token</param>
     /// <returns>New access and refresh tokens</returns>
     [HttpPost("token/refresh")]
+    [HttpPost("refresh-token")] // Alias for backward compatibility
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponseDto>> RefreshToken([FromBody] RefreshTokenDto request)
