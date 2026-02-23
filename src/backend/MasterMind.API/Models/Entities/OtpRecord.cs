@@ -3,8 +3,9 @@ namespace MasterMind.API.Models.Entities;
 /// <summary>
 /// OTP record for email/mobile verification
 /// </summary>
-public class OtpRecord : BaseEntity
+public class OtpRecord
 {
+    public int Id { get; set; }
     public string Identifier { get; set; } = string.Empty; // Email or Mobile
     public string OtpCode { get; set; } = string.Empty;
     public OtpType Type { get; set; }
@@ -13,6 +14,8 @@ public class OtpRecord : BaseEntity
     public bool IsUsed { get; set; } = false;
     public int AttemptCount { get; set; } = 0;
     public int? UserId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 
     // Navigation properties
     public User? User { get; set; }
