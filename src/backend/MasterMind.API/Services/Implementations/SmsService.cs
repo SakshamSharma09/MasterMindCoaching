@@ -47,12 +47,19 @@ public class SmsService : ISmsService
                 return false;
             }
 
+            // Log configuration for debugging
+            _logger.LogInformation("SMS Config - Provider: {Provider}, Sandbox: {Sandbox}, Route: {Route}, ApiKeyLength: {ApiKeyLength}", 
+                _settings.Provider, _settings.UseSandbox, _settings.Route, _settings.ApiKey?.Length ?? 0);
+            
             // In sandbox mode, just log and return success
             if (_settings.UseSandbox)
             {
                 _logger.LogInformation("SANDBOX MODE - OTP {Otp} would be sent to {Mobile}", otp, formattedNumber);
                 return true;
             }
+
+            // For Railway production - log OTP in logs as fallback (for debugging SMS delivery issues)
+            _logger.LogWarning("PRODUCTION MODE - Attempting to send OTP to {Mobile}. If SMS fails, OTP is: {Otp}", formattedNumber, otp);
 
             return _settings.Provider.ToLower() switch
             {
@@ -153,6 +160,13 @@ public class SmsService : ISmsService
             
             var message = _settings.OtpMessageTemplate.Replace("{otp}", otp);
 
+            // Log masked API key for debugging
+            var maskedApiKey = _settings.ApiKey?.Length > 4 
+                ? $"{_settings.ApiKey[..4]}...{_settings.ApiKey[^4..]}" 
+                : "(empty)";
+            _logger.LogInformation("Fast2SMS Request - Number: {Number}, Route: {Route}, ApiKey: {ApiKey}", 
+                number, _settings.Route, maskedApiKey);
+
             var requestData = new Dictionary<string, string>
             {
                 { "route", _settings.Route },
@@ -190,14 +204,21 @@ public class SmsService : ISmsService
                     _logger.LogInformation("OTP sent successfully via Fast2SMS to {Mobile}", number);
                     return true;
                 }
+                else
+                {
+                    _logger.LogWarning("Fast2SMS returned failure: {Message}", result?.Message ?? "Unknown error");
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Fast2SMS HTTP error: {StatusCode}, Response: {Response}", response.StatusCode, responseContent);
             }
 
-            _logger.LogWarning("Fast2SMS failed: {Response}", responseContent);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fast2SMS API error");
+            _logger.LogError(ex, "Fast2SMS API error: {Message}", ex.Message);
             return false;
         }
     }
