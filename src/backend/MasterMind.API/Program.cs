@@ -810,7 +810,7 @@ try
             END $$;
             
             -- Ensure Email and Mobile columns have proper length
-            DO $$
+            DO $
             BEGIN
                 -- Alter Email column to VARCHAR(450) if needed
                 IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Users' AND column_name = 'Email' AND character_maximum_length < 450) THEN
@@ -827,7 +827,152 @@ try
                 IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'Mobile' AND character_maximum_length < 450) THEN
                     ALTER TABLE users ALTER COLUMN ""Mobile"" TYPE VARCHAR(450);
                 END IF;
-            END $$;
+            END $;
+            
+            -- =============================================
+            -- ADD IsDeleted COLUMN TO ALL TABLES (from BaseEntity)
+            -- =============================================
+            
+            -- Add IsDeleted to OtpRecords table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'OtpRecords' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""OtpRecords"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to RefreshTokens table and missing columns
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RefreshTokens' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""RefreshTokens"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RefreshTokens' AND column_name = 'ReplacedByToken') THEN
+                    ALTER TABLE ""RefreshTokens"" ADD COLUMN ""ReplacedByToken"" VARCHAR(500);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RefreshTokens' AND column_name = 'ReasonRevoked') THEN
+                    ALTER TABLE ""RefreshTokens"" ADD COLUMN ""ReasonRevoked"" VARCHAR(500);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RefreshTokens' AND column_name = 'CreatedByIp') THEN
+                    ALTER TABLE ""RefreshTokens"" ADD COLUMN ""CreatedByIp"" VARCHAR(45);
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to Students table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Students' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""Students"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to Classes table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Classes' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""Classes"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to Teachers table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Teachers' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""Teachers"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to StudentFees table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StudentFees' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""StudentFees"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to FeeStructures table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'FeeStructures' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""FeeStructures"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to Leads table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Leads' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""Leads"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to LeadFollowups table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'LeadFollowups' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""LeadFollowups"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to StudentPerformances table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StudentPerformances' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""StudentPerformances"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to StudentRemarks table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StudentRemarks' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""StudentRemarks"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add IsDeleted to Subjects table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Subjects' AND column_name = 'IsDeleted') THEN
+                    ALTER TABLE ""Subjects"" ADD COLUMN ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false;
+                END IF;
+            END $;
+            
+            -- Add missing columns to UserDevices table
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'UserDevices' AND column_name = 'BrowserInfo') THEN
+                    ALTER TABLE ""UserDevices"" ADD COLUMN ""BrowserInfo"" VARCHAR(100);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'UserDevices' AND column_name = 'IpAddress') THEN
+                    ALTER TABLE ""UserDevices"" ADD COLUMN ""IpAddress"" VARCHAR(45);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'UserDevices' AND column_name = 'Location') THEN
+                    ALTER TABLE ""UserDevices"" ADD COLUMN ""Location"" VARCHAR(100);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'UserDevices' AND column_name = 'IsActive') THEN
+                    ALTER TABLE ""UserDevices"" ADD COLUMN ""IsActive"" BOOLEAN NOT NULL DEFAULT true;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'UserDevices' AND column_name = 'ExpiresAt') THEN
+                    ALTER TABLE ""UserDevices"" ADD COLUMN ""ExpiresAt"" TIMESTAMP;
+                END IF;
+            END $;
+            
+            -- Add UserSessions table if it doesn't exist
+            DO $
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'UserSessions') THEN
+                    CREATE TABLE ""UserSessions"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""UserDeviceId"" INTEGER NOT NULL,
+                        ""Token"" VARCHAR(500) NOT NULL,
+                        ""CreatedAt"" TIMESTAMP NOT NULL,
+                        ""ExpiresAt"" TIMESTAMP NOT NULL,
+                        ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                        ""LastActivityAt"" TIMESTAMP
+                    );
+                END IF;
+            END $;
         ");
         
         Log.Information("PostgreSQL tables created/verified successfully");
