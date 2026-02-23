@@ -30,6 +30,8 @@ public class EmailService : IEmailService
     {
         try
         {
+            _logger.LogInformation("EmailService: Starting email send to {To}", to);
+            
             var emailSettings = _configuration.GetSection("Email");
             var smtpServer = emailSettings["SmtpServer"];
             var port = int.Parse(emailSettings["Port"] ?? "587");
@@ -38,6 +40,9 @@ public class EmailService : IEmailService
             var password = emailSettings["Password"];
             var fromEmail = emailSettings["FromEmail"];
             var fromName = emailSettings["FromName"];
+
+            _logger.LogInformation("EmailService: SMTP Server: {SmtpServer}, Port: {Port}, UseSsl: {UseSsl}, Username: {Username}", 
+                smtpServer, port, useSsl, username);
 
             // If credentials are not configured, log and return (sandbox mode)
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
@@ -50,7 +55,8 @@ public class EmailService : IEmailService
             using var client = new SmtpClient(smtpServer, port)
             {
                 EnableSsl = useSsl,
-                Credentials = new NetworkCredential(username, password)
+                Credentials = new NetworkCredential(username, password),
+                Timeout = 30000 // 30 second timeout
             };
 
             var mailMessage = new MailMessage
@@ -62,10 +68,17 @@ public class EmailService : IEmailService
             };
             mailMessage.To.Add(to);
 
+            _logger.LogInformation("EmailService: Sending email via SMTP...");
             await client.SendMailAsync(mailMessage);
             
             _logger.LogInformation("Email sent successfully to {To}", to);
             return true;
+        }
+        catch (SmtpException smtpEx)
+        {
+            _logger.LogError(smtpEx, "SMTP Error sending email to {To}. Status: {Status}, Message: {Message}", 
+                to, smtpEx.StatusCode, smtpEx.Message);
+            return false;
         }
         catch (Exception ex)
         {
