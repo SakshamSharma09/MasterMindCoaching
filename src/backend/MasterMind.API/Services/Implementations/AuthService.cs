@@ -131,11 +131,12 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error requesting OTP for {Identifier}", request.Identifier);
+            _logger.LogError(ex, "Error requesting OTP for {Identifier}. Inner exception: {InnerException}", 
+                request.Identifier, ex.InnerException?.Message ?? "None");
             return new OtpResponseDto
             {
                 Success = false,
-                Message = "An error occurred. Please try again."
+                Message = $"An error occurred: {ex.Message}"
             };
         }
     }
