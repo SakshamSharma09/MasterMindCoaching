@@ -22,7 +22,7 @@ public class OtpRequestDto
 
     /// <summary>
     /// Purpose of OTP: "login", "registration", "password_reset", "verification"
+    /// Defaults to "login" if not specified
     /// </summary>
-    [Required(ErrorMessage = "Purpose is required")]
     public string Purpose { get; set; } = "login";
 }
