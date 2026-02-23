@@ -35,70 +35,86 @@ public class OtpService : IOtpService
 
     public async Task<string> GenerateOtpAsync(string identifier, OtpType type, OtpPurpose purpose, int? userId = null)
     {
-        // Check rate limiting
-        var recentOtps = await _context.OtpRecords
-            .Where(o => o.Identifier == identifier && 
-                        o.CreatedAt > DateTime.UtcNow.AddHours(-1))
-            .CountAsync();
-
-        if (recentOtps >= _settings.MaxRequestsPerHour)
+        try
         {
-            _logger.LogWarning("Rate limit exceeded for identifier: {Identifier}", identifier);
-            throw new InvalidOperationException("Too many OTP requests. Please try again later.");
+            _logger.LogInformation("GenerateOtpAsync called for identifier: {Identifier}, type: {Type}, purpose: {Purpose}", identifier, type, purpose);
+            
+            // Check rate limiting
+            var recentOtps = await _context.OtpRecords
+                .Where(o => o.Identifier == identifier && 
+                            o.CreatedAt > DateTime.UtcNow.AddHours(-1))
+                .CountAsync();
+
+            if (recentOtps >= _settings.MaxRequestsPerHour)
+            {
+                _logger.LogWarning("Rate limit exceeded for identifier: {Identifier}", identifier);
+                throw new InvalidOperationException("Too many OTP requests. Please try again later.");
+            }
+
+            // Check cooldown period
+            var lastOtp = await _context.OtpRecords
+                .Where(o => o.Identifier == identifier && o.Purpose == purpose)
+                .OrderByDescending(o => o.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (lastOtp != null && 
+                lastOtp.CreatedAt.AddSeconds(_settings.ResendCooldownSeconds) > DateTime.UtcNow)
+            {
+                var waitTime = (lastOtp.CreatedAt.AddSeconds(_settings.ResendCooldownSeconds) - DateTime.UtcNow).TotalSeconds;
+                throw new InvalidOperationException($"Please wait {Math.Ceiling(waitTime)} seconds before requesting a new OTP.");
+            }
+
+            // Invalidate any existing OTPs for this identifier and purpose
+            await InvalidateOtpAsync(identifier, purpose);
+
+            // Generate new OTP
+            var otp = GenerateRandomOtp();
+            _logger.LogInformation("Generated OTP for {Identifier}", identifier);
+
+            // Create OTP record
+            var otpRecord = new OtpRecord
+            {
+                Identifier = identifier,
+                OtpCode = HashOtp(otp), // Store hashed OTP for security
+                Type = type,
+                Purpose = purpose,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(_settings.ExpiryMinutes),
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.OtpRecords.Add(otpRecord);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("OTP record saved to database for {Identifier}", identifier);
+
+            // Send OTP via appropriate channel
+            bool sent = type switch
+            {
+                OtpType.Mobile => await _smsService.SendOtpAsync(identifier, otp),
+                OtpType.Email => await _emailService.SendOtpEmailAsync(identifier, otp),
+                _ => false
+            };
+
+            if (!sent)
+            {
+                _logger.LogWarning("Failed to send OTP to {Identifier} via {Type}, but OTP record was created", identifier, type);
+                // Don't throw - OTP is still valid, just delivery failed
+                // In production, you might want to implement retry logic
+            }
+
+            _logger.LogInformation("OTP generated for {Identifier} ({Type}) for {Purpose}", identifier, type, purpose);
+            
+            return otp;
         }
-
-        // Check cooldown period
-        var lastOtp = await _context.OtpRecords
-            .Where(o => o.Identifier == identifier && o.Purpose == purpose)
-            .OrderByDescending(o => o.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        if (lastOtp != null && 
-            lastOtp.CreatedAt.AddSeconds(_settings.ResendCooldownSeconds) > DateTime.UtcNow)
+        catch (InvalidOperationException)
         {
-            var waitTime = (lastOtp.CreatedAt.AddSeconds(_settings.ResendCooldownSeconds) - DateTime.UtcNow).TotalSeconds;
-            throw new InvalidOperationException($"Please wait {Math.Ceiling(waitTime)} seconds before requesting a new OTP.");
+            throw; // Re-throw validation errors
         }
-
-        // Invalidate any existing OTPs for this identifier and purpose
-        await InvalidateOtpAsync(identifier, purpose);
-
-        // Generate new OTP
-        var otp = GenerateRandomOtp();
-
-        // Create OTP record
-        var otpRecord = new OtpRecord
+        catch (Exception ex)
         {
-            Identifier = identifier,
-            OtpCode = HashOtp(otp), // Store hashed OTP for security
-            Type = type,
-            Purpose = purpose,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(_settings.ExpiryMinutes),
-            UserId = userId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.OtpRecords.Add(otpRecord);
-        await _context.SaveChangesAsync();
-
-        // Send OTP via appropriate channel
-        bool sent = type switch
-        {
-            OtpType.Mobile => await _smsService.SendOtpAsync(identifier, otp),
-            OtpType.Email => await _emailService.SendOtpEmailAsync(identifier, otp),
-            _ => false
-        };
-
-        if (!sent)
-        {
-            _logger.LogError("Failed to send OTP to {Identifier} via {Type}", identifier, type);
-            // Don't throw - OTP is still valid, just delivery failed
-            // In production, you might want to implement retry logic
+            _logger.LogError(ex, "Error generating OTP for {Identifier}. Inner: {InnerException}", identifier, ex.InnerException?.Message ?? "None");
+            throw;
         }
-
-        _logger.LogInformation("OTP generated for {Identifier} ({Type}) for {Purpose}", identifier, type, purpose);
-        
-        return otp;
     }
 
     public async Task<bool> ValidateOtpAsync(string identifier, string otp, OtpPurpose purpose)
