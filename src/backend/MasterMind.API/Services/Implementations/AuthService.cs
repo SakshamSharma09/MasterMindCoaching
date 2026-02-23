@@ -75,21 +75,53 @@ public class AuthService : IAuthService
             var existingUser = await _userService.GetByIdentifierAsync(identifier);
             var isNewUser = existingUser == null;
 
-            // Parse purpose
+            // Parse purpose (default to Login if not specified)
             var purpose = ParseOtpPurpose(request.Purpose);
 
-            // For login, user must exist
-            if (purpose == OtpPurpose.Login && isNewUser)
+            // Auto-register new users for login purpose (common OTP auth pattern)
+            // This allows users to just enter their mobile/email and get OTP without separate registration
+            if (isNewUser && purpose == OtpPurpose.Login)
             {
-                return new OtpResponseDto
+                _logger.LogInformation("Auto-registering new user for identifier: {Identifier}", 
+                    MaskIdentifier(identifier, isMobile));
+                
+                // Create a placeholder user account
+                var newUser = new User
                 {
-                    Success = false,
-                    Message = "User not found. Please register first.",
-                    IsNewUser = true
+                    Email = isMobile ? string.Empty : identifier,
+                    Mobile = isMobile ? identifier : string.Empty,
+                    FirstName = "User", // Placeholder - will be updated during OTP verification if needed
+                    LastName = "",
+                    IsActive = true,
+                    IsEmailVerified = !isMobile,
+                    IsMobileVerified = isMobile,
+                    CreatedAt = DateTime.UtcNow
                 };
+
+                _context.Users.Add(newUser);
+                await _context.SaveChangesAsync();
+
+                // Assign default Parent role
+                var parentRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Parent");
+                if (parentRole != null)
+                {
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = newUser.Id,
+                        RoleId = parentRole.Id,
+                        AssignedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                existingUser = newUser;
+                isNewUser = true;
+                
+                _logger.LogInformation("Auto-created user {UserId} for identifier {Identifier}", 
+                    newUser.Id, MaskIdentifier(identifier, isMobile));
             }
 
-            // For registration, user must not exist
+            // For explicit registration, user must not exist
             if (purpose == OtpPurpose.Registration && !isNewUser)
             {
                 return new OtpResponseDto
