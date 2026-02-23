@@ -323,6 +323,10 @@ try
         Log.Information("Creating PostgreSQL tables if they don't exist...");
         
         await dbContext.Database.ExecuteSqlRawAsync(@"
+            -- =============================================
+            -- USER MANAGEMENT TABLES
+            -- =============================================
+            
             -- Create Users table
             CREATE TABLE IF NOT EXISTS ""Users"" (
                 ""Id"" SERIAL PRIMARY KEY,
@@ -330,6 +334,7 @@ try
                 ""Mobile"" VARCHAR(20),
                 ""FirstName"" VARCHAR(100) NOT NULL,
                 ""LastName"" VARCHAR(100) NOT NULL,
+                ""PasswordHash"" VARCHAR(500),
                 ""ProfileImageUrl"" VARCHAR(500),
                 ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
                 ""IsEmailVerified"" BOOLEAN NOT NULL DEFAULT false,
@@ -392,6 +397,437 @@ try
                 ""LastUsedAt"" TIMESTAMP,
                 ""CreatedAt"" TIMESTAMP NOT NULL
             );
+            
+            -- =============================================
+            -- SESSION MANAGEMENT TABLES
+            -- =============================================
+            
+            -- Create Sessions table
+            CREATE TABLE IF NOT EXISTS ""Sessions"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Name"" VARCHAR(50) NOT NULL,
+                ""DisplayName"" VARCHAR(100) NOT NULL,
+                ""Description"" VARCHAR(500),
+                ""StartDate"" DATE NOT NULL,
+                ""EndDate"" DATE NOT NULL,
+                ""AcademicYear"" VARCHAR(20) NOT NULL,
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT false,
+                ""Status"" INTEGER NOT NULL DEFAULT 1,
+                ""TotalStudents"" INTEGER NOT NULL DEFAULT 0,
+                ""ActiveStudents"" INTEGER NOT NULL DEFAULT 0,
+                ""TotalClasses"" INTEGER NOT NULL DEFAULT 0,
+                ""ActiveClasses"" INTEGER NOT NULL DEFAULT 0,
+                ""TotalTeachers"" INTEGER NOT NULL DEFAULT 0,
+                ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""TotalExpenses"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""Settings"" TEXT,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP
+            );
+            
+            -- =============================================
+            -- STUDENT MANAGEMENT TABLES
+            -- =============================================
+            
+            -- Create Students table
+            CREATE TABLE IF NOT EXISTS ""Students"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""FirstName"" VARCHAR(100) NOT NULL,
+                ""LastName"" VARCHAR(100) NOT NULL,
+                ""DateOfBirth"" DATE,
+                ""Gender"" INTEGER NOT NULL DEFAULT 0,
+                ""Address"" VARCHAR(500),
+                ""City"" VARCHAR(100),
+                ""State"" VARCHAR(100),
+                ""PinCode"" VARCHAR(20),
+                ""StudentMobile"" VARCHAR(20),
+                ""StudentEmail"" VARCHAR(255),
+                ""ProfileImageUrl"" VARCHAR(500),
+                ""AdmissionNumber"" VARCHAR(200),
+                ""AdmissionDate"" DATE,
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                ""ParentName"" VARCHAR(200) NOT NULL,
+                ""ParentMobile"" VARCHAR(20) NOT NULL,
+                ""ParentEmail"" VARCHAR(255),
+                ""ParentOccupation"" VARCHAR(200),
+                ""ParentUserId"" INTEGER,
+                ""SessionId"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP,
+                ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false
+            );
+            
+            -- Create Classes table
+            CREATE TABLE IF NOT EXISTS ""Classes"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Name"" VARCHAR(200) NOT NULL,
+                ""Section"" VARCHAR(50),
+                ""Medium"" VARCHAR(50),
+                ""Board"" VARCHAR(100),
+                ""AcademicYear"" VARCHAR(20),
+                ""Description"" VARCHAR(500),
+                ""MaxStudents"" INTEGER,
+                ""StartTime"" TIME,
+                ""EndTime"" TIME,
+                ""DaysOfWeek"" VARCHAR(100),
+                ""MonthlyFee"" DECIMAL(18,2),
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                ""SessionId"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP,
+                ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false
+            );
+            
+            -- Create Subjects table
+            CREATE TABLE IF NOT EXISTS ""Subjects"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Name"" VARCHAR(200) NOT NULL,
+                ""Code"" VARCHAR(50),
+                ""Description"" VARCHAR(1000),
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP
+            );
+            
+            -- Create StudentClasses table (many-to-many)
+            CREATE TABLE IF NOT EXISTS ""StudentClasses"" (
+                ""StudentId"" INTEGER NOT NULL,
+                ""ClassId"" INTEGER NOT NULL,
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                ""EnrollmentDate"" TIMESTAMP NOT NULL,
+                PRIMARY KEY (""StudentId"", ""ClassId"")
+            );
+            
+            -- Create ClassSubjects table (many-to-many)
+            CREATE TABLE IF NOT EXISTS ""ClassSubjects"" (
+                ""ClassId"" INTEGER NOT NULL,
+                ""SubjectId"" INTEGER NOT NULL,
+                ""TeacherAssigned"" VARCHAR(200),
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                PRIMARY KEY (""ClassId"", ""SubjectId"")
+            );
+            
+            -- =============================================
+            -- TEACHER MANAGEMENT TABLES
+            -- =============================================
+            
+            -- Create Teachers table
+            CREATE TABLE IF NOT EXISTS ""Teachers"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""FirstName"" VARCHAR(100) NOT NULL,
+                ""LastName"" VARCHAR(100) NOT NULL,
+                ""Email"" VARCHAR(255) NOT NULL,
+                ""Mobile"" VARCHAR(20) NOT NULL,
+                ""Address"" VARCHAR(500),
+                ""City"" VARCHAR(100),
+                ""State"" VARCHAR(100),
+                ""PinCode"" VARCHAR(20),
+                ""Specialization"" VARCHAR(200),
+                ""Qualification"" VARCHAR(500),
+                ""Subjects"" VARCHAR(1000),
+                ""JoiningDate"" DATE,
+                ""Salary"" DECIMAL(18,2),
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                ""ProfileImageUrl"" VARCHAR(500),
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP,
+                ""IsDeleted"" BOOLEAN NOT NULL DEFAULT false
+            );
+            
+            -- Create TeacherClasses table (many-to-many)
+            CREATE TABLE IF NOT EXISTS ""TeacherClasses"" (
+                ""TeacherId"" INTEGER NOT NULL,
+                ""ClassId"" INTEGER NOT NULL,
+                ""AssignedAt"" TIMESTAMP NOT NULL,
+                PRIMARY KEY (""TeacherId"", ""ClassId"")
+            );
+            
+            -- =============================================
+            -- ATTENDANCE TABLES
+            -- =============================================
+            
+            -- Create Attendances table
+            CREATE TABLE IF NOT EXISTS ""Attendances"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""StudentId"" INTEGER NOT NULL,
+                ""ClassId"" INTEGER NOT NULL,
+                ""Date"" DATE NOT NULL,
+                ""Status"" INTEGER NOT NULL,
+                ""Remarks"" VARCHAR(500),
+                ""MarkedBy"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- Create TeacherAttendances table
+            CREATE TABLE IF NOT EXISTS ""TeacherAttendances"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""TeacherId"" INTEGER NOT NULL,
+                ""Date"" DATE NOT NULL,
+                ""Status"" INTEGER NOT NULL,
+                ""CheckInTime"" TIME,
+                ""CheckOutTime"" TIME,
+                ""Remarks"" VARCHAR(500),
+                ""MarkedBy"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- =============================================
+            -- FEE MANAGEMENT TABLES
+            -- =============================================
+            
+            -- Create FeeStructures table
+            CREATE TABLE IF NOT EXISTS ""FeeStructures"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""ClassId"" INTEGER,
+                ""SessionId"" INTEGER,
+                ""Name"" VARCHAR(200) NOT NULL,
+                ""Description"" VARCHAR(500),
+                ""Amount"" DECIMAL(18,2) NOT NULL,
+                ""Frequency"" INTEGER NOT NULL,
+                ""DueDate"" DATE,
+                ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP
+            );
+            
+            -- Create StudentFees table
+            CREATE TABLE IF NOT EXISTS ""StudentFees"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""StudentId"" INTEGER NOT NULL,
+                ""FeeStructureId"" INTEGER,
+                ""TotalAmount"" DECIMAL(18,2) NOT NULL,
+                ""PaidAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""BalanceAmount"" DECIMAL(18,2) NOT NULL,
+                ""Status"" INTEGER NOT NULL,
+                ""DueDate"" DATE,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP
+            );
+            
+            -- Create Payments table
+            CREATE TABLE IF NOT EXISTS ""Payments"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""StudentFeeId"" INTEGER,
+                ""StudentId"" INTEGER NOT NULL,
+                ""Amount"" DECIMAL(18,2) NOT NULL,
+                ""PaymentMethod"" VARCHAR(50) NOT NULL,
+                ""TransactionId"" VARCHAR(200),
+                ""ReceiptNumber"" VARCHAR(100),
+                ""PaymentDate"" TIMESTAMP NOT NULL,
+                ""Remarks"" VARCHAR(500),
+                ""CollectedBy"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- Create FeeReceipts table
+            CREATE TABLE IF NOT EXISTS ""FeeReceipts"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""ReceiptNumber"" VARCHAR(100) NOT NULL,
+                ""StudentId"" INTEGER NOT NULL,
+                ""PaymentId"" INTEGER,
+                ""TotalAmount"" DECIMAL(18,2) NOT NULL,
+                ""PaymentDate"" TIMESTAMP NOT NULL,
+                ""PaymentMethod"" VARCHAR(50),
+                ""Notes"" VARCHAR(500),
+                ""CreatedBy"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- Create FeeReceiptItems table
+            CREATE TABLE IF NOT EXISTS ""FeeReceiptItems"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""FeeReceiptId"" INTEGER NOT NULL,
+                ""FeeName"" VARCHAR(200) NOT NULL,
+                ""Amount"" DECIMAL(18,2) NOT NULL
+            );
+            
+            -- Create FeePaymentSchedules table
+            CREATE TABLE IF NOT EXISTS ""FeePaymentSchedules"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""StudentFeeId"" INTEGER NOT NULL,
+                ""InstallmentNumber"" INTEGER NOT NULL,
+                ""Amount"" DECIMAL(18,2) NOT NULL,
+                ""DueDate"" DATE NOT NULL,
+                ""PaidDate"" TIMESTAMP,
+                ""Status"" INTEGER NOT NULL,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- Create FeeInstallments table
+            CREATE TABLE IF NOT EXISTS ""FeeInstallments"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""StudentFeeId"" INTEGER NOT NULL,
+                ""InstallmentNumber"" INTEGER NOT NULL,
+                ""Amount"" DECIMAL(18,2) NOT NULL,
+                ""DueDate"" DATE NOT NULL,
+                ""PaidAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""Status"" INTEGER NOT NULL,
+                ""PaidDate"" TIMESTAMP,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- =============================================
+            -- EXPENSE MANAGEMENT TABLES
+            -- =============================================
+            
+            -- Create Expenses table
+            CREATE TABLE IF NOT EXISTS ""Expenses"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Category"" VARCHAR(100) NOT NULL,
+                ""Description"" VARCHAR(500) NOT NULL,
+                ""Amount"" DECIMAL(18,2) NOT NULL,
+                ""Date"" DATE NOT NULL,
+                ""PaymentMethod"" VARCHAR(50),
+                ""ReceiptNumber"" VARCHAR(100),
+                ""Notes"" VARCHAR(500),
+                ""RecordedBy"" INTEGER,
+                ""SessionId"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- Create BudgetCategories table
+            CREATE TABLE IF NOT EXISTS ""BudgetCategories"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Name"" VARCHAR(100) NOT NULL,
+                ""Description"" VARCHAR(500),
+                ""BudgetAmount"" DECIMAL(18,2) NOT NULL,
+                ""SpentAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""SessionId"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP
+            );
+            
+            -- =============================================
+            -- LEAD MANAGEMENT TABLES
+            -- =============================================
+            
+            -- Create Leads table
+            CREATE TABLE IF NOT EXISTS ""Leads"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Name"" VARCHAR(200) NOT NULL,
+                ""Mobile"" VARCHAR(20) NOT NULL,
+                ""Email"" VARCHAR(255),
+                ""Source"" VARCHAR(100),
+                ""Status"" INTEGER NOT NULL,
+                ""ClassInterested"" VARCHAR(100),
+                ""Notes"" VARCHAR(1000),
+                ""AssignedTo"" INTEGER,
+                ""FollowUpDate"" DATE,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UpdatedAt"" TIMESTAMP
+            );
+            
+            -- Create LeadFollowups table
+            CREATE TABLE IF NOT EXISTS ""LeadFollowups"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""LeadId"" INTEGER NOT NULL,
+                ""Date"" DATE NOT NULL,
+                ""Notes"" VARCHAR(1000) NOT NULL,
+                ""NextFollowUpDate"" DATE,
+                ""Status"" INTEGER NOT NULL,
+                ""CreatedBy"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- =============================================
+            -- PERFORMANCE & REMARKS TABLES
+            -- =============================================
+            
+            -- Create StudentPerformances table
+            CREATE TABLE IF NOT EXISTS ""StudentPerformances"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""StudentId"" INTEGER NOT NULL,
+                ""SubjectId"" INTEGER,
+                ""ExamName"" VARCHAR(200) NOT NULL,
+                ""MaxMarks"" DECIMAL(18,2) NOT NULL,
+                ""ObtainedMarks"" DECIMAL(18,2) NOT NULL,
+                ""Percentage"" DECIMAL(5,2),
+                ""Grade"" VARCHAR(10),
+                ""ExamDate"" DATE,
+                ""Remarks"" VARCHAR(500),
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- Create StudentRemarks table
+            CREATE TABLE IF NOT EXISTS ""StudentRemarks"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""StudentId"" INTEGER NOT NULL,
+                ""Remark"" VARCHAR(1000) NOT NULL,
+                ""RemarkType"" INTEGER NOT NULL,
+                ""GivenBy"" INTEGER,
+                ""ClassId"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- =============================================
+            -- TEACHER SALARY TABLES
+            -- =============================================
+            
+            -- Create TeacherSalaries table
+            CREATE TABLE IF NOT EXISTS ""TeacherSalaries"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""TeacherId"" INTEGER NOT NULL,
+                ""Month"" INTEGER NOT NULL,
+                ""Year"" INTEGER NOT NULL,
+                ""BasicSalary"" DECIMAL(18,2) NOT NULL,
+                ""Allowances"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""Deductions"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                ""NetSalary"" DECIMAL(18,2) NOT NULL,
+                ""Status"" INTEGER NOT NULL,
+                ""PaymentDate"" TIMESTAMP,
+                ""Remarks"" VARCHAR(500),
+                ""ProcessedBy"" INTEGER,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            -- =============================================
+            -- ADD MISSING COLUMNS TO EXISTING TABLES
+            -- =============================================
+            
+            -- Add PasswordHash column if it doesn't exist (check both quoted and unquoted table names)
+            DO $$ 
+            BEGIN 
+                -- Check for Users table (quoted identifier - preserves case)
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Users' AND column_name = 'PasswordHash') THEN
+                    BEGIN
+                        ALTER TABLE ""Users"" ADD COLUMN ""PasswordHash"" VARCHAR(500);
+                        RAISE NOTICE 'Added PasswordHash column to Users table';
+                    EXCEPTION WHEN OTHERS THEN
+                        RAISE NOTICE 'Could not add PasswordHash to Users: %', SQLERRM;
+                    END;
+                END IF;
+                
+                -- Also check for users table (lowercase - PostgreSQL default)
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'PasswordHash') THEN
+                    BEGIN
+                        ALTER TABLE users ADD COLUMN ""PasswordHash"" VARCHAR(500);
+                        RAISE NOTICE 'Added PasswordHash column to users table';
+                    EXCEPTION WHEN OTHERS THEN
+                        RAISE NOTICE 'Could not add PasswordHash to users: %', SQLERRM;
+                    END;
+                END IF;
+            END $$;
+            
+            -- Ensure Email and Mobile columns have proper length
+            DO $$
+            BEGIN
+                -- Alter Email column to VARCHAR(450) if needed
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Users' AND column_name = 'Email' AND character_maximum_length < 450) THEN
+                    ALTER TABLE ""Users"" ALTER COLUMN ""Email"" TYPE VARCHAR(450);
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'Email' AND character_maximum_length < 450) THEN
+                    ALTER TABLE users ALTER COLUMN ""Email"" TYPE VARCHAR(450);
+                END IF;
+                
+                -- Alter Mobile column to VARCHAR(450) if needed
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Users' AND column_name = 'Mobile' AND character_maximum_length < 450) THEN
+                    ALTER TABLE ""Users"" ALTER COLUMN ""Mobile"" TYPE VARCHAR(450);
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'Mobile' AND character_maximum_length < 450) THEN
+                    ALTER TABLE users ALTER COLUMN ""Mobile"" TYPE VARCHAR(450);
+                END IF;
+            END $$;
         ");
         
         Log.Information("PostgreSQL tables created/verified successfully");
