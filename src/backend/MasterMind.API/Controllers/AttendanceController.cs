@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MasterMind.API.Data;
 using MasterMind.API.Models.Entities;
+using MasterMind.API.Models.DTOs.Common;
 using System.Security.Claims;
 
 namespace MasterMind.API.Controllers;
