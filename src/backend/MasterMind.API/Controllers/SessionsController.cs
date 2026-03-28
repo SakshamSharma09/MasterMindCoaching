@@ -19,6 +19,7 @@ public class SessionsController : ControllerBase
 
     // GET: api/Sessions
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<IEnumerable<Session>>>> GetSessions()
     {
         try
@@ -47,6 +48,7 @@ public class SessionsController : ControllerBase
 
     // GET: api/Sessions/active
     [HttpGet("active")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<Session>>> GetActiveSession()
     {
         try
@@ -77,6 +79,81 @@ public class SessionsController : ControllerBase
             {
                 Success = false,
                 Message = "Error retrieving active session: " + ex.Message,
+                Data = null
+            });
+        }
+    }
+
+    // POST: api/Sessions
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<Session>>> CreateSession(CreateSessionDto createDto)
+    {
+        try
+        {
+            // Validate dates
+            if (createDto.StartDate >= createDto.EndDate)
+            {
+                return BadRequest(new ApiResponse<Session>
+                {
+                    Success = false,
+                    Message = "Start date must be before end date",
+                    Data = null
+                });
+            }
+
+            // Check if session name already exists
+            var existingSession = await _context.Sessions
+                .FirstOrDefaultAsync(s => s.Name.Equals(createDto.Name, StringComparison.OrdinalIgnoreCase) && !s.IsDeleted);
+
+            if (existingSession != null)
+            {
+                return BadRequest(new ApiResponse<Session>
+                {
+                    Success = false,
+                    Message = "A session with this name already exists",
+                    Data = null
+                });
+            }
+
+            var session = new Session
+            {
+                Name = createDto.Name,
+                DisplayName = createDto.DisplayName ?? createDto.Name,
+                Description = createDto.Description,
+                AcademicYear = createDto.AcademicYear,
+                StartDate = createDto.StartDate,
+                EndDate = createDto.EndDate,
+                Status = createDto.Status,
+                IsActive = createDto.IsActive,
+                Settings = createDto.Settings,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            // If this is the first session, make it active
+            var hasAnyActiveSession = await _context.Sessions.AnyAsync(s => s.IsActive && !s.IsDeleted);
+            if (!hasAnyActiveSession)
+            {
+                session.IsActive = true;
+                session.Status = SessionStatus.Active;
+            }
+
+            _context.Sessions.Add(session);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetSessions), new { id = session.Id }, new ApiResponse<Session>
+            {
+                Success = true,
+                Message = "Session created successfully",
+                Data = session
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ApiResponse<Session>
+            {
+                Success = false,
+                Message = "Error creating session: " + ex.Message,
                 Data = null
             });
         }

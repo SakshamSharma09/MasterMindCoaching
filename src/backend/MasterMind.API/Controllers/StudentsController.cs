@@ -25,21 +25,38 @@ public class StudentsController : ControllerBase
     /// </summary>
     /// <param name="page">Page number (1-based)</param>
     /// <param name="pageSize">Number of items per page</param>
+    /// <param name="classId">Optional class ID to filter students</param>
+    /// <param name="sessionId">Optional session ID to filter students</param>
     /// <returns>Paginated list of students</returns>
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<Student>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginatedResult<Student>>> GetStudents(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
-        [FromQuery] int? classId = null)
+        [FromQuery] int? classId = null,
+        [FromQuery] int? sessionId = null)
     {
         try
         {
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 50;
 
+            // If no sessionId provided, use the active session
+            if (!sessionId.HasValue)
+            {
+                var activeSession = await _context.Sessions
+                    .FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+                sessionId = activeSession?.Id;
+            }
+
             // Start with a simple query first
-            var query = _context.Students.AsQueryable();
+            var query = _context.Students.Where(s => !s.IsDeleted);
+
+            // Filter by session if provided
+            if (sessionId.HasValue)
+            {
+                query = query.Where(s => s.SessionId == sessionId);
+            }
 
             if (classId.HasValue)
             {
@@ -122,12 +139,15 @@ public class StudentsController : ControllerBase
     /// Create a new student
     /// </summary>
     /// <param name="student">Student data</param>
+    /// <param name="sessionId">Optional session ID (defaults to active session)</param>
     /// <returns>Created student</returns>
     [HttpPost]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<Student>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<ApiResponse<Student>>> CreateStudent([FromBody] Student student)
+    public async Task<ActionResult<ApiResponse<Student>>> CreateStudent(
+        [FromBody] Student student,
+        [FromQuery] int? sessionId = null)
     {
         if (!ModelState.IsValid)
         {
@@ -138,6 +158,16 @@ public class StudentsController : ControllerBase
             });
         }
 
+        // If no sessionId provided, use the active session
+        if (!sessionId.HasValue)
+        {
+            var activeSession = await _context.Sessions
+                .FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+            sessionId = activeSession?.Id;
+        }
+
+        // Assign the session ID
+        student.SessionId = sessionId;
         student.CreatedAt = DateTime.UtcNow;
         student.IsActive = true;
         student.IsDeleted = false;

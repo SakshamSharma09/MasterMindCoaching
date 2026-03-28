@@ -6,20 +6,7 @@
         <div class="flex items-center space-x-6">
           <div>
             <label class="block text-sm font-medium text-purple-100 mb-2">Academic Session</label>
-            <select 
-              v-model="selectedSession" 
-              @change="onSessionChange"
-              class="glass-input border border-white/20 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-lg transition-all duration-300 hover:bg-white/10"
-            >
-              <option value="2025-26" class="text-gray-900">2025-26</option>
-              <option value="2026-27" class="text-gray-900">2026-27</option>
-              <option value="2027-28" class="text-gray-900">2027-28</option>
-            </select>
-          </div>
-          <div class="h-12 w-px bg-white/30"></div>
-          <div>
-            <div class="text-sm text-purple-100">Current Session</div>
-            <div class="text-lg font-semibold">{{ selectedSession }}</div>
+            <SessionSelector />
           </div>
         </div>
         <div class="flex items-center space-x-3">
@@ -33,8 +20,8 @@
             <button class="glass-button hover:glass-button-hover p-2 rounded-lg transition-all duration-300 transform hover:scale-105">
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM21 5a2 2 0 00-2-2H5a2 2 0 00-2 2v14l7-7h11z"></path>
-                <span class="absolute top-1 right-1 h-2 w-2 bg-red-400 rounded-full animate-pulse"></span>
               </svg>
+              <span class="absolute top-1 right-1 h-2 w-2 bg-red-400 rounded-full animate-pulse"></span>
             </button>
           </div>
         </div>
@@ -191,6 +178,7 @@
 import { ref, computed, onMounted, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import SessionSelector from '@/components/admin/SessionSelector.vue'
 
 // Icon components
 const HomeIcon = () => h('svg', { class: 'h-5 w-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
@@ -221,18 +209,22 @@ const PhoneIcon = () => h('svg', { class: 'h-5 w-5', fill: 'none', stroke: 'curr
   h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' })
 ])
 
+const CalendarIcon = () => h('svg', { class: 'h-5 w-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' })
+])
+
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
 const sidebarOpen = ref(false)
-const selectedSession = ref('2025-26')
 const searchQuery = ref('')
 const showNotifications = ref(false)
 const showSettings = ref(false)
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: HomeIcon },
+  { name: 'Sessions', href: '/admin/sessions', icon: CalendarIcon },
   { name: 'Students', href: '/admin/students', icon: UsersIcon },
   { name: 'Classes', href: '/admin/classes', icon: BookOpenIcon },
   { name: 'Attendance', href: '/admin/attendance', icon: ClipboardListIcon },
@@ -254,12 +246,6 @@ const userInitials = computed(() => {
   if (!user) return 'U'
   return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
 })
-
-const onSessionChange = () => {
-  // Handle session change logic here
-  console.log('Session changed to:', selectedSession.value)
-  // You can reload data, update filters, etc.
-}
 
 const handleSearch = () => {
   // Handle search functionality

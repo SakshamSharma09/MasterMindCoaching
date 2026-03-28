@@ -23,16 +23,37 @@ public class DashboardController : ControllerBase
     /// <summary>
     /// Get dashboard statistics
     /// </summary>
+    /// <param name="sessionId">Optional session ID to filter stats</param>
     /// <returns>Dashboard statistics</returns>
     [HttpGet("stats")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<DashboardStats>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<DashboardStats>>> GetStats()
+    public async Task<ActionResult<ApiResponse<DashboardStats>>> GetStats([FromQuery] int? sessionId = null)
     {
-        var totalStudents = await _context.Students.CountAsync(s => !s.IsDeleted);
-        var activeStudents = await _context.Students.CountAsync(s => !s.IsDeleted && s.IsActive);
-        var totalClasses = await _context.Classes.CountAsync(c => !c.IsDeleted);
-        var totalTeachers = await _context.Teachers.CountAsync(t => !t.IsDeleted);
+        // If no sessionId provided, use the active session
+        if (!sessionId.HasValue)
+        {
+            var activeSession = await _context.Sessions
+                .FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+            sessionId = activeSession?.Id;
+        }
+
+        IQueryable<Student> studentsQuery = _context.Students.Where(s => !s.IsDeleted);
+        IQueryable<Class> classesQuery = _context.Classes.Where(c => !c.IsDeleted);
+        IQueryable<Teacher> teachersQuery = _context.Teachers.Where(t => !t.IsDeleted);
+
+        // Filter by session if provided
+        if (sessionId.HasValue)
+        {
+            studentsQuery = studentsQuery.Where(s => s.SessionId == sessionId);
+            classesQuery = classesQuery.Where(c => c.SessionId == sessionId);
+            teachersQuery = teachersQuery.Where(t => t.SessionId == sessionId);
+        }
+
+        var totalStudents = await studentsQuery.CountAsync();
+        var activeStudents = await studentsQuery.CountAsync(s => s.IsActive);
+        var totalClasses = await classesQuery.CountAsync();
+        var totalTeachers = await teachersQuery.CountAsync();
 
         // Calculate today's attendance (mock for now - you can implement actual attendance logic)
         var todayAttendance = 85; // Placeholder
@@ -141,16 +162,33 @@ public class DashboardController : ControllerBase
     /// <summary>
     /// Get recent students for dashboard
     /// </summary>
+    /// <param name="sessionId">Optional session ID to filter students</param>
     /// <returns>List of recent students</returns>
     [HttpGet("recent-students")]
     //[Authorize]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<Student>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<Student>>>> GetRecentStudents()
+    public async Task<ActionResult<ApiResponse<IEnumerable<Student>>>> GetRecentStudents([FromQuery] int? sessionId = null)
     {
-        var recentStudents = await _context.Students
+        // If no sessionId provided, use the active session
+        if (!sessionId.HasValue)
+        {
+            var activeSession = await _context.Sessions
+                .FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+            sessionId = activeSession?.Id;
+        }
+
+        IQueryable<Student> studentsQuery = _context.Students
             .Include(s => s.StudentClasses)
                 .ThenInclude(sc => sc.Class)
-            .Where(s => !s.IsDeleted)
+            .Where(s => !s.IsDeleted);
+
+        // Filter by session if provided
+        if (sessionId.HasValue)
+        {
+            studentsQuery = studentsQuery.Where(s => s.SessionId == sessionId);
+        }
+
+        var recentStudents = await studentsQuery
             .OrderByDescending(s => s.CreatedAt)
             .Take(5)
             .ToListAsync();

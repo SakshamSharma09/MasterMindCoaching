@@ -15,6 +15,7 @@ public class TestController : ControllerBase
     }
 
     [HttpGet("student-count")]
+    [Authorize]
     public async Task<IActionResult> GetStudentCount()
     {
         try
@@ -30,6 +31,7 @@ public class TestController : ControllerBase
     }
 
     [HttpGet("student-columns")]
+    [Authorize]
     public async Task<IActionResult> GetStudentColumns()
     {
         try

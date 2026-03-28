@@ -19,12 +19,29 @@ public class ClassesController : ControllerBase
 
     // GET: api/Classes
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ClassDto>>>> GetClasses()
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<IEnumerable<ClassDto>>>> GetClasses([FromQuery] int? sessionId = null)
     {
         try
         {
-            var classes = await _context.Classes
-                .Where(c => c.IsActive && !c.IsDeleted)
+            // If no sessionId provided, use the active session
+            if (!sessionId.HasValue)
+            {
+                var activeSession = await _context.Sessions
+                    .FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+                sessionId = activeSession?.Id;
+            }
+
+            var classesQuery = _context.Classes
+                .Where(c => c.IsActive && !c.IsDeleted);
+
+            // Filter by session if provided
+            if (sessionId.HasValue)
+            {
+                classesQuery = classesQuery.Where(c => c.SessionId == sessionId);
+            }
+
+            var classes = await classesQuery
                 .Include(c => c.ClassSubjects)
                     .ThenInclude(cs => cs.Subject)
                 .Include(c => c.TeacherClasses)
@@ -78,6 +95,7 @@ public class ClassesController : ControllerBase
 
     // GET: api/Classes/5
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<ClassDto>>> GetClass(int id)
     {
         try
@@ -150,6 +168,7 @@ public class ClassesController : ControllerBase
 
     // POST: api/Classes
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<ClassDto>>> CreateClass(CreateClassDto createClassDto)
     {
         try
@@ -228,6 +247,7 @@ public class ClassesController : ControllerBase
 
     // PUT: api/Classes/5
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<ClassDto>>> UpdateClass(int id, UpdateClassDto updateClassDto)
     {
         try

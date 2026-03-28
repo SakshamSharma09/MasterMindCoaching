@@ -202,17 +202,18 @@
           </svg>
           <span class="text-sm font-medium text-gray-900">View Leads</span>
         </router-link>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
 import { API_ENDPOINTS } from '@/config/api'
 import { format } from 'date-fns'
+
+const authStore = useAuthStore()
+const sessionStore = useSessionStore()
 
 // Type definitions
 interface DashboardStats {
@@ -237,8 +238,6 @@ interface LeadItem {
   status: string
 }
 
-const authStore = useAuthStore()
-
 // Real data from API
 const stats = ref<DashboardStats>({
   totalStudents: 0,
@@ -251,6 +250,10 @@ const recentStudents = ref<StudentItem[]>([])
 const recentLeads = ref<LeadItem[]>([])
 
 const currentDate = format(new Date(), 'EEEE, MMMM do, yyyy')
+
+// Computed properties for session info
+const selectedSession = computed(() => sessionStore.selectedSession)
+const sessionDisplayName = computed(() => selectedSession.value?.displayName || 'No Session Selected')
 
 const getLeadStatusClass = (status: string) => {
   const classes = {
@@ -270,6 +273,12 @@ const formatDate = (dateString: string) => {
 // Load dashboard data
 const loadDashboardData = async () => {
   try {
+    // Only load if we have a selected session
+    if (!sessionStore.selectedSessionId) {
+      console.log('No session selected, skipping dashboard data load')
+      return
+    }
+
     // Get dashboard stats from API
     const statsData = await apiService.get(API_ENDPOINTS.DASHBOARD.ADMIN_STATS)
     stats.value = statsData
@@ -306,7 +315,27 @@ const loadDashboardData = async () => {
 }
 
 onMounted(() => {
-  loadDashboardData()
+  // Load sessions first, then dashboard data
+  if (sessionStore.sessions.length === 0) {
+    sessionStore.loadSessions().then(() => {
+      loadDashboardData()
+    })
+  } else {
+    loadDashboardData()
+  }
+  
+  // Reload dashboard data when session changes
+  sessionStore.$subscribe((mutation, state) => {
+    // Check if the mutation is for selectedSessionId
+    if (Array.isArray(mutation.events)) {
+      const hasSessionChange = mutation.events.some(e => 'key' in e && e.key === 'selectedSessionId')
+      if (hasSessionChange) {
+        loadDashboardData()
+      }
+    } else if ('key' in mutation.events && mutation.events.key === 'selectedSessionId') {
+      loadDashboardData()
+    }
+  })
 })
 </script>
 
