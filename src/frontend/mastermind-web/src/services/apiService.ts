@@ -34,6 +34,21 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
+    // Add sessionId to params if not a session-related endpoint
+    const sessionEndpoints = ['/sessions', '/auth']
+    const isSessionEndpoint = sessionEndpoints.some(endpoint => config.url?.startsWith(endpoint))
+    
+    if (!isSessionEndpoint) {
+      const selectedSessionId = localStorage.getItem('selectedSessionId')
+      if (selectedSessionId) {
+        // Add sessionId to query params
+        config.params = {
+          ...config.params,
+          sessionId: parseInt(selectedSessionId, 10)
+        }
+      }
+    }
+    
     // Log request in development
     if (import.meta.env.DEV) {
       console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`)

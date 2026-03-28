@@ -95,6 +95,16 @@ export const API_ENDPOINTS = {
     ASSIGN: '/subjects/assign'
   },
   
+  // Sessions
+  SESSIONS: {
+    LIST: '/sessions',
+    CREATE: '/sessions',
+    UPDATE: (id: string) => `/sessions/${id}`,
+    DELETE: (id: string) => `/sessions/${id}`,
+    ACTIVATE: '/sessions',
+    ACTIVE: '/sessions/active'
+  },
+  
   // Reports
   REPORTS: {
     PERFORMANCE: '/reports/performance',

@@ -20,6 +20,7 @@ public class TeachersController : ControllerBase
 
     // GET: api/Teachers
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<IEnumerable<Teacher>>>> GetTeachers()
     {
         try
@@ -67,6 +68,7 @@ public class TeachersController : ControllerBase
 
     // GET: api/Teachers/5
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<Teacher>>> GetTeacher(int id)
     {
         try

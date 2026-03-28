@@ -19,6 +19,7 @@ public class AttendanceController : ControllerBase
 
     // GET: api/Attendance
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<IEnumerable<AttendanceDto>>>> GetAttendance(
         [FromQuery] DateOnly? date,
         [FromQuery] int? classId,

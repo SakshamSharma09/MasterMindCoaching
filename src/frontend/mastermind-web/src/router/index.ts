@@ -34,6 +34,11 @@ const router = createRouter({
           component: () => import('@/views/admin/DashboardView.vue')
         },
         {
+          path: 'sessions',
+          name: 'AdminSessions',
+          component: () => import('@/views/admin/SessionsView.vue')
+        },
+        {
           path: 'students',
           name: 'AdminStudents',
           component: () => import('@/views/admin/StudentsView.vue')
@@ -177,7 +182,7 @@ router.beforeEach(async (to, from, next) => {
     }
 
     // Check if user has required role
-    if (to.meta.roles && !to.meta.roles.includes(authStore.user?.role || '')) {
+    if (to.meta.roles && !(to.meta.roles as string[]).includes(authStore.user?.role || '')) {
       // Redirect to appropriate dashboard based on role
       const role = authStore.user?.role
       if (role === 'Admin') {

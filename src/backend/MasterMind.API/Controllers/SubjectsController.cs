@@ -19,6 +19,7 @@ public class SubjectsController : ControllerBase
 
     // GET: api/Subjects
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<IEnumerable<Subject>>>> GetSubjects()
     {
         try
@@ -48,6 +49,7 @@ public class SubjectsController : ControllerBase
 
     // GET: api/Subjects/5
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<Subject>>> GetSubject(int id)
     {
         try
@@ -238,6 +240,7 @@ public class SubjectsController : ControllerBase
 
     // GET: api/Subjects/suggestions
     [HttpGet("suggestions")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<IEnumerable<string>>>> GetSubjectSuggestions([FromQuery] string query = "")
     {
         try
@@ -269,6 +272,7 @@ public class SubjectsController : ControllerBase
 
     // GET: api/Subjects/by-class/5
     [HttpGet("by-class/{classId}")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<IEnumerable<Subject>>>> GetSubjectsByClass(int classId)
     {
         try
