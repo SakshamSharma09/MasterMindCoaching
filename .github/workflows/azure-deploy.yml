@@ -26,13 +26,13 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
     - name: Restore dependencies
-      run: dotnet restore ./src/backend/MasterMind.API.csproj
+      run: dotnet restore ./src/backend/MasterMind.API/MasterMind.API.csproj
       
     - name: Build
-      run: dotnet build ./src/backend/MasterMind.API.csproj --configuration Release --no-restore
+      run: dotnet build ./src/backend/MasterMind.API/MasterMind.API.csproj --configuration Release --no-restore
       
     - name: Publish
-      run: dotnet publish ./src/backend/MasterMind.API.csproj --configuration Release --no-build --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+      run: dotnet publish ./src/backend/MasterMind.API/MasterMind.API.csproj --configuration Release --no-build --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
       
     - name: Azure Login
       uses: azure/login@v1
@@ -61,7 +61,7 @@ jobs:
         cache-dependency-path: src/frontend/mastermind-web/package-lock.json
         
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --legacy-peer-deps
       working-directory: src/frontend/mastermind-web
       
     - name: Build
