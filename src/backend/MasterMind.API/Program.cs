@@ -33,44 +33,67 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSett
 builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection(OtpSettings.SectionName));
 builder.Services.Configure<SmsSettings>(builder.Configuration.GetSection(SmsSettings.SectionName));
 
-// Database Context - Handle Railway's environment variables
+// Database Context - Support Azure SQL, PostgreSQL (Railway), and SQLite fallback
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var azureConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 Log.Information("DATABASE_URL environment variable: {DatabaseUrl}", 
     string.IsNullOrEmpty(databaseUrl) ? "NOT SET" : "SET");
-
-if (!string.IsNullOrEmpty(databaseUrl))
-{
-    Log.Information("DATABASE_URL length: {Length}", databaseUrl.Length);
-    Log.Information("DATABASE_URL starts with postgres:// or postgresql://: {StartsWith}", databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://"));
-    Log.Information("DATABASE_URL first 50 chars: {FirstChars}", databaseUrl.Length > 50 ? databaseUrl.Substring(0, 50) + "..." : databaseUrl);
-}
+Log.Information("DefaultConnection from config: {ConnStr}", 
+    string.IsNullOrEmpty(azureConnectionString) ? "NOT SET" : "SET (length: " + azureConnectionString?.Length + ")");
 
 if (!string.IsNullOrEmpty(databaseUrl) && (databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://")))
 {
+    // Railway PostgreSQL URL format
     Log.Information("Parsing PostgreSQL connection string from Railway format");
-    // Parse Railway's postgres:// or postgresql:// URL format
     var uri = new Uri(databaseUrl);
     var userInfo = uri.UserInfo.Split(':');
     var db = uri.AbsolutePath.TrimStart('/');
     if (string.IsNullOrEmpty(db)) db = "postgres";
     
     var connectionString = $"Host={uri.Host};Port={uri.Port};Username={userInfo[0]};Password={userInfo[1]};Database={db};SSL Mode=Require;Trust Server Certificate=true";
-    Log.Information("Parsed connection string: Host={Host};Port={Port};Username={Username};Database={Database}", uri.Host, uri.Port, userInfo[0], db);
+    Log.Information("Using PostgreSQL (Railway): Host={Host};Port={Port};Database={Database}", uri.Host, uri.Port, db);
     
     builder.Services.AddDbContext<MasterMindDbContext>(options =>
     {
         options.UseNpgsql(connectionString);
-        // Suppress pending model changes warning for Railway deployment
+        options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+    });
+}
+else if (!string.IsNullOrEmpty(azureConnectionString) && azureConnectionString.Contains("database.windows.net"))
+{
+    // Azure SQL Database - use SQL Server provider
+    Log.Information("Using Azure SQL Database");
+    builder.Services.AddDbContext<MasterMindDbContext>(options =>
+    {
+        options.UseSqlServer(azureConnectionString);
+        options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+    });
+}
+else if (!string.IsNullOrEmpty(azureConnectionString) && azureConnectionString.Contains("Server="))
+{
+    // Standard SQL Server connection string
+    Log.Information("Using SQL Server connection string");
+    builder.Services.AddDbContext<MasterMindDbContext>(options =>
+    {
+        options.UseSqlServer(azureConnectionString);
+        options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+    });
+}
+else if (!string.IsNullOrEmpty(azureConnectionString) && !azureConnectionString.Contains("localhost") && (azureConnectionString.Contains("Host=") || azureConnectionString.Contains("postgresql")))
+{
+    // PostgreSQL connection string (e.g. Azure PostgreSQL)
+    Log.Information("Using configured PostgreSQL connection string");
+    builder.Services.AddDbContext<MasterMindDbContext>(options =>
+    {
+        options.UseNpgsql(azureConnectionString);
         options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
     });
 }
 else
 {
-    Log.Information("No DATABASE_URL found or not in postgres:// format, using fallback connection string");
-    // For Railway without database service, use SQLite as fallback
+    Log.Information("No cloud database configured, using SQLite as fallback");
     var connectionString = "Data Source=mastermind.db";
-    Log.Information("Using SQLite database as fallback");
     
     builder.Services.AddDbContext<MasterMindDbContext>(options =>
         options.UseSqlite(connectionString));
@@ -241,10 +264,13 @@ builder.Services.AddSwaggerGen(options =>
     }
 });
 
-// Configure Kestrel
+// Configure Kestrel - use PORT env var for Azure/Railway, fallback to 5000
+var port = Environment.GetEnvironmentVariable("PORT") ?? 
+           Environment.GetEnvironmentVariable("WEBSITES_PORT") ?? "5000";
+Log.Information("Configuring Kestrel to listen on port {Port}", port);
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(5000); // HTTP only - HTTPS certificate not available in container
+    options.ListenAnyIP(int.Parse(port));
 });
 
 var app = builder.Build();
@@ -254,17 +280,14 @@ var app = builder.Build();
 // Global Exception Handler
 app.UseMiddleware<ExceptionMiddleware>();
 
-// Swagger (Development only)
-if (app.Environment.IsDevelopment())
+// Swagger - enabled in all environments for API documentation
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "MasterMind API v1");
-        options.RoutePrefix = "swagger";
-        options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
-    });
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "MasterMind API v1");
+    options.RoutePrefix = "swagger";
+    options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+});
 
 // HTTPS Redirection
 app.UseHttpsRedirection();

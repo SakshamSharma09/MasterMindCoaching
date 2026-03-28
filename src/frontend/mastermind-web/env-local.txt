@@ -1,2 +1,0 @@
-# Enable Mock API for development
-VITE_USE_MOCK_API=true
