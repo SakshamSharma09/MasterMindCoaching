@@ -1,14 +1,8 @@
 // API Configuration for THE MASTERMIND COACHING CLASSES
 // Change this URL to connect to different backend environments
 
-// For production deployment - use relative URL since nginx proxies /api to backend
-export const API_BASE_URL = '/api'
-
-// For local development (uncomment when developing locally)
-// export const API_BASE_URL = 'https://localhost:49627/api'
-
-// For staging environment (uncomment when needed)
-// export const API_BASE_URL = 'https://staging.mastermindcoaching.com/api'
+// API Base URL - reads from VITE_API_BASE_URL env var, falls back to '/api' for nginx proxy
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 // API Endpoints
 export const API_ENDPOINTS = {

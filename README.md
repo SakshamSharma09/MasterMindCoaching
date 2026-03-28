@@ -1,225 +1,132 @@
-# The MasterMind Coaching Classes
+# MasterMind Coaching Classes
 
-A comprehensive coaching institute management system built with .NET 10 and Vue.js 3.
-
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)
-![Vue.js](https://img.shields.io/badge/Vue.js-3.x-green.svg)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16.x-blue.svg)
-
-## 📋 Overview
-
-MasterMind Coaching Classes is a full-featured management system designed for coaching institutes. It provides tools for managing students, teachers, attendance, finances, and leads with role-based access for administrators, teachers, and parents.
-
-## ✨ Features
-
-### Administrator Features
-- 👨‍🎓 Student Management (CRUD operations)
-- 📚 Class/Section Management
-- 📊 Attendance Tracking with Visual Reports
-- 💰 Finance Management (Fees, Payments)
-- 👨‍🏫 Teacher Management
-- 📞 Lead/Inquiry Management
-- 📈 Dashboard Analytics
-
-### Teacher Features
-- 👁️ View Assigned Students
-- 📝 Add Chapter-wise Remarks
-- 📊 Track Student Performance
-- ✅ Mark Attendance
-
-### Parent Features
-- 👀 View Child's Attendance
-- 📊 View Performance Reports
-- 💳 Check Fee Status
-- 📱 Receive Notifications
-
-## 🛠️ Technology Stack
+A full-stack coaching institute management system deployed on Microsoft Azure.
 
 | Layer | Technology |
 |-------|------------|
-| Backend | .NET 10 (ASP.NET Core Web API) |
-| Frontend | Vue.js 3 + TypeScript |
-| Database | PostgreSQL 16 |
-| ORM | Entity Framework Core 9 |
-| State Management | Pinia |
-| Styling | Tailwind CSS |
-| Containerization | Docker |
-| Authentication | JWT + OTP |
+| **Backend** | ASP.NET Core 9.0 Web API |
+| **Frontend** | Vue.js 3 + TypeScript + Vite |
+| **Database** | Azure SQL Database |
+| **Hosting** | Azure App Service (API) + Azure Static Web App (Frontend) |
+| **CI/CD** | GitHub Actions |
+| **Auth** | JWT + OTP (Fast2SMS + Gmail SMTP) |
+| **ORM** | Entity Framework Core 9 |
+| **Styling** | Tailwind CSS |
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 MasterMindCoaching/
-├── docs/                          # Documentation
 ├── src/
 │   ├── backend/
-│   │   └── MasterMind.API/        # .NET 10 Web API
+│   │   └── MasterMind.API/          # ASP.NET Core 9 Web API
+│   │       ├── Controllers/         # API controllers
+│   │       ├── Data/                # DbContext
+│   │       ├── Models/              # Entity models
+│   │       ├── Services/            # Business logic
+│   │       ├── Middleware/           # Exception handling
+│   │       ├── Validators/          # FluentValidation
+│   │       ├── Program.cs           # App entry point
+│   │       └── appsettings.json     # Configuration (no secrets)
 │   └── frontend/
-│       └── mastermind-web/        # Vue.js 3 App
-├── docker/
-│   ├── Dockerfile.api
-│   ├── Dockerfile.web
-│   └── docker-compose.yml
-├── database/
-│   └── scripts/
-├── .github/
-│   └── workflows/
+│       └── mastermind-web/          # Vue.js 3 SPA
+│           ├── src/
+│           │   ├── views/           # Page components
+│           │   ├── services/        # API service layer
+│           │   ├── stores/          # Pinia state management
+│           │   ├── router/          # Vue Router
+│           │   └── config/          # API config
+│           ├── vite.config.ts
+│           └── package.json
+├── .github/workflows/
+│   └── azure-deploy.yml            # CI/CD pipeline
+├── MasterMindCoaching.sln
 └── README.md
 ```
 
-## 🚀 Getting Started
+## Azure Architecture
+
+| Resource | Name | URL |
+|----------|------|-----|
+| **Backend API** | mastermind-api-2404 | `https://mastermind-api-2404-eadxgpe5f7dch9f6.centralindia-01.azurewebsites.net` |
+| **Frontend** | mastermind-web-2404 | `https://victorious-glacier-0e6507000.6.azurestaticapps.net` |
+| **SQL Server** | mastermind-db-2404 | `mastermind-db-2404.database.windows.net` |
+| **Database** | mastermind | Azure SQL (General Purpose Serverless) |
+
+## Features
+
+**Admin** - Student/Teacher/Class management, Finance (fees, payments, expenses), Attendance, Lead tracking, Dashboard analytics
+
+**Teacher** - View students, Mark attendance, Add remarks, Track performance
+
+**Parent** - View child attendance, Performance reports, Fee status
+
+## Local Development
 
 ### Prerequisites
+- .NET 9 SDK
+- Node.js 20+
+- Azure CLI (optional, for deployment)
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Node.js 20+](https://nodejs.org/)
-- [Docker](https://www.docker.com/get-started)
-- [PostgreSQL 16](https://www.postgresql.org/) (or use Docker)
-
-### Quick Start with Docker
-
+### Backend
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/mastermind-coaching-classes.git
-cd mastermind-coaching-classes
-
-# Start all services
-docker-compose up -d
-
-# Access the application
-# Frontend: http://localhost:3000
-# API: http://localhost:5000
-# API Docs: http://localhost:5000/swagger
-```
-
-### Manual Setup
-
-#### Backend Setup
-
-```bash
-# Navigate to backend directory
 cd src/backend/MasterMind.API
-
-# Restore packages
 dotnet restore
-
-# Update database
-dotnet ef database update
-
-# Run the API
-dotnet run
+dotnet run --environment Development
+# API: http://localhost:5000
+# Swagger: http://localhost:5000/swagger
 ```
 
-#### Frontend Setup
-
+### Frontend
 ```bash
-# Navigate to frontend directory
 cd src/frontend/mastermind-web
-
-# Install dependencies
-npm install
-
-# Run development server
+npm install --legacy-peer-deps
 npm run dev
+# App: http://localhost:3000
 ```
 
-## 🔧 Configuration
+## Configuration
 
-### Backend Configuration
+**Secrets are NOT stored in code.** All secrets are configured via:
+- **Azure**: App Service Application Settings
+- **Local**: `appsettings.Development.json` (gitignored)
 
-Update `appsettings.json` or use environment variables:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=mastermind;Username=postgres;Password=yourpassword"
-  },
-  "Jwt": {
-    "Secret": "your-super-secret-key-min-32-characters",
-    "Issuer": "MasterMindCoaching",
-    "Audience": "MasterMindCoaching",
-    "ExpiryMinutes": 60
-  }
-}
+Required environment variables for Azure:
+```
+ConnectionStrings__DefaultConnection  = Azure SQL connection string
+Jwt__Secret                          = JWT signing key (min 32 chars)
+Sms__ApiKey                          = Fast2SMS API key
+Email__Username                      = SMTP email
+Email__Password                      = SMTP app password
+Cors__AllowedOrigins                 = Comma-separated allowed origins
+ASPNETCORE_ENVIRONMENT               = Production
 ```
 
-### Frontend Configuration
+## Deployment
 
-Create `.env` file:
+Deployments are automated via GitHub Actions on push to `main`. The workflow:
+1. Builds and deploys the .NET 9 backend to Azure App Service
+2. Builds the Vue.js frontend with production API URL
+3. Deploys frontend to Azure Static Web App
 
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_APP_NAME=MasterMind Coaching Classes
-```
+### GitHub Secrets Required
+- `AZURE_CREDENTIALS` - Service principal JSON
+- `AZURE_STATIC_WEB_APPS_API_TOKEN` - Static Web App deployment token
 
-## 📚 API Documentation
+## API Endpoints
 
-Once the backend is running, access Swagger documentation at:
-- Development: `http://localhost:5000/swagger`
+| Endpoint | Description |
+|----------|-------------|
+| `/health` | Health check |
+| `/swagger` | API documentation |
+| `/api/auth/*` | Authentication (OTP, JWT) |
+| `/api/students` | Student management |
+| `/api/classes` | Class management |
+| `/api/teachers` | Teacher management |
+| `/api/attendance` | Attendance tracking |
+| `/api/finance/*` | Fee & expense management |
+| `/api/sessions` | Academic session management |
 
-## 🧪 Testing
+## License
 
-```bash
-# Backend tests
-cd src/backend
-dotnet test
-
-# Frontend tests
-cd src/frontend/mastermind-web
-npm run test
-```
-
-## 🐳 Docker Commands
-
-```bash
-# Build and start all services
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f
-
-# Stop all services
-docker-compose down
-
-# Stop and remove volumes
-docker-compose down -v
-```
-
-## 📊 Database Migrations
-
-```bash
-# Create a new migration
-dotnet ef migrations add MigrationName
-
-# Apply migrations
-dotnet ef database update
-
-# Revert last migration
-dotnet ef database update PreviousMigrationName
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👥 Authors
-
-- **Your Name** - *Initial work*
-
-## 🙏 Acknowledgments
-
-- Thanks to all contributors
-- Inspired by the need for efficient coaching institute management
-
----
-
-Made with ❤️ for The MasterMind Coaching Classes
+MIT License - MasterMind Coaching Classes

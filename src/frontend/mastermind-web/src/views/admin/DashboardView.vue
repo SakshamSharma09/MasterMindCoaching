@@ -202,6 +202,9 @@
           </svg>
           <span class="text-sm font-medium text-gray-900">View Leads</span>
         </router-link>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">

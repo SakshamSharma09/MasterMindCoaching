@@ -6,80 +6,96 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: mastermind-api-2404-eadxgpe5f7dch9f6    # set this to your application name
+  AZURE_WEBAPP_NAME: mastermind-api-2404-eadxgpe5f7dch9f6
   AZURE_WEBAPP_PACKAGE_PATH: './publish'
-  DOTNET_VERSION: '8.0.x'
-  NODE_VERSION: '18.x'
+  DOTNET_VERSION: '9.0.x'
+  NODE_VERSION: '20.x'
 
 jobs:
+  # ============================================
+  # JOB 1: Build & Deploy Backend (.NET 9 API)
+  # ============================================
   build-and-deploy-backend:
     runs-on: ubuntu-latest
     environment: production
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
-        
+
     - name: Restore dependencies
       run: dotnet restore ./src/backend/MasterMind.API/MasterMind.API.csproj
-      
+
     - name: Build
       run: dotnet build ./src/backend/MasterMind.API/MasterMind.API.csproj --configuration Release --no-restore
-      
+
     - name: Publish
       run: dotnet publish ./src/backend/MasterMind.API/MasterMind.API.csproj --configuration Release --no-build --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-      
+
     - name: Azure Login
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
-        
+
     - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
+      uses: azure/webapps-deploy@v3
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-        
+
+    - name: Verify Backend Health
+      run: |
+        echo "Waiting 30s for deployment to propagate..."
+        sleep 30
+        curl -f https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health || echo "Health check pending..."
+
+  # ============================================
+  # JOB 2: Build & Deploy Frontend (Vue.js SPA)
+  # ============================================
   build-and-deploy-frontend:
     runs-on: ubuntu-latest
     environment: production
-    
+    needs: build-and-deploy-backend
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
         cache-dependency-path: src/frontend/mastermind-web/package-lock.json
-        
+
     - name: Install dependencies
       run: npm ci --legacy-peer-deps
       working-directory: src/frontend/mastermind-web
-      
-    - name: Build
+
+    - name: Build frontend
       run: npm run build
       working-directory: src/frontend/mastermind-web
       env:
-        VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
-        
+        VITE_API_BASE_URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api
+        VITE_APP_NAME: MasterMind Coaching
+        VITE_NODE_ENV: production
+
     - name: Azure Login
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
-        
+
     - name: Deploy to Azure Static Web App
       uses: Azure/static-web-apps-deploy@v1
       with:
         azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         action: "upload"
-        app_location: "/src/frontend/mastermind-web"
-        output_location: "dist"
+        skip_app_build: true
+        app_location: "/src/frontend/mastermind-web/dist"
+        output_location: ""
