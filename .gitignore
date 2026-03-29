@@ -139,3 +139,11 @@ secrets/
 *.key
 *.crt
 *.pfx
+
+# =========================
+# Build Artifacts
+# =========================
+publish/
+*.zip
+*.bat
+!start-app.bat
