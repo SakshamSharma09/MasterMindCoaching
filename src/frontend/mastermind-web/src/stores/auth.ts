@@ -80,6 +80,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const loginWithPassword = async (email: string, password: string) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await authService.loginWithPassword(email, password)
+      setTokens(response.accessToken, response.refreshToken)
+      setUser(response.user)
+      return response
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Login failed'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const logout = async () => {
     try {
       await authService.logout()
@@ -204,6 +221,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearAuth,
     requestOtp,
     verifyOtp,
+    loginWithPassword,
     refreshAccessToken,
     logout,
     getCurrentUser,

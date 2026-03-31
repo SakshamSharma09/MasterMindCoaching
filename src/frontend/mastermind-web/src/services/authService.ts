@@ -68,6 +68,24 @@ export const authService = {
     return response
   },
 
+  // Admin password login
+  async loginWithPassword(email: string, password: string): Promise<AuthResponse> {
+    const response = await apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
+      email,
+      password
+    })
+    return response
+  },
+
+  // Set admin password
+  async setPassword(password: string, confirmPassword: string): Promise<any> {
+    const response = await apiService.post('/auth/set-password', {
+      password,
+      confirmPassword
+    })
+    return response
+  },
+
   // Refresh access token
   async refreshToken(refreshToken: string): Promise<AuthResponse> {
     if (USE_MOCK_API) {

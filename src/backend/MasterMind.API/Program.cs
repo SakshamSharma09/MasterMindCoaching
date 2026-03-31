@@ -158,6 +158,12 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("Admin"));
 });
 
+// Memory Cache for server-side caching
+builder.Services.AddMemoryCache();
+
+// Response Caching
+builder.Services.AddResponseCaching();
+
 // HTTP Context Accessor (needed for getting client IP)
 builder.Services.AddHttpContextAccessor();
 

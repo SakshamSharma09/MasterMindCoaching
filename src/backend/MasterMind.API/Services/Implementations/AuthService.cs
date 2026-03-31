@@ -284,6 +284,137 @@ public class AuthService : IAuthService
         }
     }
 
+    public async Task<AuthResponseDto> LoginWithPasswordAsync(PasswordLoginDto request)
+    {
+        try
+        {
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted);
+
+            if (user == null)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Invalid email or password",
+                    ErrorCode = "INVALID_CREDENTIALS"
+                };
+            }
+
+            if (string.IsNullOrEmpty(user.PasswordHash))
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Password not set. Please use OTP login or contact admin to set a password.",
+                    ErrorCode = "PASSWORD_NOT_SET"
+                };
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Invalid email or password",
+                    ErrorCode = "INVALID_CREDENTIALS"
+                };
+            }
+
+            if (!user.IsActive)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Your account has been deactivated.",
+                    ErrorCode = "ACCOUNT_DEACTIVATED"
+                };
+            }
+
+            // Check user is Admin
+            var isAdmin = user.UserRoles.Any(ur => ur.Role.Name == "Admin");
+            if (!isAdmin)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Password login is only available for admin users. Please use OTP login.",
+                    ErrorCode = "NOT_ADMIN"
+                };
+            }
+
+            await _userService.UpdateLastLoginAsync(user.Id);
+
+            var roles = user.UserRoles.Select(ur => ur.Role.Name);
+            var accessToken = _jwtService.GenerateAccessToken(user, roles);
+            var refreshToken = _jwtService.GenerateRefreshToken(GetClientIp());
+            refreshToken.UserId = user.Id;
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync();
+
+            var userDto = await _userService.ToUserDtoAsync(user);
+
+            _logger.LogInformation("Admin {UserId} authenticated via password", user.Id);
+
+            return new AuthResponseDto
+            {
+                Success = true,
+                Message = "Authentication successful",
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token,
+                ExpiresAt = _jwtService.GetAccessTokenExpiry(),
+                User = userDto
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during password login for {Email}", request.Email);
+            return new AuthResponseDto
+            {
+                Success = false,
+                Message = "An error occurred during authentication",
+                ErrorCode = "AUTH_ERROR"
+            };
+        }
+    }
+
+    public async Task<AuthResponseDto> SetPasswordAsync(int userId, SetPasswordDto request)
+    {
+        try
+        {
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+
+            if (user == null)
+            {
+                return new AuthResponseDto { Success = false, Message = "User not found", ErrorCode = "USER_NOT_FOUND" };
+            }
+
+            var isAdmin = user.UserRoles.Any(ur => ur.Role.Name == "Admin");
+            if (!isAdmin)
+            {
+                return new AuthResponseDto { Success = false, Message = "Only admin users can set a password", ErrorCode = "NOT_ADMIN" };
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Password set for admin user {UserId}", userId);
+
+            return new AuthResponseDto { Success = true, Message = "Password set successfully" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting password for user {UserId}", userId);
+            return new AuthResponseDto { Success = false, Message = "An error occurred", ErrorCode = "SET_PASSWORD_ERROR" };
+        }
+    }
+
     public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenDto request)
     {
         try

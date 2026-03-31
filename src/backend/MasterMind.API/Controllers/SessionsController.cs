@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using MasterMind.API.Data;
 using MasterMind.API.Models.Entities;
 using MasterMind.API.Models.DTOs.Common;
@@ -12,10 +13,13 @@ namespace MasterMind.API.Controllers;
 public class SessionsController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
+    private readonly IMemoryCache _cache;
+    private const string SessionsCacheKey = "all_sessions";
 
-    public SessionsController(MasterMindDbContext context)
+    public SessionsController(MasterMindDbContext context, IMemoryCache cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     // GET: api/Sessions
@@ -25,9 +29,13 @@ public class SessionsController : ControllerBase
     {
         try
         {
-            var sessions = await _context.Sessions
-                .OrderByDescending(s => s.StartDate)
-                .ToListAsync();
+            var sessions = await _cache.GetOrCreateAsync(SessionsCacheKey, async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+                return await _context.Sessions
+                    .OrderByDescending(s => s.StartDate)
+                    .ToListAsync();
+            });
 
             return Ok(new ApiResponse<IEnumerable<Session>>
             {
@@ -141,6 +149,7 @@ public class SessionsController : ControllerBase
 
             _context.Sessions.Add(session);
             await _context.SaveChangesAsync();
+            _cache.Remove(SessionsCacheKey);
 
             return CreatedAtAction(nameof(GetSessions), new { id = session.Id }, new ApiResponse<Session>
             {
@@ -194,6 +203,7 @@ public class SessionsController : ControllerBase
             session.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            _cache.Remove(SessionsCacheKey);
 
             return Ok(new ApiResponse<bool>
             {

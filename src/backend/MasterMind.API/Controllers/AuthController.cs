@@ -99,6 +99,50 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Admin login with email and password
+    /// </summary>
+    [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponseDto>> LoginWithPassword([FromBody] PasswordLoginDto request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new AuthResponseDto { Success = false, Message = "Invalid request data", ErrorCode = "VALIDATION_ERROR" });
+
+        var result = await _authService.LoginWithPasswordAsync(request);
+        if (!result.Success)
+        {
+            return result.ErrorCode switch
+            {
+                "INVALID_CREDENTIALS" => Unauthorized(result),
+                "ACCOUNT_DEACTIVATED" => StatusCode(StatusCodes.Status403Forbidden, result),
+                _ => BadRequest(result)
+            };
+        }
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Set password for admin user (requires authentication)
+    /// </summary>
+    [HttpPost("set-password")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponseDto>> SetPassword([FromBody] SetPasswordDto request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new AuthResponseDto { Success = false, Message = "Invalid request data" });
+
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized(new AuthResponseDto { Success = false, Message = "Invalid token" });
+
+        var result = await _authService.SetPasswordAsync(userId.Value, request);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Refresh access token using refresh token
     /// </summary>
     /// <param name="request">Refresh token</param>
