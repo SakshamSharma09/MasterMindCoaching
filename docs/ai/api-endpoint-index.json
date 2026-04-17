@@ -1,142 +1,565 @@
-{
-  "version": "1.0.0",
-  "lastUpdated": "2026-04-17",
-  "description": "Quick lookup index for API endpoints - route to file/line mapping",
-  "endpoints": {
-    "auth": {
-      "controller": "src/backend/MasterMind.API/Controllers/AuthController.cs",
-      "routes": [
-        { "method": "POST", "path": "/api/auth/request-otp", "action": "RequestOtp" },
-        { "method": "POST", "path": "/api/auth/verify-otp", "action": "VerifyOtp" },
-        { "method": "POST", "path": "/api/auth/quick-login", "action": "QuickLogin" },
-        { "method": "POST", "path": "/api/auth/login-password", "action": "LoginWithPassword" },
-        { "method": "POST", "path": "/api/auth/refresh-token", "action": "RefreshToken" },
-        { "method": "POST", "path": "/api/auth/set-password", "action": "SetPassword" },
-        { "method": "POST", "path": "/api/auth/logout", "action": "Logout" },
-        { "method": "GET", "path": "/api/auth/me", "action": "GetCurrentUser" }
-      ]
-    },
-    "sessions": {
-      "controller": "src/backend/MasterMind.API/Controllers/SessionsController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/sessions", "action": "GetSessions" },
-        { "method": "GET", "path": "/api/sessions/{id}", "action": "GetSession" },
-        { "method": "POST", "path": "/api/sessions", "action": "CreateSession" },
-        { "method": "PUT", "path": "/api/sessions/{id}", "action": "UpdateSession" },
-        { "method": "DELETE", "path": "/api/sessions/{id}", "action": "DeleteSession" },
-        { "method": "PUT", "path": "/api/sessions/{id}/activate", "action": "ActivateSession" }
-      ]
-    },
-    "students": {
-      "controller": "src/backend/MasterMind.API/Controllers/StudentsController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/students", "action": "GetStudents" },
-        { "method": "GET", "path": "/api/students/{id}", "action": "GetStudent" },
-        { "method": "POST", "path": "/api/students", "action": "CreateStudent" },
-        { "method": "PUT", "path": "/api/students/{id}", "action": "UpdateStudent" },
-        { "method": "DELETE", "path": "/api/students/{id}", "action": "DeleteStudent" }
-      ]
-    },
-    "teachers": {
-      "controller": "src/backend/MasterMind.API/Controllers/TeachersController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/teachers", "action": "GetTeachers" },
-        { "method": "GET", "path": "/api/teachers/{id}", "action": "GetTeacher" },
-        { "method": "POST", "path": "/api/teachers", "action": "CreateTeacher" },
-        { "method": "PUT", "path": "/api/teachers/{id}", "action": "UpdateTeacher" },
-        { "method": "DELETE", "path": "/api/teachers/{id}", "action": "DeleteTeacher" }
-      ]
-    },
-    "classes": {
-      "controller": "src/backend/MasterMind.API/Controllers/ClassesController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/classes", "action": "GetClasses" },
-        { "method": "GET", "path": "/api/classes/{id}", "action": "GetClass" },
-        { "method": "POST", "path": "/api/classes", "action": "CreateClass" },
-        { "method": "PUT", "path": "/api/classes/{id}", "action": "UpdateClass" },
-        { "method": "DELETE", "path": "/api/classes/{id}", "action": "DeleteClass" }
-      ]
-    },
-    "attendance": {
-      "controller": "src/backend/MasterMind.API/Controllers/AttendanceController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/attendance", "action": "GetAttendance" },
-        { "method": "POST", "path": "/api/attendance", "action": "MarkAttendance" },
-        { "method": "GET", "path": "/api/attendance/student/{studentId}", "action": "GetStudentAttendance" },
-        { "method": "GET", "path": "/api/attendance/class/{classId}/summary", "action": "GetClassAttendanceSummary" }
-      ]
-    },
-    "subjects": {
-      "controller": "src/backend/MasterMind.API/Controllers/SubjectsController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/subjects", "action": "GetSubjects" },
-        { "method": "GET", "path": "/api/subjects/{id}", "action": "GetSubject" },
-        { "method": "POST", "path": "/api/subjects", "action": "CreateSubject" },
-        { "method": "PUT", "path": "/api/subjects/{id}", "action": "UpdateSubject" },
-        { "method": "DELETE", "path": "/api/subjects/{id}", "action": "DeleteSubject" }
-      ]
-    },
-    "fees": {
-      "controller": "src/backend/MasterMind.API/Controllers/FeesController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/fees", "action": "GetFees" },
-        { "method": "PUT", "path": "/api/fees/{id}", "action": "UpdateFee" }
-      ]
-    },
-    "feecollection": {
-      "controller": "src/backend/MasterMind.API/Controllers/FeeCollectionController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/feecollection", "action": "GetFeeCollections" },
-        { "method": "POST", "path": "/api/feecollection/setup-student-fee", "action": "SetupStudentFee" },
-        { "method": "POST", "path": "/api/feecollection/collect", "action": "CollectFee" },
-        { "method": "GET", "path": "/api/feecollection/receipt/{id}", "action": "GetReceipt" }
-      ]
-    },
-    "expenses": {
-      "controller": "src/backend/MasterMind.API/Controllers/ExpensesController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/expenses", "action": "GetExpenses" },
-        { "method": "GET", "path": "/api/expenses/{id}", "action": "GetExpense" },
-        { "method": "POST", "path": "/api/expenses", "action": "CreateExpense" },
-        { "method": "PUT", "path": "/api/expenses/{id}", "action": "UpdateExpense" },
-        { "method": "DELETE", "path": "/api/expenses/{id}", "action": "DeleteExpense" }
-      ]
-    },
-    "dashboard": {
-      "controller": "src/backend/MasterMind.API/Controllers/DashboardController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/dashboard", "action": "GetDashboard" }
-      ]
-    },
-    "finance": {
-      "controller": "src/backend/MasterMind.API/Controllers/FinanceController.cs",
-      "routes": [
-        { "method": "GET", "path": "/api/finance/summary", "action": "GetFinanceSummary" },
-        { "method": "GET", "path": "/api/finance/reports", "action": "GetFinanceReports" }
-      ]
-    }
-  },
-  "frontendViews": {
-    "auth": {
-      "login": "src/frontend/mastermind-web/src/views/auth/LoginView.vue"
-    },
-    "admin": {
-      "dashboard": "src/frontend/mastermind-web/src/views/admin/DashboardView.vue",
-      "students": "src/frontend/mastermind-web/src/views/admin/StudentsView.vue",
-      "teachers": "src/frontend/mastermind-web/src/views/admin/TeachersView.vue",
-      "classes": "src/frontend/mastermind-web/src/views/admin/ClassesView.vue",
-      "attendance": "src/frontend/mastermind-web/src/views/admin/AttendanceView.vue",
-      "finance": "src/frontend/mastermind-web/src/views/admin/FinanceView.vue",
-      "sessions": "src/frontend/mastermind-web/src/views/admin/SessionsView.vue"
-    }
-  },
-  "stores": {
-    "auth": "src/frontend/mastermind-web/src/stores/auth.ts",
-    "students": "src/frontend/mastermind-web/src/stores/students.ts",
-    "classes": "src/frontend/mastermind-web/src/stores/classes.ts"
-  },
-  "services": {
-    "api": "src/frontend/mastermind-web/src/services/apiService.ts",
-    "auth": "src/frontend/mastermind-web/src/services/authService.ts"
-  }
+﻿{
+    "version":  "1.0.0",
+    "generatedBy":  "Generate-ApiDocs.ps1",
+    "lastUpdated":  "2026-04-17",
+    "services":  {
+                     "auth":  "src/frontend/mastermind-web/src/services/authService.ts",
+                     "api":  "src/frontend/mastermind-web/src/services/apiService.ts"
+                 },
+    "frontendViews":  {
+                          "auth":  {
+                                       "login":  "src/frontend/mastermind-web/src/views/auth/LoginView.vue"
+                                   },
+                          "admin":  {
+                                        "dashboard":  "src/frontend/mastermind-web/src/views/admin/DashboardView.vue",
+                                        "finance":  "src/frontend/mastermind-web/src/views/admin/FinanceView.vue",
+                                        "attendance":  "src/frontend/mastermind-web/src/views/admin/AttendanceView.vue",
+                                        "sessions":  "src/frontend/mastermind-web/src/views/admin/SessionsView.vue",
+                                        "students":  "src/frontend/mastermind-web/src/views/admin/StudentsView.vue",
+                                        "classes":  "src/frontend/mastermind-web/src/views/admin/ClassesView.vue",
+                                        "teachers":  "src/frontend/mastermind-web/src/views/admin/TeachersView.vue"
+                                    }
+                      },
+    "description":  "Auto-generated route-to-file mapping for AI assistants",
+    "stores":  {
+                   "students":  "src/frontend/mastermind-web/src/stores/students.ts",
+                   "classes":  "src/frontend/mastermind-web/src/stores/classes.ts",
+                   "auth":  "src/frontend/mastermind-web/src/stores/auth.ts"
+               },
+    "endpoints":  {
+                      "students":  {
+                                       "requiresAuth":  true,
+                                       "controller":  "src/backend/MasterMind.API/Controllers/StudentsController.cs",
+                                       "routes":  [
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/students",
+                                                          "action":  "GetStudents"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/students/{id}",
+                                                          "action":  "GetStudent"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/students/available-for-mapping",
+                                                          "action":  "GetAvailableStudentsForMapping"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/students",
+                                                          "action":  "CreateStudent"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/students/{studentId}/classes/{classId}",
+                                                          "action":  "MapStudentToClass"
+                                                      },
+                                                      {
+                                                          "method":  "PUT",
+                                                          "path":  "/api/students/{id}",
+                                                          "action":  "UpdateStudent"
+                                                      },
+                                                      {
+                                                          "method":  "DELETE",
+                                                          "path":  "/api/students/{studentId}/classes/{classId}",
+                                                          "action":  "UnmapStudentFromClass"
+                                                      },
+                                                      {
+                                                          "method":  "DELETE",
+                                                          "path":  "/api/students/{id}",
+                                                          "action":  "DeleteStudent"
+                                                      }
+                                                  ]
+                                   },
+                      "dashboard":  {
+                                        "requiresAuth":  true,
+                                        "controller":  "src/backend/MasterMind.API/Controllers/DashboardController.cs",
+                                        "routes":  [
+                                                       {
+                                                           "method":  "GET",
+                                                           "path":  "/api/dashboard/stats",
+                                                           "action":  "GetStats"
+                                                       },
+                                                       {
+                                                           "method":  "GET",
+                                                           "path":  "/api/dashboard/admin-stats",
+                                                           "action":  "GetAdminStats"
+                                                       },
+                                                       {
+                                                           "method":  "GET",
+                                                           "path":  "/api/dashboard/parent-stats",
+                                                           "action":  "GetParentStats"
+                                                       },
+                                                       {
+                                                           "method":  "GET",
+                                                           "path":  "/api/dashboard/recent-students",
+                                                           "action":  "GetRecentStudents"
+                                                       }
+                                                   ]
+                                    },
+                      "feecollection":  {
+                                            "requiresAuth":  true,
+                                            "controller":  "src/backend/MasterMind.API/Controllers/FeeCollectionController.cs",
+                                            "routes":  [
+                                                           {
+                                                               "method":  "GET",
+                                                               "path":  "/api/feecollection",
+                                                               "action":  "GetFeeCollections"
+                                                           },
+                                                           {
+                                                               "method":  "GET",
+                                                               "path":  "/api/feecollection/receipt/{id}",
+                                                               "action":  "GetReceipt"
+                                                           },
+                                                           {
+                                                               "method":  "GET",
+                                                               "path":  "/api/feecollection/student/{studentId}/fee-details",
+                                                               "action":  "GetStudentFeeDetails"
+                                                           },
+                                                           {
+                                                               "method":  "POST",
+                                                               "path":  "/api/feecollection/setup-student-fee",
+                                                               "action":  "SetupStudentFee"
+                                                           },
+                                                           {
+                                                               "method":  "POST",
+                                                               "path":  "/api/feecollection/collect-payment",
+                                                               "action":  "CollectPayment"
+                                                           },
+                                                           {
+                                                               "method":  "POST",
+                                                               "path":  "/api/feecollection/receipt/{id}/send-email",
+                                                               "action":  "SendReceiptEmail"
+                                                           }
+                                                       ]
+                                        },
+                      "finance":  {
+                                      "requiresAuth":  true,
+                                      "controller":  "src/backend/MasterMind.API/Controllers/FinanceController.cs",
+                                      "routes":  [
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/finance/summary",
+                                                         "action":  "GetFinancialSummary"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/finance/payments",
+                                                         "action":  "GetRecentPayments"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/finance/payments/history",
+                                                         "action":  "GetPaymentHistory"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/finance/payments/pending",
+                                                         "action":  "GetPendingPayments"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/finance/fees",
+                                                         "action":  "GetFees"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/finance/fees/overdue",
+                                                         "action":  "GetOverdueFees"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/finance/expenses",
+                                                         "action":  "GetExpenses"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/finance/reports",
+                                                         "action":  "GetReports"
+                                                     },
+                                                     {
+                                                         "method":  "POST",
+                                                         "path":  "/api/finance/payments",
+                                                         "action":  "CreatePayment"
+                                                     },
+                                                     {
+                                                         "method":  "POST",
+                                                         "path":  "/api/finance/reports/generate",
+                                                         "action":  "GenerateReport"
+                                                     },
+                                                     {
+                                                         "method":  "POST",
+                                                         "path":  "/api/finance/fees",
+                                                         "action":  "CreateFee"
+                                                     }
+                                                 ]
+                                  },
+                      "expenses":  {
+                                       "requiresAuth":  true,
+                                       "controller":  "src/backend/MasterMind.API/Controllers/ExpensesController.cs",
+                                       "routes":  [
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/expenses",
+                                                          "action":  "GetExpenses"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/expenses/categories",
+                                                          "action":  "GetExpenseCategories"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/expenses/summary",
+                                                          "action":  "GetExpenseSummary"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/expenses",
+                                                          "action":  "CreateExpense"
+                                                      },
+                                                      {
+                                                          "method":  "PUT",
+                                                          "path":  "/api/expenses/{id}",
+                                                          "action":  "UpdateExpense"
+                                                      },
+                                                      {
+                                                          "method":  "DELETE",
+                                                          "path":  "/api/expenses/{id}",
+                                                          "action":  "DeleteExpense"
+                                                      }
+                                                  ]
+                                   },
+                      "sessions":  {
+                                       "requiresAuth":  true,
+                                       "controller":  "src/backend/MasterMind.API/Controllers/SessionsController.cs",
+                                       "routes":  [
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/sessions",
+                                                          "action":  "GetSessions"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/sessions/active",
+                                                          "action":  "GetActiveSession"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/sessions",
+                                                          "action":  "CreateSession"
+                                                      },
+                                                      {
+                                                          "method":  "PUT",
+                                                          "path":  "/api/sessions/{id}/activate",
+                                                          "action":  "ActivateSession"
+                                                      }
+                                                  ]
+                                   },
+                      "parent":  {
+                                     "requiresAuth":  true,
+                                     "controller":  "src/backend/MasterMind.API/Controllers/ParentController.cs",
+                                     "routes":  [
+                                                    {
+                                                        "method":  "GET",
+                                                        "path":  "/api/parent/children",
+                                                        "action":  "GetMyChildren"
+                                                    },
+                                                    {
+                                                        "method":  "GET",
+                                                        "path":  "/api/parent/dashboard/stats",
+                                                        "action":  "GetParentDashboardStats"
+                                                    },
+                                                    {
+                                                        "method":  "GET",
+                                                        "path":  "/api/parent/children/{childId}/attendance",
+                                                        "action":  "GetChildAttendance"
+                                                    },
+                                                    {
+                                                        "method":  "GET",
+                                                        "path":  "/api/parent/children/{childId}/fees",
+                                                        "action":  "GetChildFees"
+                                                    },
+                                                    {
+                                                        "method":  "GET",
+                                                        "path":  "/api/parent/children/{childId}/performance",
+                                                        "action":  "GetChildPerformance"
+                                                    }
+                                                ]
+                                 },
+                      "fees":  {
+                                   "requiresAuth":  true,
+                                   "controller":  "src/backend/MasterMind.API/Controllers/FeesController.cs",
+                                   "routes":  [
+                                                  {
+                                                      "method":  "GET",
+                                                      "path":  "/api/fees",
+                                                      "action":  "GetFees"
+                                                  },
+                                                  {
+                                                      "method":  "GET",
+                                                      "path":  "/api/fees/overdue",
+                                                      "action":  "GetOverdueFees"
+                                                  },
+                                                  {
+                                                      "method":  "GET",
+                                                      "path":  "/api/fees/structures",
+                                                      "action":  "GetFeeStructures"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/fees/reminders",
+                                                      "action":  "SendReminders"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/fees/{id}/mark-paid",
+                                                      "action":  "MarkFeeAsPaid"
+                                                  },
+                                                  {
+                                                      "method":  "PUT",
+                                                      "path":  "/api/fees/{id}",
+                                                      "action":  "UpdateFee"
+                                                  },
+                                                  {
+                                                      "method":  "DELETE",
+                                                      "path":  "/api/fees/{id}",
+                                                      "action":  "DeleteFee"
+                                                  }
+                                              ]
+                               },
+                      "subjects":  {
+                                       "requiresAuth":  true,
+                                       "controller":  "src/backend/MasterMind.API/Controllers/SubjectsController.cs",
+                                       "routes":  [
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/subjects",
+                                                          "action":  "GetSubjects"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/subjects/{id}",
+                                                          "action":  "GetSubject"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/subjects/suggestions",
+                                                          "action":  "GetSubjectSuggestions"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/subjects/by-class/{classId}",
+                                                          "action":  "GetSubjectsByClass"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/subjects",
+                                                          "action":  "CreateSubject"
+                                                      },
+                                                      {
+                                                          "method":  "PUT",
+                                                          "path":  "/api/subjects/{id}",
+                                                          "action":  "UpdateSubject"
+                                                      },
+                                                      {
+                                                          "method":  "DELETE",
+                                                          "path":  "/api/subjects/{id}",
+                                                          "action":  "DeleteSubject"
+                                                      }
+                                                  ]
+                                   },
+                      "classes":  {
+                                      "requiresAuth":  true,
+                                      "controller":  "src/backend/MasterMind.API/Controllers/ClassesController.cs",
+                                      "routes":  [
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/classes",
+                                                         "action":  "GetClasses"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/classes/{id}",
+                                                         "action":  "GetClass"
+                                                     },
+                                                     {
+                                                         "method":  "POST",
+                                                         "path":  "/api/classes",
+                                                         "action":  "CreateClass"
+                                                     },
+                                                     {
+                                                         "method":  "PUT",
+                                                         "path":  "/api/classes/{id}",
+                                                         "action":  "UpdateClass"
+                                                     },
+                                                     {
+                                                         "method":  "DELETE",
+                                                         "path":  "/api/classes/{id}",
+                                                         "action":  "DeleteClass"
+                                                     }
+                                                 ]
+                                  },
+                      "attendance":  {
+                                         "requiresAuth":  true,
+                                         "controller":  "src/backend/MasterMind.API/Controllers/AttendanceController.cs",
+                                         "routes":  [
+                                                        {
+                                                            "method":  "GET",
+                                                            "path":  "/api/attendance",
+                                                            "action":  "GetAttendance"
+                                                        },
+                                                        {
+                                                            "method":  "POST",
+                                                            "path":  "/api/attendance",
+                                                            "action":  "MarkAttendance"
+                                                        },
+                                                        {
+                                                            "method":  "PUT",
+                                                            "path":  "/api/attendance/{id}",
+                                                            "action":  "UpdateAttendance"
+                                                        },
+                                                        {
+                                                            "method":  "DELETE",
+                                                            "path":  "/api/attendance/{id}",
+                                                            "action":  "DeleteAttendance"
+                                                        }
+                                                    ]
+                                     },
+                      "teachers":  {
+                                       "requiresAuth":  true,
+                                       "controller":  "src/backend/MasterMind.API/Controllers/TeachersController.cs",
+                                       "routes":  [
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/teachers",
+                                                          "action":  "GetTeachers"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/teachers/{id}",
+                                                          "action":  "GetTeacher"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/teachers",
+                                                          "action":  "CreateTeacher"
+                                                      },
+                                                      {
+                                                          "method":  "PUT",
+                                                          "path":  "/api/teachers/{id}",
+                                                          "action":  "UpdateTeacher"
+                                                      },
+                                                      {
+                                                          "method":  "DELETE",
+                                                          "path":  "/api/teachers/{id}",
+                                                          "action":  "DeleteTeacher"
+                                                      }
+                                                  ]
+                                   },
+                      "test":  {
+                                   "requiresAuth":  true,
+                                   "controller":  "src/backend/MasterMind.API/Controllers/TestController.cs",
+                                   "routes":  [
+                                                  {
+                                                      "method":  "GET",
+                                                      "path":  "/api/test/student-count",
+                                                      "action":  "GetStudentCount"
+                                                  },
+                                                  {
+                                                      "method":  "GET",
+                                                      "path":  "/api/test/student-columns",
+                                                      "action":  "GetStudentColumns"
+                                                  }
+                                              ]
+                               },
+                      "auth":  {
+                                   "requiresAuth":  true,
+                                   "controller":  "src/backend/MasterMind.API/Controllers/AuthController.cs",
+                                   "routes":  [
+                                                  {
+                                                      "method":  "GET",
+                                                      "path":  "/api/auth/me",
+                                                      "action":  "GetCurrentUser"
+                                                  },
+                                                  {
+                                                      "method":  "GET",
+                                                      "path":  "/api/auth/check",
+                                                      "action":  "CheckAuth"
+                                                  },
+                                                  {
+                                                      "method":  "GET",
+                                                      "path":  "/api/auth/devices",
+                                                      "action":  "GetUserDevices"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/otp/request",
+                                                      "action":  "RequestOtp"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/request-otp",
+                                                      "action":  "RequestOtp"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/otp/verify",
+                                                      "action":  "VerifyOtp"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/verify-otp",
+                                                      "action":  "VerifyOtp"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/login",
+                                                      "action":  "LoginWithPassword"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/quick-login",
+                                                      "action":  "QuickLogin"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/set-password",
+                                                      "action":  "SetPassword"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/token/refresh",
+                                                      "action":  "RefreshToken"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/refresh-token",
+                                                      "action":  "RefreshToken"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/logout",
+                                                      "action":  "Logout"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/logout/all",
+                                                      "action":  "LogoutAll"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/device/trust",
+                                                      "action":  "TrustDevice"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/device/revoke",
+                                                      "action":  "RevokeDevice"
+                                                  }
+                                              ]
+                               }
+                  }
 }
