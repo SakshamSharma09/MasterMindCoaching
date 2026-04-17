@@ -1,3 +1,6 @@
+/* Import Premium Design System - must be before tailwind directives */
+@import './premium.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -99,7 +102,7 @@
   /* Glassmorphism Cards */
   .card {
     @apply bg-white/80 backdrop-blur-xl rounded-2xl border border-white/30 p-6 
-           shadow-glass hover:shadow-glow transition-all duration-500 ease-out;
+           shadow-card hover:shadow-card-hover transition-all duration-500 ease-out;
   }
 
   .card-header {
@@ -160,7 +163,7 @@
   /* Premium Stats Cards */
   .stat-card {
     @apply bg-white/80 backdrop-blur-xl rounded-2xl border border-white/30 p-6 
-           shadow-glass hover:shadow-glow transition-all duration-500 ease-out;
+           shadow-card hover:shadow-card-hover transition-all duration-500 ease-out;
   }
 
   .stat-icon {
@@ -250,12 +253,12 @@
 /* Glassmorphism Effects */
 .glass {
   @apply bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl 
-         shadow-glass hover:shadow-glow transition-all duration-500;
+         shadow-premium hover:shadow-premium-lg transition-all duration-500;
 }
 
 .glass-dark {
   @apply bg-gray-900/20 backdrop-blur-xl border border-white/10 rounded-2xl 
-         shadow-glass hover:shadow-glow transition-all duration-500;
+         shadow-premium hover:shadow-premium-lg transition-all duration-500;
 }
 
 /* Premium Scrollbar */

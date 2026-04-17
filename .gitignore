@@ -147,3 +147,5 @@ publish/
 *.zip
 *.bat
 !start-app.bat
+.aidesigner/*
+!.aidesigner/.gitkeep
