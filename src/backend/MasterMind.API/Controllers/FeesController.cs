@@ -38,38 +38,29 @@ public class FeesController : ControllerBase
     {
         try
         {
-            var query = _context.StudentFees
+            // Simplified query - load data first, then project
+            var studentFees = await _context.StudentFees
                 .Include(sf => sf.Student)
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .AsQueryable();
-
-            if (classId.HasValue)
-            {
-                query = query.Where(sf => sf.Student.StudentClasses.Any(sc => sc.ClassId == classId.Value));
-            }
-
-            if (!string.IsNullOrEmpty(status) && Enum.TryParse<FeeStatus>(status, true, out var feeStatus))
-            {
-                query = query.Where(sf => sf.Status == feeStatus);
-            }
-
-            if (!string.IsNullOrEmpty(month))
-            {
-                query = query.Where(sf => sf.Month == month);
-            }
-
-            var fees = await query
                 .OrderByDescending(sf => sf.DueDate)
+                .Take(100)
+                .ToListAsync();
+
+            // Apply filters and project in memory
+            var fees = studentFees
+                .Where(sf => !classId.HasValue || (sf.Student?.StudentClasses?.Any(sc => sc.ClassId == classId.Value) ?? false))
+                .Where(sf => string.IsNullOrEmpty(status) || sf.Status.ToString().Equals(status, StringComparison.OrdinalIgnoreCase))
+                .Where(sf => string.IsNullOrEmpty(month) || sf.Month == month)
                 .Select(sf => new StudentFeeDto
                 {
                     Id = sf.Id,
                     StudentId = sf.StudentId,
                     StudentName = sf.Student != null ? $"{sf.Student.FirstName} {sf.Student.LastName}" : "Unknown",
-                    ClassId = sf.Student != null && sf.Student.StudentClasses.Any() ? sf.Student.StudentClasses.First().ClassId : 0,
-                    ClassName = sf.Student != null && sf.Student.StudentClasses.Any() && sf.Student.StudentClasses.First().Class != null ? sf.Student.StudentClasses.First().Class.Name : "N/A",
-                    FeeType = sf.FeeStructure != null ? sf.FeeStructure.Name : "N/A",
+                    ClassId = sf.Student?.StudentClasses?.FirstOrDefault()?.ClassId ?? 0,
+                    ClassName = sf.Student?.StudentClasses?.FirstOrDefault()?.Class?.Name ?? "N/A",
+                    FeeType = sf.FeeStructure?.Name ?? "N/A",
                     Amount = sf.FinalAmount,
                     DueDate = sf.DueDate.ToString("yyyy-MM-dd"),
                     Status = sf.Status.ToString(),
@@ -78,7 +69,7 @@ public class FeesController : ControllerBase
                     BalanceAmount = sf.BalanceAmount,
                     IsOverdue = sf.IsOverdue
                 })
-                .ToListAsync();
+                .ToList();
 
             return Ok(new ApiResponse<IEnumerable<StudentFeeDto>>
             {

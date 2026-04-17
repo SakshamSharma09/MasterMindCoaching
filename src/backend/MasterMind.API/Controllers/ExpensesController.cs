@@ -38,30 +38,33 @@ public class ExpensesController : ControllerBase
     {
         try
         {
-            var query = _context.Expenses
+            // Load data first, then filter/project in memory to avoid SQL translation issues
+            var expensesList = await _context.Expenses
                 .Include(e => e.ProcessedByUser)
                 .Include(e => e.BudgetCategory)
-                .AsQueryable();
+                .OrderByDescending(e => e.ExpenseDate)
+                .Take(100)
+                .ToListAsync();
 
-            // Filter by date range if provided
+            // Apply filters in memory
+            var filtered = expensesList.AsEnumerable();
+
             if (!string.IsNullOrEmpty(startDate) && DateTime.TryParse(startDate, out var start))
             {
-                query = query.Where(e => e.ExpenseDate >= start);
+                filtered = filtered.Where(e => e.ExpenseDate >= start);
             }
 
             if (!string.IsNullOrEmpty(endDate) && DateTime.TryParse(endDate, out var end))
             {
-                query = query.Where(e => e.ExpenseDate <= end);
+                filtered = filtered.Where(e => e.ExpenseDate <= end);
             }
 
-            // Filter by category if provided
             if (!string.IsNullOrEmpty(category))
             {
-                query = query.Where(e => e.Category.ToLower() == category.ToLower());
+                filtered = filtered.Where(e => e.Category != null && e.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
             }
 
-            var expenses = await query
-                .OrderByDescending(e => e.ExpenseDate)
+            var expenses = filtered
                 .Select(e => new ExpenseDto
                 {
                     Id = e.Id,
@@ -77,7 +80,7 @@ public class ExpensesController : ControllerBase
                     IsRecurring = e.IsRecurring,
                     ProcessedBy = e.ProcessedByUser != null ? $"{e.ProcessedByUser.FirstName} {e.ProcessedByUser.LastName}" : null
                 })
-                .ToListAsync();
+                .ToList();
 
             return Ok(new ApiResponse<IEnumerable<ExpenseDto>>
             {
