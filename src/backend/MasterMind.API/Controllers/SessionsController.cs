@@ -10,21 +10,23 @@ namespace MasterMind.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SessionsController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<SessionsController> _logger;
     private const string SessionsCacheKey = "all_sessions";
 
-    public SessionsController(MasterMindDbContext context, IMemoryCache cache)
+    public SessionsController(MasterMindDbContext context, IMemoryCache cache, ILogger<SessionsController> logger)
     {
         _context = context;
         _cache = cache;
+        _logger = logger;
     }
 
     // GET: api/Sessions
     [HttpGet]
-    [Authorize]
     public async Task<ActionResult<ApiResponse<IEnumerable<Session>>>> GetSessions()
     {
         try
@@ -55,9 +57,46 @@ public class SessionsController : ControllerBase
         }
     }
 
+    // GET: api/Sessions/{id}
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiResponse<Session>>> GetSession(int id)
+    {
+        try
+        {
+            var session = await _context.Sessions
+                .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+
+            if (session == null)
+            {
+                return NotFound(new ApiResponse<Session>
+                {
+                    Success = false,
+                    Message = "Session not found",
+                    Data = null
+                });
+            }
+
+            return Ok(new ApiResponse<Session>
+            {
+                Success = true,
+                Message = "Session retrieved successfully",
+                Data = session
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving session {SessionId}", id);
+            return StatusCode(500, new ApiResponse<Session>
+            {
+                Success = false,
+                Message = "Error retrieving session",
+                Data = null
+            });
+        }
+    }
+
     // GET: api/Sessions/active
     [HttpGet("active")]
-    [Authorize]
     public async Task<ActionResult<ApiResponse<Session>>> GetActiveSession()
     {
         try
@@ -95,10 +134,21 @@ public class SessionsController : ControllerBase
 
     // POST: api/Sessions
     [HttpPost]
-    public async Task<ActionResult<ApiResponse<Session>>> CreateSession(CreateSessionDto createDto)
+    public async Task<ActionResult<ApiResponse<Session>>> CreateSession([FromBody] CreateSessionDto createDto)
     {
         try
         {
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(createDto.Name))
+            {
+                return BadRequest(new ApiResponse<Session>
+                {
+                    Success = false,
+                    Message = "Session name is required",
+                    Data = null
+                });
+            }
+
             // Validate dates
             if (createDto.StartDate >= createDto.EndDate)
             {
@@ -110,9 +160,13 @@ public class SessionsController : ControllerBase
                 });
             }
 
-            // Check if session name already exists
-            var existingSession = await _context.Sessions
-                .FirstOrDefaultAsync(s => s.Name.Equals(createDto.Name, StringComparison.OrdinalIgnoreCase) && !s.IsDeleted);
+            // Check if session name already exists - load data first to avoid SQL translation issues
+            var existingSessions = await _context.Sessions
+                .Where(s => !s.IsDeleted)
+                .ToListAsync();
+            
+            var existingSession = existingSessions
+                .FirstOrDefault(s => s.Name.Equals(createDto.Name, StringComparison.OrdinalIgnoreCase));
 
             if (existingSession != null)
             {
@@ -129,7 +183,7 @@ public class SessionsController : ControllerBase
                 Name = createDto.Name,
                 DisplayName = createDto.DisplayName ?? createDto.Name,
                 Description = createDto.Description,
-                AcademicYear = createDto.AcademicYear,
+                AcademicYear = createDto.AcademicYear ?? GetCurrentAcademicYear(),
                 StartDate = createDto.StartDate,
                 EndDate = createDto.EndDate,
                 Status = createDto.Status,
@@ -139,7 +193,7 @@ public class SessionsController : ControllerBase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            // If this is the first session, make it active
+            // If this is the first session or no active session exists, make it active
             var hasAnyActiveSession = await _context.Sessions.AnyAsync(s => s.IsActive && !s.IsDeleted);
             if (!hasAnyActiveSession)
             {
@@ -151,7 +205,9 @@ public class SessionsController : ControllerBase
             await _context.SaveChangesAsync();
             _cache.Remove(SessionsCacheKey);
 
-            return CreatedAtAction(nameof(GetSessions), new { id = session.Id }, new ApiResponse<Session>
+            _logger.LogInformation("Session created: {SessionName} (ID: {SessionId})", session.Name, session.Id);
+
+            return CreatedAtAction(nameof(GetSession), new { id = session.Id }, new ApiResponse<Session>
             {
                 Success = true,
                 Message = "Session created successfully",
@@ -160,11 +216,145 @@ public class SessionsController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating session");
             return StatusCode(500, new ApiResponse<Session>
             {
                 Success = false,
                 Message = "Error creating session: " + ex.Message,
                 Data = null
+            });
+        }
+    }
+
+    // PUT: api/Sessions/{id}
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ApiResponse<Session>>> UpdateSession(int id, [FromBody] UpdateSessionDto updateDto)
+    {
+        try
+        {
+            var session = await _context.Sessions
+                .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+
+            if (session == null)
+            {
+                return NotFound(new ApiResponse<Session>
+                {
+                    Success = false,
+                    Message = "Session not found",
+                    Data = null
+                });
+            }
+
+            // Update fields if provided
+            if (!string.IsNullOrEmpty(updateDto.Name)) session.Name = updateDto.Name;
+            if (!string.IsNullOrEmpty(updateDto.DisplayName)) session.DisplayName = updateDto.DisplayName;
+            if (updateDto.Description != null) session.Description = updateDto.Description;
+            if (!string.IsNullOrEmpty(updateDto.AcademicYear)) session.AcademicYear = updateDto.AcademicYear;
+            if (updateDto.StartDate.HasValue) session.StartDate = updateDto.StartDate.Value;
+            if (updateDto.EndDate.HasValue) session.EndDate = updateDto.EndDate.Value;
+            if (updateDto.Status.HasValue) session.Status = updateDto.Status.Value;
+            if (updateDto.Settings != null) session.Settings = updateDto.Settings;
+
+            // Handle IsActive change - if activating this session, deactivate others
+            if (updateDto.IsActive.HasValue)
+            {
+                if (updateDto.IsActive.Value && !session.IsActive)
+                {
+                    // Deactivate all other sessions
+                    var otherActiveSessions = await _context.Sessions
+                        .Where(s => s.IsActive && s.Id != id && !s.IsDeleted)
+                        .ToListAsync();
+
+                    foreach (var otherSession in otherActiveSessions)
+                    {
+                        otherSession.IsActive = false;
+                        otherSession.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    session.Status = SessionStatus.Active;
+                }
+                session.IsActive = updateDto.IsActive.Value;
+            }
+
+            session.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            _cache.Remove(SessionsCacheKey);
+
+            _logger.LogInformation("Session updated: {SessionName} (ID: {SessionId})", session.Name, session.Id);
+
+            return Ok(new ApiResponse<Session>
+            {
+                Success = true,
+                Message = "Session updated successfully",
+                Data = session
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating session {SessionId}", id);
+            return StatusCode(500, new ApiResponse<Session>
+            {
+                Success = false,
+                Message = "Error updating session: " + ex.Message,
+                Data = null
+            });
+        }
+    }
+
+    // DELETE: api/Sessions/{id}
+    [HttpDelete("{id}")]
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteSession(int id)
+    {
+        try
+        {
+            var session = await _context.Sessions
+                .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+
+            if (session == null)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Session not found",
+                    Data = false
+                });
+            }
+
+            // Don't allow deleting active session
+            if (session.IsActive)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Cannot delete an active session. Please activate another session first.",
+                    Data = false
+                });
+            }
+
+            session.IsDeleted = true;
+            session.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            _cache.Remove(SessionsCacheKey);
+
+            _logger.LogInformation("Session deleted: {SessionName} (ID: {SessionId})", session.Name, session.Id);
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "Session deleted successfully",
+                Data = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting session {SessionId}", id);
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error deleting session: " + ex.Message,
+                Data = false
             });
         }
     }
@@ -214,6 +404,7 @@ public class SessionsController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error activating session {SessionId}", id);
             return StatusCode(500, new ApiResponse<bool>
             {
                 Success = false,
@@ -222,6 +413,17 @@ public class SessionsController : ControllerBase
             });
         }
     }
+
+    #region Helper Methods
+
+    private static string GetCurrentAcademicYear()
+    {
+        var now = DateTime.Now;
+        var year = now.Month >= 4 ? now.Year : now.Year - 1;
+        return $"{year}-{(year + 1) % 100:D2}";
+    }
+
+    #endregion
 }
 
 // DTOs
@@ -230,10 +432,23 @@ public class CreateSessionDto
     public string Name { get; set; } = string.Empty;
     public string? DisplayName { get; set; }
     public string? Description { get; set; }
-    public string AcademicYear { get; set; } = string.Empty;
+    public string? AcademicYear { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public SessionStatus Status { get; set; } = SessionStatus.Planned;
     public bool IsActive { get; set; } = false;
+    public string? Settings { get; set; }
+}
+
+public class UpdateSessionDto
+{
+    public string? Name { get; set; }
+    public string? DisplayName { get; set; }
+    public string? Description { get; set; }
+    public string? AcademicYear { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public SessionStatus? Status { get; set; }
+    public bool? IsActive { get; set; }
     public string? Settings { get; set; }
 }

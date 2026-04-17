@@ -1,6 +1,5 @@
 import { apiService } from './apiService'
-import { API_ENDPOINTS } from '@/config/api'
-import type { Lead, LeadFormData, FollowUpFormData, LeadFilters } from '@/types/lead'
+import type { Lead, LeadFormData, FollowUpFormData, LeadFilters, LeadStats } from '@/types/lead'
 
 const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true' || false
 
@@ -20,7 +19,7 @@ export const leadsService = {
         const search = filters.search.toLowerCase()
         filteredLeads = filteredLeads.filter(lead => 
           lead.name.toLowerCase().includes(search) ||
-          lead.phone.includes(filters.search) ||
+          lead.phone.includes(filters.search || '') ||
           lead.email.toLowerCase().includes(search)
         )
       }
@@ -40,6 +39,8 @@ export const leadsService = {
     if (filters?.search) params.append('search', filters.search)
     if (filters?.status) params.append('status', filters.status)
     if (filters?.source) params.append('source', filters.source)
+    if (filters?.page) params.append('page', filters.page.toString())
+    if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString())
 
     const response = await apiService.get(`/leads?${params.toString()}`)
     return response.data
@@ -153,14 +154,7 @@ export const leadsService = {
   },
 
   // Get lead statistics
-  async getLeadStats(): Promise<{
-    total: number
-    interested: number
-    new: number
-    contacted: number
-    converted: number
-    lost: number
-  }> {
+  async getLeadStats(): Promise<LeadStats> {
     if (USE_MOCK_API) {
       console.log('Mock API: Getting lead stats')
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -169,13 +163,32 @@ export const leadsService = {
       const interested = mockLeads.filter(l => l.status === 'Interested').length
       const newLeads = mockLeads.filter(l => l.status === 'New').length
       const contacted = mockLeads.filter(l => l.status === 'Contacted').length
+      const followUp = mockLeads.filter(l => l.status === 'FollowUp').length
+      const negotiation = mockLeads.filter(l => l.status === 'Negotiation').length
       const converted = mockLeads.filter(l => l.status === 'Converted').length
-      const lost = mockLeads.filter(l => l.status === 'Lost').length
+      const lost = mockLeads.filter(l => l.status === 'Lost' || l.status === 'NotInterested').length
       
-      return { total, interested, new: newLeads, contacted, converted, lost }
+      return { total, new: newLeads, contacted, interested, followUp, negotiation, converted, lost }
     }
 
     const response = await apiService.get('/leads/stats')
+    return response.data
+  },
+
+  // Convert lead to student
+  async convertToStudent(id: number, data: { classId?: number; dateOfBirth?: string; gender?: string }): Promise<{ leadId: number; studentId: number; studentName: string; admissionNumber: string }> {
+    if (USE_MOCK_API) {
+      console.log('Mock API: Converting lead to student:', id, data)
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      return {
+        leadId: id,
+        studentId: Date.now(),
+        studentName: 'Mock Student',
+        admissionNumber: 'MM261234'
+      }
+    }
+
+    const response = await apiService.post(`/leads/${id}/convert`, data)
     return response.data
   }
 }

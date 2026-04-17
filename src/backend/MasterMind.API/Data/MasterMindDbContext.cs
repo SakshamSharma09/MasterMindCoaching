@@ -59,6 +59,10 @@ namespace MasterMind.API.Data
         // Session Management
         public DbSet<Session> Sessions { get; set; }
 
+        // Exam Management
+        public DbSet<Exam> Exams { get; set; }
+        public DbSet<ExamResult> ExamResults { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
