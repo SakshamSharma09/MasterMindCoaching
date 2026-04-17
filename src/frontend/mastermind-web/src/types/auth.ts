@@ -7,6 +7,8 @@ export interface User {
   firstName: string
   lastName: string
   role: UserRole
+  roles?: string[]
+  fullName?: string
   isActive: boolean
   isEmailVerified: boolean
   isMobileVerified: boolean

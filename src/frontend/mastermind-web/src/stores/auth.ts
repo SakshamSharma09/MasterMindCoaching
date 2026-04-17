@@ -143,14 +143,17 @@ export const useAuthStore = defineStore('auth', () => {
       
       if (response.accessToken) {
         setTokens(response.accessToken, response.refreshToken)
-        setUser(response.user)
-        
-        console.log('[Auth Store] Quick login successful:', response.user)
+        // Map roles array to single role string if needed
+        const userData = {
+          ...response.user,
+          role: response.user.role || (response.user.roles?.[0] as any) || 'Admin'
+        }
+        setUser(userData)
         
         return {
           accessToken: response.accessToken,
           refreshToken: response.refreshToken,
-          user: response.user
+          user: userData
         }
       } else {
         throw new Error(response.message || 'Quick login failed')
