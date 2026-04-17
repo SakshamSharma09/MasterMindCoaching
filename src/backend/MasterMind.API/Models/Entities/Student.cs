@@ -16,6 +16,7 @@ public class Student : BaseEntity
     public string? StudentMobile { get; set; }
     public string? StudentEmail { get; set; }
     public string? ProfileImageUrl { get; set; }
+    public string? PhotoBlobName { get; set; }
     public string? AdmissionNumber { get; set; }
     public DateTime AdmissionDate { get; set; } = DateTime.UtcNow;
     public bool IsActive { get; set; } = true;

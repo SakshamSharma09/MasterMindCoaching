@@ -1,5 +1,6 @@
 using MasterMind.API.Data;
 using MasterMind.API.Models.Entities;
+using MasterMind.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,11 +15,13 @@ public class StudentsController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly ILogger<StudentsController> _logger;
+    private readonly IBlobStorageService _blobStorageService;
 
-    public StudentsController(MasterMindDbContext context, ILogger<StudentsController> logger)
+    public StudentsController(MasterMindDbContext context, ILogger<StudentsController> logger, IBlobStorageService blobStorageService)
     {
         _context = context;
         _logger = logger;
+        _blobStorageService = blobStorageService;
     }
 
     /// <summary>
@@ -232,6 +235,7 @@ public class StudentsController : ControllerBase
         existingStudent.StudentMobile = student.StudentMobile;
         existingStudent.StudentEmail = student.StudentEmail;
         existingStudent.ProfileImageUrl = student.ProfileImageUrl;
+        existingStudent.PhotoBlobName = student.PhotoBlobName;
         existingStudent.AdmissionNumber = student.AdmissionNumber;
         existingStudent.AdmissionDate = student.AdmissionDate;
         existingStudent.IsActive = student.IsActive;
@@ -419,6 +423,102 @@ public class StudentsController : ControllerBase
                 Success = false,
                 Message = $"Error retrieving available students: {ex.Message}",
                 Data = new List<Student>()
+            });
+        }
+    }
+
+    /// <summary>
+    /// Upload photo for a student
+    /// </summary>
+    /// <param name="id">Student ID</param>
+    /// <param name="file">Photo file</param>
+    /// <returns>Upload status with photo URL</returns>
+    [HttpPost("{id}/photo")]
+    [RequestSizeLimit(5 * 1024 * 1024)] // 5MB limit
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<object>>> UploadStudentPhoto(int id, IFormFile file)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "No file uploaded"
+                });
+            }
+
+            if (file.Length > 5 * 1024 * 1024)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "File size exceeds 5MB limit"
+                });
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid file type. Allowed: jpg, jpeg, png, gif, webp"
+                });
+            }
+
+            var student = await _context.Students
+                .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+
+            if (student == null)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Student not found"
+                });
+            }
+
+            // Delete old photo if exists
+            if (!string.IsNullOrEmpty(student.PhotoBlobName))
+            {
+                await _blobStorageService.DeletePhotoAsync(student.PhotoBlobName);
+            }
+
+            // Upload new photo
+            using var stream = file.OpenReadStream();
+            var blobName = await _blobStorageService.UploadPhotoAsync(stream, file.FileName, file.ContentType);
+            var photoUrl = _blobStorageService.GetPhotoUrl(blobName);
+
+            // Update student record
+            student.PhotoBlobName = blobName;
+            student.ProfileImageUrl = photoUrl;
+            student.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Photo uploaded successfully",
+                Data = new
+                {
+                    blobName,
+                    url = photoUrl
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading photo for student {StudentId}", id);
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = $"Error uploading photo: {ex.Message}"
             });
         }
     }
