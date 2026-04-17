@@ -186,7 +186,7 @@ public class SessionsController : ControllerBase
                 AcademicYear = createDto.AcademicYear ?? GetCurrentAcademicYear(),
                 StartDate = createDto.StartDate,
                 EndDate = createDto.EndDate,
-                Status = createDto.Status,
+                Status = createDto.GetStatus(),
                 IsActive = createDto.IsActive,
                 Settings = createDto.Settings,
                 CreatedAt = DateTime.UtcNow,
@@ -252,7 +252,8 @@ public class SessionsController : ControllerBase
             if (!string.IsNullOrEmpty(updateDto.AcademicYear)) session.AcademicYear = updateDto.AcademicYear;
             if (updateDto.StartDate.HasValue) session.StartDate = updateDto.StartDate.Value;
             if (updateDto.EndDate.HasValue) session.EndDate = updateDto.EndDate.Value;
-            if (updateDto.Status.HasValue) session.Status = updateDto.Status.Value;
+            var parsedStatus = updateDto.GetStatus();
+            if (parsedStatus.HasValue) session.Status = parsedStatus.Value;
             if (updateDto.Settings != null) session.Settings = updateDto.Settings;
 
             // Handle IsActive change - if activating this session, deactivate others
@@ -435,9 +436,23 @@ public class CreateSessionDto
     public string? AcademicYear { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
-    public SessionStatus Status { get; set; } = SessionStatus.Planned;
+    public string? Status { get; set; }
     public bool IsActive { get; set; } = false;
     public string? Settings { get; set; }
+
+    public SessionStatus GetStatus()
+    {
+        if (string.IsNullOrEmpty(Status)) return SessionStatus.Planned;
+        return Status.ToLower() switch
+        {
+            "planned" => SessionStatus.Planned,
+            "active" => SessionStatus.Active,
+            "completed" => SessionStatus.Completed,
+            "suspended" => SessionStatus.Suspended,
+            "cancelled" => SessionStatus.Cancelled,
+            _ => SessionStatus.Planned
+        };
+    }
 }
 
 public class UpdateSessionDto
@@ -448,7 +463,21 @@ public class UpdateSessionDto
     public string? AcademicYear { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
-    public SessionStatus? Status { get; set; }
+    public string? Status { get; set; }
     public bool? IsActive { get; set; }
     public string? Settings { get; set; }
+
+    public SessionStatus? GetStatus()
+    {
+        if (string.IsNullOrEmpty(Status)) return null;
+        return Status.ToLower() switch
+        {
+            "planned" => SessionStatus.Planned,
+            "active" => SessionStatus.Active,
+            "completed" => SessionStatus.Completed,
+            "suspended" => SessionStatus.Suspended,
+            "cancelled" => SessionStatus.Cancelled,
+            _ => null
+        };
+    }
 }

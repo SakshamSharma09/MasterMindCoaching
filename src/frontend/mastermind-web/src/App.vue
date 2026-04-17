@@ -1,10 +1,10 @@
 <template>
   <div id="app" class="min-h-screen bg-gradient-to-br from-mastermind-50 via-white to-primary-50 relative overflow-hidden">
-    <!-- Background decorative elements -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-mastermind-200/30 to-primary-200/30 rounded-full blur-3xl animate-float-soft"></div>
-      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-primary-200/30 to-mastermind-200/30 rounded-full blur-3xl animate-float-soft" style="animation-delay: 3s;"></div>
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-accent-100/20 to-mastermind-100/20 rounded-full blur-3xl animate-pulse"></div>
+    <!-- Background decorative elements - positioned to avoid content overlap -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+      <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-mastermind-200/20 to-primary-200/20 rounded-full blur-3xl animate-float-soft opacity-50"></div>
+      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-primary-200/20 to-mastermind-200/20 rounded-full blur-3xl animate-float-soft opacity-50" style="animation-delay: 3s;"></div>
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-accent-100/10 to-mastermind-100/10 rounded-full blur-3xl animate-pulse opacity-30"></div>
     </div>
     
     <!-- Main content -->

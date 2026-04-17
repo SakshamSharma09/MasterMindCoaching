@@ -328,9 +328,21 @@ const editSession = (session: Session) => {
 }
 
 const updateSession = async () => {
-  // TODO: Implement update functionality
-  console.log('Update session:', editingSession.value?.id, formData.value)
-  closeModals()
+  if (!editingSession.value) return
+  
+  try {
+    await sessionStore.updateSession(editingSession.value.id, {
+      name: formData.value.name,
+      displayName: formData.value.displayName,
+      description: formData.value.description,
+      startDate: formData.value.startDate,
+      endDate: formData.value.endDate,
+      status: formData.value.status
+    })
+    closeModals()
+  } catch (error) {
+    console.error('Failed to update session:', error)
+  }
 }
 
 const activateSession = async (sessionId: number) => {

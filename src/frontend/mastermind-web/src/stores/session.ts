@@ -108,12 +108,36 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
+  const updateSession = async (sessionId: number, sessionData: Partial<Session>) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await apiService.put(`${API_ENDPOINTS.SESSIONS.LIST}/${sessionId}`, sessionData)
+      const updatedSession = response.data
+      
+      // Update local state
+      const index = sessions.value.findIndex(s => s.id === sessionId)
+      if (index !== -1) {
+        sessions.value[index] = { ...sessions.value[index], ...updatedSession }
+      }
+      
+      return updatedSession
+    } catch (err) {
+      console.error('Failed to update session:', err)
+      error.value = 'Failed to update session'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   const activateSession = async (sessionId: number) => {
     loading.value = true
     error.value = null
     
     try {
-      await apiService.put(`${API_ENDPOINTS.SESSIONS.ACTIVATE}/${sessionId}/activate`)
+      await apiService.put(`${API_ENDPOINTS.SESSIONS.LIST}/${sessionId}/activate`)
       
       // Update local state
       sessions.value.forEach(s => {
@@ -160,6 +184,7 @@ export const useSessionStore = defineStore('session', () => {
     loadSessions,
     selectSession,
     createSession,
+    updateSession,
     activateSession,
     initializeFromStorage
   }
