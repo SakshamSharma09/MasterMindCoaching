@@ -252,29 +252,42 @@ public class FeesController : ControllerBase
     {
         try
         {
-            var overdueFees = await _context.StudentFees
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            
+            // Load data first to avoid SQL translation issues with complex projections
+            var studentFees = await _context.StudentFees
                 .Include(sf => sf.Student)
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => sf.Status != FeeStatus.Paid && DateOnly.FromDateTime(DateTime.Today) > sf.DueDate)
-                .Select(sf => new OverdueFeeDto
-                {
-                    Id = sf.Id,
-                    StudentId = sf.StudentId,
-                    StudentName = $"{sf.Student.FirstName} {sf.Student.LastName}",
-                    ClassId = sf.Student.StudentClasses.FirstOrDefault()!.ClassId,
-                    ClassName = sf.Student.StudentClasses.FirstOrDefault()!.Class.Name,
-                    FeeType = sf.FeeStructure.Name,
-                    Amount = sf.FinalAmount,
-                    DueDate = sf.DueDate.ToString("yyyy-MM-dd"),
-                    Status = sf.Status.ToString(),
-                    Description = sf.Remarks,
-                    DaysOverdue = DateOnly.FromDateTime(DateTime.Today).DayNumber - sf.DueDate.DayNumber,
-                    ParentContact = sf.Student.ParentMobile,
-                    BalanceAmount = sf.BalanceAmount
-                })
+                .Where(sf => sf.Status != FeeStatus.Paid)
+                .OrderByDescending(sf => sf.DueDate)
+                .Take(200)
                 .ToListAsync();
+
+            // Filter and project in memory to avoid SQL translation errors
+            var overdueFees = studentFees
+                .Where(sf => today > sf.DueDate)
+                .Select(sf => {
+                    var studentClass = sf.Student?.StudentClasses?.FirstOrDefault();
+                    return new OverdueFeeDto
+                    {
+                        Id = sf.Id,
+                        StudentId = sf.StudentId,
+                        StudentName = sf.Student != null ? $"{sf.Student.FirstName} {sf.Student.LastName}" : "Unknown",
+                        ClassId = studentClass?.ClassId ?? 0,
+                        ClassName = studentClass?.Class?.Name ?? "N/A",
+                        FeeType = sf.FeeStructure?.Name ?? "N/A",
+                        Amount = sf.FinalAmount,
+                        DueDate = sf.DueDate.ToString("yyyy-MM-dd"),
+                        Status = sf.Status.ToString(),
+                        Description = sf.Remarks,
+                        DaysOverdue = today.DayNumber - sf.DueDate.DayNumber,
+                        ParentContact = sf.Student?.ParentMobile ?? string.Empty,
+                        BalanceAmount = sf.BalanceAmount
+                    };
+                })
+                .ToList();
 
             return Ok(new ApiResponse<IEnumerable<OverdueFeeDto>>
             {
