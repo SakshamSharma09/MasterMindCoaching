@@ -1,0 +1,371 @@
+﻿{
+    "version":  "1.0.0",
+    "controllers":  {
+                        "SessionsController":  {
+                                                   "endpoints":  {
+                                                                     "total":  4,
+                                                                     "GET":  2,
+                                                                     "PUT":  1,
+                                                                     "DELETE":  0,
+                                                                     "POST":  1
+                                                                 },
+                                                   "dependencies":  [
+                                                                        "MasterMindDbContext",
+                                                                        "IMemoryCache"
+                                                                    ],
+                                                   "file":  "src/backend/MasterMind.API/Controllers/SessionsController.cs",
+                                                   "hasAuthorize":  true,
+                                                   "usesDbContext":  true
+                                               },
+                        "AuthController":  {
+                                               "endpoints":  {
+                                                                 "total":  16,
+                                                                 "GET":  3,
+                                                                 "PUT":  0,
+                                                                 "DELETE":  0,
+                                                                 "POST":  13
+                                                             },
+                                               "dependencies":  [
+                                                                    "IAuthService",
+                                                                    "IDeviceService"
+                                                                ],
+                                               "file":  "src/backend/MasterMind.API/Controllers/AuthController.cs",
+                                               "hasAuthorize":  true,
+                                               "usesDbContext":  false
+                                           },
+                        "FeeCollectionController":  {
+                                                        "endpoints":  {
+                                                                          "total":  6,
+                                                                          "GET":  3,
+                                                                          "PUT":  0,
+                                                                          "DELETE":  0,
+                                                                          "POST":  3
+                                                                      },
+                                                        "dependencies":  [
+                                                                             "MasterMindDbContext"
+                                                                         ],
+                                                        "file":  "src/backend/MasterMind.API/Controllers/FeeCollectionController.cs",
+                                                        "hasAuthorize":  true,
+                                                        "usesDbContext":  true
+                                                    },
+                        "TestController":  {
+                                               "endpoints":  {
+                                                                 "total":  2,
+                                                                 "GET":  2,
+                                                                 "PUT":  0,
+                                                                 "DELETE":  0,
+                                                                 "POST":  0
+                                                             },
+                                               "dependencies":  [
+                                                                    "MasterMindDbContext"
+                                                                ],
+                                               "file":  "src/backend/MasterMind.API/Controllers/TestController.cs",
+                                               "hasAuthorize":  true,
+                                               "usesDbContext":  true
+                                           },
+                        "TeachersController":  {
+                                                   "endpoints":  {
+                                                                     "total":  5,
+                                                                     "GET":  2,
+                                                                     "PUT":  1,
+                                                                     "DELETE":  1,
+                                                                     "POST":  1
+                                                                 },
+                                                   "dependencies":  [
+                                                                        "MasterMindDbContext"
+                                                                    ],
+                                                   "file":  "src/backend/MasterMind.API/Controllers/TeachersController.cs",
+                                                   "hasAuthorize":  true,
+                                                   "usesDbContext":  true
+                                               },
+                        "DashboardController":  {
+                                                    "endpoints":  {
+                                                                      "total":  4,
+                                                                      "GET":  4,
+                                                                      "PUT":  0,
+                                                                      "DELETE":  0,
+                                                                      "POST":  0
+                                                                  },
+                                                    "dependencies":  [
+                                                                         "MasterMindDbContext"
+                                                                     ],
+                                                    "file":  "src/backend/MasterMind.API/Controllers/DashboardController.cs",
+                                                    "hasAuthorize":  true,
+                                                    "usesDbContext":  true
+                                                },
+                        "FinanceController":  {
+                                                  "endpoints":  {
+                                                                    "total":  11,
+                                                                    "GET":  8,
+                                                                    "PUT":  0,
+                                                                    "DELETE":  0,
+                                                                    "POST":  3
+                                                                },
+                                                  "dependencies":  [
+                                                                       "MasterMindDbContext"
+                                                                   ],
+                                                  "file":  "src/backend/MasterMind.API/Controllers/FinanceController.cs",
+                                                  "hasAuthorize":  true,
+                                                  "usesDbContext":  true
+                                              },
+                        "ClassesController":  {
+                                                  "endpoints":  {
+                                                                    "total":  5,
+                                                                    "GET":  2,
+                                                                    "PUT":  1,
+                                                                    "DELETE":  1,
+                                                                    "POST":  1
+                                                                },
+                                                  "dependencies":  [
+                                                                       "MasterMindDbContext"
+                                                                   ],
+                                                  "file":  "src/backend/MasterMind.API/Controllers/ClassesController.cs",
+                                                  "hasAuthorize":  true,
+                                                  "usesDbContext":  true
+                                              },
+                        "StudentsController":  {
+                                                   "endpoints":  {
+                                                                     "total":  8,
+                                                                     "GET":  3,
+                                                                     "PUT":  1,
+                                                                     "DELETE":  2,
+                                                                     "POST":  2
+                                                                 },
+                                                   "dependencies":  [
+                                                                        "MasterMindDbContext"
+                                                                    ],
+                                                   "file":  "src/backend/MasterMind.API/Controllers/StudentsController.cs",
+                                                   "hasAuthorize":  true,
+                                                   "usesDbContext":  true
+                                               },
+                        "AttendanceController":  {
+                                                     "endpoints":  {
+                                                                       "total":  4,
+                                                                       "GET":  1,
+                                                                       "PUT":  1,
+                                                                       "DELETE":  1,
+                                                                       "POST":  1
+                                                                   },
+                                                     "dependencies":  [
+                                                                          "MasterMindDbContext"
+                                                                      ],
+                                                     "file":  "src/backend/MasterMind.API/Controllers/AttendanceController.cs",
+                                                     "hasAuthorize":  true,
+                                                     "usesDbContext":  true
+                                                 },
+                        "ParentController":  {
+                                                 "endpoints":  {
+                                                                   "total":  5,
+                                                                   "GET":  5,
+                                                                   "PUT":  0,
+                                                                   "DELETE":  0,
+                                                                   "POST":  0
+                                                               },
+                                                 "dependencies":  [
+                                                                      "MasterMindDbContext"
+                                                                  ],
+                                                 "file":  "src/backend/MasterMind.API/Controllers/ParentController.cs",
+                                                 "hasAuthorize":  true,
+                                                 "usesDbContext":  true
+                                             },
+                        "SubjectsController":  {
+                                                   "endpoints":  {
+                                                                     "total":  7,
+                                                                     "GET":  4,
+                                                                     "PUT":  1,
+                                                                     "DELETE":  1,
+                                                                     "POST":  1
+                                                                 },
+                                                   "dependencies":  [
+                                                                        "MasterMindDbContext"
+                                                                    ],
+                                                   "file":  "src/backend/MasterMind.API/Controllers/SubjectsController.cs",
+                                                   "hasAuthorize":  true,
+                                                   "usesDbContext":  true
+                                               },
+                        "ExpensesController":  {
+                                                   "endpoints":  {
+                                                                     "total":  6,
+                                                                     "GET":  3,
+                                                                     "PUT":  1,
+                                                                     "DELETE":  1,
+                                                                     "POST":  1
+                                                                 },
+                                                   "dependencies":  [
+                                                                        "MasterMindDbContext"
+                                                                    ],
+                                                   "file":  "src/backend/MasterMind.API/Controllers/ExpensesController.cs",
+                                                   "hasAuthorize":  true,
+                                                   "usesDbContext":  true
+                                               },
+                        "FeesController":  {
+                                               "endpoints":  {
+                                                                 "total":  7,
+                                                                 "GET":  3,
+                                                                 "PUT":  1,
+                                                                 "DELETE":  1,
+                                                                 "POST":  2
+                                                             },
+                                               "dependencies":  [
+                                                                    "MasterMindDbContext"
+                                                                ],
+                                               "file":  "src/backend/MasterMind.API/Controllers/FeesController.cs",
+                                               "hasAuthorize":  true,
+                                               "usesDbContext":  true
+                                           }
+                    },
+    "services":  {
+                     "JwtService":  {
+                                        "usesCache":  false,
+                                        "interface":  "IJwtService",
+                                        "publicMethods":  4,
+                                        "dependencies":  [
+
+                                                         ],
+                                        "usesHttpClient":  false,
+                                        "usesDbContext":  false,
+                                        "file":  "src/backend/MasterMind.API/Services/Implementations/JwtService.cs"
+                                    },
+                     "SmsService":  {
+                                        "usesCache":  false,
+                                        "interface":  "ISmsService",
+                                        "publicMethods":  4,
+                                        "dependencies":  [
+                                                             "HttpClient"
+                                                         ],
+                                        "usesHttpClient":  true,
+                                        "usesDbContext":  false,
+                                        "file":  "src/backend/MasterMind.API/Services/Implementations/SmsService.cs"
+                                    },
+                     "DeviceService":  {
+                                           "usesCache":  false,
+                                           "interface":  "IDeviceService",
+                                           "publicMethods":  7,
+                                           "dependencies":  [
+                                                                "MasterMindDbContext"
+                                                            ],
+                                           "usesHttpClient":  false,
+                                           "usesDbContext":  true,
+                                           "file":  "src/backend/MasterMind.API/Services/Implementations/DeviceService.cs"
+                                       },
+                     "AuthService":  {
+                                         "usesCache":  false,
+                                         "interface":  "IAuthService",
+                                         "publicMethods":  7,
+                                         "dependencies":  [
+                                                              "MasterMindDbContext",
+                                                              "IOtpService",
+                                                              "IJwtService",
+                                                              "IUserService",
+                                                              "ISmsService",
+                                                              "IEmailService",
+                                                              "IHttpContextAccessor"
+                                                          ],
+                                         "usesHttpClient":  false,
+                                         "usesDbContext":  true,
+                                         "file":  "src/backend/MasterMind.API/Services/Implementations/AuthService.cs"
+                                     },
+                     "UserService":  {
+                                         "usesCache":  false,
+                                         "interface":  "IUserService",
+                                         "publicMethods":  8,
+                                         "dependencies":  [
+                                                              "MasterMindDbContext"
+                                                          ],
+                                         "usesHttpClient":  false,
+                                         "usesDbContext":  true,
+                                         "file":  "src/backend/MasterMind.API/Services/Implementations/UserService.cs"
+                                     },
+                     "EmailService":  {
+                                          "usesCache":  false,
+                                          "interface":  "IEmailService",
+                                          "publicMethods":  3,
+                                          "dependencies":  [
+                                                               "IConfiguration"
+                                                           ],
+                                          "usesHttpClient":  false,
+                                          "usesDbContext":  false,
+                                          "file":  "src/backend/MasterMind.API/Services/Implementations/EmailService.cs"
+                                      },
+                     "OtpService":  {
+                                        "usesCache":  false,
+                                        "interface":  "IOtpService",
+                                        "publicMethods":  3,
+                                        "dependencies":  [
+                                                             "MasterMindDbContext",
+                                                             "ISmsService",
+                                                             "IEmailService"
+                                                         ],
+                                        "usesHttpClient":  false,
+                                        "usesDbContext":  true,
+                                        "file":  "src/backend/MasterMind.API/Services/Implementations/OtpService.cs"
+                                    },
+                     "FinanceService":  {
+                                            "usesCache":  false,
+                                            "interface":  "IFinanceService",
+                                            "publicMethods":  20,
+                                            "dependencies":  [
+                                                                 "MasterMindDbContext"
+                                                             ],
+                                            "usesHttpClient":  false,
+                                            "usesDbContext":  true,
+                                            "file":  "src/backend/MasterMind.API/Services/Implementations/FinanceService.cs"
+                                        }
+                 },
+    "lastUpdated":  "2026-04-17",
+    "summary":  {
+                    "serviceServiceDependencies":  7,
+                    "totalControllers":  14,
+                    "totalEndpoints":  90,
+                    "controllerServiceDependencies":  2,
+                    "totalServices":  8
+                },
+    "generatedBy":  "Generate-CallGraph.ps1",
+    "dependencies":  {
+                         "serviceToRepository":  [
+
+                                                 ],
+                         "serviceToService":  [
+                                                  {
+                                                      "to":  "IOtpService",
+                                                      "from":  "AuthService"
+                                                  },
+                                                  {
+                                                      "to":  "IJwtService",
+                                                      "from":  "AuthService"
+                                                  },
+                                                  {
+                                                      "to":  "IUserService",
+                                                      "from":  "AuthService"
+                                                  },
+                                                  {
+                                                      "to":  "ISmsService",
+                                                      "from":  "AuthService"
+                                                  },
+                                                  {
+                                                      "to":  "IEmailService",
+                                                      "from":  "AuthService"
+                                                  },
+                                                  {
+                                                      "to":  "ISmsService",
+                                                      "from":  "OtpService"
+                                                  },
+                                                  {
+                                                      "to":  "IEmailService",
+                                                      "from":  "OtpService"
+                                                  }
+                                              ],
+                         "controllerToService":  [
+                                                     {
+                                                         "from":  "AuthController",
+                                                         "to":  "IAuthService",
+                                                         "file":  "src/backend/MasterMind.API/Controllers/AuthController.cs"
+                                                     },
+                                                     {
+                                                         "from":  "AuthController",
+                                                         "to":  "IDeviceService",
+                                                         "file":  "src/backend/MasterMind.API/Controllers/AuthController.cs"
+                                                     }
+                                                 ]
+                     }
+}

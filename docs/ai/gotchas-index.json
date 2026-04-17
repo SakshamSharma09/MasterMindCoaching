@@ -1,0 +1,63 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-04-17",
+  "description": "Quick lookup index for AI gotchas - match symptoms to solutions",
+  "gotchas": [
+    {
+      "id": "linq-sql-translation",
+      "symptoms": ["500 error", "internal server error", "LINQ", "SQL translation", "cannot be translated"],
+      "category": "backend",
+      "section": "LINQ to SQL Translation Issues",
+      "severity": "high"
+    },
+    {
+      "id": "authorize-attribute",
+      "symptoms": ["401", "unauthorized", "authentication", "no auth required", "endpoint accessible"],
+      "category": "backend",
+      "section": "Authorization Attribute Placement",
+      "severity": "critical"
+    },
+    {
+      "id": "session-status-enum",
+      "symptoms": ["400 bad request", "session", "status", "enum", "validation error"],
+      "category": "backend",
+      "section": "Session Status Enum",
+      "severity": "medium"
+    },
+    {
+      "id": "pinia-persistence",
+      "symptoms": ["redirect loop", "login", "auth state", "localStorage", "token not found"],
+      "category": "frontend",
+      "section": "Pinia Persistence vs Manual localStorage",
+      "severity": "high"
+    },
+    {
+      "id": "roles-array-mapping",
+      "symptoms": ["role", "roles", "user role", "undefined role", "array"],
+      "category": "frontend",
+      "section": "Backend Returns roles[] Array, Frontend Expects role String",
+      "severity": "medium"
+    },
+    {
+      "id": "spa-routing",
+      "symptoms": ["404", "not found", "direct URL", "refresh", "SPA", "routing"],
+      "category": "deployment",
+      "section": "Static Web App SPA Routing",
+      "severity": "high"
+    },
+    {
+      "id": "cors-config",
+      "symptoms": ["CORS", "cross-origin", "blocked", "policy"],
+      "category": "deployment",
+      "section": "CORS Configuration",
+      "severity": "high"
+    },
+    {
+      "id": "datetime-functions",
+      "symptoms": ["GETUTCDATE", "datetime", "SQL function", "not recognized"],
+      "category": "database",
+      "section": "DateTime Functions",
+      "severity": "medium"
+    }
+  ]
+}
