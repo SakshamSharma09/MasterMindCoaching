@@ -20,6 +20,12 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import ToastContainer from '@/components/common/ToastContainer.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+
+// Initialize auth from stored tokens on app startup
+authStore.initializeAuth()
 </script>
 
 <style scoped>

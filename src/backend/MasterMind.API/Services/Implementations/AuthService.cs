@@ -380,6 +380,121 @@ public class AuthService : IAuthService
         }
     }
 
+    public async Task<AuthResponseDto> QuickLoginAsync(string email)
+    {
+        try
+        {
+            var allowedEmails = new[] { "admin@mastermind.com", "teacher@mastermind.com", "parent@mastermind.com" };
+            var normalizedEmail = email.ToLower();
+            
+            if (!allowedEmails.Contains(normalizedEmail))
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Invalid quick access email",
+                    ErrorCode = "INVALID_EMAIL"
+                };
+            }
+
+            // Determine role based on email
+            var roleName = normalizedEmail switch
+            {
+                "admin@mastermind.com" => "Admin",
+                "teacher@mastermind.com" => "Teacher",
+                "parent@mastermind.com" => "Parent",
+                _ => "Admin"
+            };
+
+            // Find or create the user
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail && !u.IsDeleted);
+
+            if (user == null)
+            {
+                // Create the demo user
+                var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+                if (role == null)
+                {
+                    role = new Role { Name = roleName, Description = $"{roleName} role" };
+                    _context.Roles.Add(role);
+                    await _context.SaveChangesAsync();
+                }
+
+                user = new User
+                {
+                    Email = normalizedEmail,
+                    FirstName = roleName == "Admin" ? "Admin" : (roleName == "Teacher" ? "Test" : "Parent"),
+                    LastName = roleName == "Parent" ? "User" : "User",
+                    Mobile = "+1234567890",
+                    IsActive = true,
+                    IsEmailVerified = true,
+                    IsMobileVerified = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                // Add role
+                var userRole = new UserRole { UserId = user.Id, RoleId = role.Id };
+                _context.UserRoles.Add(userRole);
+                await _context.SaveChangesAsync();
+
+                // Reload with roles
+                user = await _context.Users
+                    .Include(u => u.UserRoles)
+                        .ThenInclude(ur => ur.Role)
+                    .FirstAsync(u => u.Id == user.Id);
+            }
+
+            if (!user.IsActive)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Your account has been deactivated.",
+                    ErrorCode = "ACCOUNT_DEACTIVATED"
+                };
+            }
+
+            await _userService.UpdateLastLoginAsync(user.Id);
+
+            var roles = user.UserRoles.Select(ur => ur.Role.Name);
+            var accessToken = _jwtService.GenerateAccessToken(user, roles);
+            var refreshToken = _jwtService.GenerateRefreshToken(GetClientIp());
+            refreshToken.UserId = user.Id;
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync();
+
+            var userDto = await _userService.ToUserDtoAsync(user);
+
+            _logger.LogInformation("User {UserId} authenticated via quick login", user.Id);
+
+            return new AuthResponseDto
+            {
+                Success = true,
+                Message = "Quick login successful",
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token,
+                ExpiresAt = _jwtService.GetAccessTokenExpiry(),
+                User = userDto
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during quick login for {Email}", email);
+            return new AuthResponseDto
+            {
+                Success = false,
+                Message = "An error occurred during quick login",
+                ErrorCode = "AUTH_ERROR"
+            };
+        }
+    }
+
     public async Task<AuthResponseDto> SetPasswordAsync(int userId, SetPasswordDto request)
     {
         try

@@ -53,6 +53,7 @@ export const useSessionStore = defineStore('session', () => {
     
     try {
       const response = await apiService.get(API_ENDPOINTS.SESSIONS.LIST)
+      // Handle ApiResponse wrapper - response is the ApiResponse object directly
       sessions.value = response.data || []
       
       // If no session is selected, try to select the active one

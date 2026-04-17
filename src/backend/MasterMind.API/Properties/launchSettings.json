@@ -2,11 +2,11 @@
   "profiles": {
     "MasterMind.API": {
       "commandName": "Project",
-      "launchBrowser": true,
+      "launchBrowser": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:49627;http://localhost:49628"
+      "applicationUrl": "http://localhost:5000;https://localhost:5001"
     }
   }
 }

@@ -123,82 +123,42 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const initializeAuth = async () => {
-    // Check if we have stored tokens
-    const storedAccessToken = localStorage.getItem('accessToken')
-    const storedRefreshToken = localStorage.getItem('refreshToken')
-    const storedUser = localStorage.getItem('user')
-
-    if (storedAccessToken && storedRefreshToken && storedUser) {
-      accessToken.value = storedAccessToken
-      refreshToken.value = storedRefreshToken
-
+    // Pinia persistence plugin auto-restores state from localStorage
+    // We just need to verify the token is still valid if we have one
+    if (accessToken.value && user.value) {
       try {
-        user.value = JSON.parse(storedUser)
-        // Verify token is still valid
         await getCurrentUser()
       } catch (err) {
+        console.warn('[Auth] Token validation failed, clearing auth')
         clearAuth()
       }
     }
   }
 
-  // Bypass authentication for test emails
-  const bypassAuth = (identifier: string) => {
-    const testAccounts = {
-      'admin@mastermind.com': {
-        id: 1,
-        email: 'admin@mastermind.com',
-        mobile: '+1234567890',
-        firstName: 'Test',
-        lastName: 'Administrator',
-        role: 'Admin' as const,
-        isActive: true,
-        isEmailVerified: true,
-        isMobileVerified: true,
-        createdAt: new Date().toISOString()
-      },
-      'teacher@mastermind.com': {
-        id: 2,
-        email: 'teacher@mastermind.com',
-        mobile: '+1234567891',
-        firstName: 'Test',
-        lastName: 'Teacher',
-        role: 'Teacher' as const,
-        isActive: true,
-        isEmailVerified: true,
-        isMobileVerified: true,
-        createdAt: new Date().toISOString()
-      },
-      'parent@mastermind.com': {
-        id: 3,
-        email: 'parent@mastermind.com',
-        mobile: '+1234567892',
-        firstName: 'Test',
-        lastName: 'Parent',
-        role: 'Parent' as const,
-        isActive: true,
-        isEmailVerified: true,
-        isMobileVerified: true,
-        createdAt: new Date().toISOString()
+  // Bypass authentication for test emails - now calls backend
+  const bypassAuth = async (identifier: string) => {
+    try {
+      // Call the backend quick-login endpoint
+      const response = await authService.quickLogin(identifier)
+      
+      if (response.accessToken) {
+        setTokens(response.accessToken, response.refreshToken)
+        setUser(response.user)
+        
+        console.log('[Auth Store] Quick login successful:', response.user)
+        
+        return {
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+          user: response.user
+        }
+      } else {
+        throw new Error(response.message || 'Quick login failed')
       }
-    }
-
-    const testUser = testAccounts[identifier as keyof typeof testAccounts]
-    if (!testUser) {
-      throw new Error('Invalid test email')
-    }
-
-    // Set mock tokens and user data
-    const mockAccessToken = 'mock-access-token-' + Date.now()
-    const mockRefreshToken = 'mock-refresh-token-' + Date.now()
-    
-    setTokens(mockAccessToken, mockRefreshToken)
-    setUser(testUser)
-    
-    return {
-      accessToken: mockAccessToken,
-      refreshToken: mockRefreshToken,
-      user: testUser
+    } catch (error: any) {
+      console.error('[Auth Store] Quick login failed:', error)
+      const errorMessage = error.response?.data?.message || error.message || 'Quick login failed'
+      throw new Error(errorMessage)
     }
   }
 

@@ -123,6 +123,29 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Quick access login for test/demo accounts (bypasses OTP)
+    /// </summary>
+    [HttpPost("quick-login")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AuthResponseDto>> QuickLogin([FromBody] QuickLoginDto request)
+    {
+        if (string.IsNullOrEmpty(request.Email))
+        {
+            return BadRequest(new AuthResponseDto { Success = false, Message = "Email is required", ErrorCode = "VALIDATION_ERROR" });
+        }
+
+        var allowedEmails = new[] { "admin@mastermind.com", "teacher@mastermind.com", "parent@mastermind.com" };
+        if (!allowedEmails.Contains(request.Email.ToLower()))
+        {
+            return BadRequest(new AuthResponseDto { Success = false, Message = "Invalid quick access email", ErrorCode = "INVALID_EMAIL" });
+        }
+
+        var result = await _authService.QuickLoginAsync(request.Email);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Set password for admin user (requires authentication)
     /// </summary>
     [HttpPost("set-password")]

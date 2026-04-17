@@ -37,6 +37,9 @@ export interface OtpVerifyRequest {
 }
 
 export interface AuthResponse {
+  success?: boolean
+  message?: string
+  errorCode?: string
   user: User
   accessToken: string
   refreshToken: string

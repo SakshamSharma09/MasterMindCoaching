@@ -17,14 +17,15 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    // Get token from localStorage (auth store uses 'mastermind-auth' key with 'accessToken' field)
+    // Get token from localStorage (Pinia persistence stores under 'mastermind-auth')
     const authData = localStorage.getItem('mastermind-auth')
     let token = null
     
     if (authData) {
       try {
         const parsedAuth = JSON.parse(authData)
-        token = parsedAuth.accessToken
+        // Pinia persistedstate stores directly: { user, accessToken, refreshToken }
+        token = parsedAuth.accessToken || parsedAuth.state?.accessToken
       } catch (error) {
         console.error('Error parsing auth data:', error)
       }

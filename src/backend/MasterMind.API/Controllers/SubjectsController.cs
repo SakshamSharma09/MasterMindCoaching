@@ -9,6 +9,7 @@ namespace MasterMind.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SubjectsController : ControllerBase
 {
     private readonly MasterMindDbContext _context;

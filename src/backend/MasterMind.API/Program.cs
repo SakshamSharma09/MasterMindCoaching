@@ -101,7 +101,14 @@ else
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKey = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+var secretKey = jwtSettings["Secret"];
+
+// Use a default secret for development if not configured
+if (string.IsNullOrEmpty(secretKey))
+{
+    Log.Warning("JWT Secret not configured in appsettings.json - using default development key. This is NOT secure for production!");
+    secretKey = "ThisIsADefaultDevelopmentKeyThatShouldBeChangedInProduction1234567890";
+}
 
 builder.Services.AddAuthentication(options =>
 {
@@ -179,8 +186,6 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 
-// AutoMapper
-builder.Services.AddAutoMapper(typeof(Program));
 
 // FluentValidation
 builder.Services.AddFluentValidationAutoValidation();

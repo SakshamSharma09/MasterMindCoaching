@@ -9,6 +9,7 @@ namespace MasterMind.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[Authorize]
 public class ExpensesController : ControllerBase
 {
     private readonly MasterMindDbContext _context;

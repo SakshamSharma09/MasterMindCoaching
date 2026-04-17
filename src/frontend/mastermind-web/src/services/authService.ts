@@ -77,6 +77,14 @@ export const authService = {
     return response
   },
 
+  // Quick login for demo accounts
+  async quickLogin(email: string): Promise<AuthResponse> {
+    const response = await apiService.post<AuthResponse>('/auth/quick-login', {
+      email
+    })
+    return response
+  },
+
   // Set admin password
   async setPassword(password: string, confirmPassword: string): Promise<any> {
     const response = await apiService.post('/auth/set-password', {
