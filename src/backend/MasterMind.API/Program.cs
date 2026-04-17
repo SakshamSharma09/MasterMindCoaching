@@ -186,6 +186,17 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 
+// Azure Blob Storage for student photos
+var blobConnectionString = builder.Configuration["AzureBlobStorage:ConnectionString"];
+if (!string.IsNullOrEmpty(blobConnectionString))
+{
+    builder.Services.AddSingleton<IBlobStorageService, BlobStorageService>();
+    Log.Information("Azure Blob Storage configured for student photos");
+}
+else
+{
+    Log.Warning("Azure Blob Storage not configured - photo uploads will not work");
+}
 
 // FluentValidation
 builder.Services.AddFluentValidationAutoValidation();
