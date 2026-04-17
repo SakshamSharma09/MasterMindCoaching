@@ -1,0 +1,142 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-04-17",
+  "description": "Quick lookup index for API endpoints - route to file/line mapping",
+  "endpoints": {
+    "auth": {
+      "controller": "src/backend/MasterMind.API/Controllers/AuthController.cs",
+      "routes": [
+        { "method": "POST", "path": "/api/auth/request-otp", "action": "RequestOtp" },
+        { "method": "POST", "path": "/api/auth/verify-otp", "action": "VerifyOtp" },
+        { "method": "POST", "path": "/api/auth/quick-login", "action": "QuickLogin" },
+        { "method": "POST", "path": "/api/auth/login-password", "action": "LoginWithPassword" },
+        { "method": "POST", "path": "/api/auth/refresh-token", "action": "RefreshToken" },
+        { "method": "POST", "path": "/api/auth/set-password", "action": "SetPassword" },
+        { "method": "POST", "path": "/api/auth/logout", "action": "Logout" },
+        { "method": "GET", "path": "/api/auth/me", "action": "GetCurrentUser" }
+      ]
+    },
+    "sessions": {
+      "controller": "src/backend/MasterMind.API/Controllers/SessionsController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/sessions", "action": "GetSessions" },
+        { "method": "GET", "path": "/api/sessions/{id}", "action": "GetSession" },
+        { "method": "POST", "path": "/api/sessions", "action": "CreateSession" },
+        { "method": "PUT", "path": "/api/sessions/{id}", "action": "UpdateSession" },
+        { "method": "DELETE", "path": "/api/sessions/{id}", "action": "DeleteSession" },
+        { "method": "PUT", "path": "/api/sessions/{id}/activate", "action": "ActivateSession" }
+      ]
+    },
+    "students": {
+      "controller": "src/backend/MasterMind.API/Controllers/StudentsController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/students", "action": "GetStudents" },
+        { "method": "GET", "path": "/api/students/{id}", "action": "GetStudent" },
+        { "method": "POST", "path": "/api/students", "action": "CreateStudent" },
+        { "method": "PUT", "path": "/api/students/{id}", "action": "UpdateStudent" },
+        { "method": "DELETE", "path": "/api/students/{id}", "action": "DeleteStudent" }
+      ]
+    },
+    "teachers": {
+      "controller": "src/backend/MasterMind.API/Controllers/TeachersController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/teachers", "action": "GetTeachers" },
+        { "method": "GET", "path": "/api/teachers/{id}", "action": "GetTeacher" },
+        { "method": "POST", "path": "/api/teachers", "action": "CreateTeacher" },
+        { "method": "PUT", "path": "/api/teachers/{id}", "action": "UpdateTeacher" },
+        { "method": "DELETE", "path": "/api/teachers/{id}", "action": "DeleteTeacher" }
+      ]
+    },
+    "classes": {
+      "controller": "src/backend/MasterMind.API/Controllers/ClassesController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/classes", "action": "GetClasses" },
+        { "method": "GET", "path": "/api/classes/{id}", "action": "GetClass" },
+        { "method": "POST", "path": "/api/classes", "action": "CreateClass" },
+        { "method": "PUT", "path": "/api/classes/{id}", "action": "UpdateClass" },
+        { "method": "DELETE", "path": "/api/classes/{id}", "action": "DeleteClass" }
+      ]
+    },
+    "attendance": {
+      "controller": "src/backend/MasterMind.API/Controllers/AttendanceController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/attendance", "action": "GetAttendance" },
+        { "method": "POST", "path": "/api/attendance", "action": "MarkAttendance" },
+        { "method": "GET", "path": "/api/attendance/student/{studentId}", "action": "GetStudentAttendance" },
+        { "method": "GET", "path": "/api/attendance/class/{classId}/summary", "action": "GetClassAttendanceSummary" }
+      ]
+    },
+    "subjects": {
+      "controller": "src/backend/MasterMind.API/Controllers/SubjectsController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/subjects", "action": "GetSubjects" },
+        { "method": "GET", "path": "/api/subjects/{id}", "action": "GetSubject" },
+        { "method": "POST", "path": "/api/subjects", "action": "CreateSubject" },
+        { "method": "PUT", "path": "/api/subjects/{id}", "action": "UpdateSubject" },
+        { "method": "DELETE", "path": "/api/subjects/{id}", "action": "DeleteSubject" }
+      ]
+    },
+    "fees": {
+      "controller": "src/backend/MasterMind.API/Controllers/FeesController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/fees", "action": "GetFees" },
+        { "method": "PUT", "path": "/api/fees/{id}", "action": "UpdateFee" }
+      ]
+    },
+    "feecollection": {
+      "controller": "src/backend/MasterMind.API/Controllers/FeeCollectionController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/feecollection", "action": "GetFeeCollections" },
+        { "method": "POST", "path": "/api/feecollection/setup-student-fee", "action": "SetupStudentFee" },
+        { "method": "POST", "path": "/api/feecollection/collect", "action": "CollectFee" },
+        { "method": "GET", "path": "/api/feecollection/receipt/{id}", "action": "GetReceipt" }
+      ]
+    },
+    "expenses": {
+      "controller": "src/backend/MasterMind.API/Controllers/ExpensesController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/expenses", "action": "GetExpenses" },
+        { "method": "GET", "path": "/api/expenses/{id}", "action": "GetExpense" },
+        { "method": "POST", "path": "/api/expenses", "action": "CreateExpense" },
+        { "method": "PUT", "path": "/api/expenses/{id}", "action": "UpdateExpense" },
+        { "method": "DELETE", "path": "/api/expenses/{id}", "action": "DeleteExpense" }
+      ]
+    },
+    "dashboard": {
+      "controller": "src/backend/MasterMind.API/Controllers/DashboardController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/dashboard", "action": "GetDashboard" }
+      ]
+    },
+    "finance": {
+      "controller": "src/backend/MasterMind.API/Controllers/FinanceController.cs",
+      "routes": [
+        { "method": "GET", "path": "/api/finance/summary", "action": "GetFinanceSummary" },
+        { "method": "GET", "path": "/api/finance/reports", "action": "GetFinanceReports" }
+      ]
+    }
+  },
+  "frontendViews": {
+    "auth": {
+      "login": "src/frontend/mastermind-web/src/views/auth/LoginView.vue"
+    },
+    "admin": {
+      "dashboard": "src/frontend/mastermind-web/src/views/admin/DashboardView.vue",
+      "students": "src/frontend/mastermind-web/src/views/admin/StudentsView.vue",
+      "teachers": "src/frontend/mastermind-web/src/views/admin/TeachersView.vue",
+      "classes": "src/frontend/mastermind-web/src/views/admin/ClassesView.vue",
+      "attendance": "src/frontend/mastermind-web/src/views/admin/AttendanceView.vue",
+      "finance": "src/frontend/mastermind-web/src/views/admin/FinanceView.vue",
+      "sessions": "src/frontend/mastermind-web/src/views/admin/SessionsView.vue"
+    }
+  },
+  "stores": {
+    "auth": "src/frontend/mastermind-web/src/stores/auth.ts",
+    "students": "src/frontend/mastermind-web/src/stores/students.ts",
+    "classes": "src/frontend/mastermind-web/src/stores/classes.ts"
+  },
+  "services": {
+    "api": "src/frontend/mastermind-web/src/services/apiService.ts",
+    "auth": "src/frontend/mastermind-web/src/services/authService.ts"
+  }
+}
