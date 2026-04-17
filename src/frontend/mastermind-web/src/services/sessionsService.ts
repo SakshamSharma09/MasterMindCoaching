@@ -34,10 +34,12 @@ export interface UpdateSessionDto {
   name?: string
   displayName?: string
   description?: string
+  academicYear?: string
   startDate?: string
   endDate?: string
   isActive?: boolean
-  status?: string
+  status?: 'Planned' | 'Active' | 'Completed' | 'Suspended' | 'Cancelled'
+  settings?: string
 }
 
 export const sessionsService = {
