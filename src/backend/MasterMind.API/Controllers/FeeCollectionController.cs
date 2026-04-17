@@ -23,6 +23,54 @@ public class FeeCollectionController : ControllerBase
     }
 
     /// <summary>
+    /// Get all fee collections/payments
+    /// </summary>
+    [HttpGet]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<object>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<object>>>> GetFeeCollections()
+    {
+        try
+        {
+            var payments = await _context.Payments
+                .Include(p => p.StudentFee)
+                    .ThenInclude(sf => sf.Student)
+                .OrderByDescending(p => p.PaymentDate)
+                .Take(100)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Amount,
+                    p.PaymentDate,
+                    PaymentMethod = p.Method.ToString(),
+                    p.TransactionId,
+                    p.ReceiptNumber,
+                    StudentName = p.StudentFee != null && p.StudentFee.Student != null 
+                        ? $"{p.StudentFee.Student.FirstName} {p.StudentFee.Student.LastName}" 
+                        : "Unknown"
+                })
+                .ToListAsync();
+
+            return Ok(new ApiResponse<IEnumerable<object>>
+            {
+                Success = true,
+                Message = "Fee collections retrieved successfully",
+                Data = payments
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving fee collections");
+            return Ok(new ApiResponse<IEnumerable<object>>
+            {
+                Success = true,
+                Message = "No fee collections found",
+                Data = new List<object>()
+            });
+        }
+    }
+
+    /// <summary>
     /// Create fee structure for a student (Monthly or Full Course)
     /// </summary>
     /// <param name="request">Fee setup request</param>

@@ -57,7 +57,7 @@ public class ExpensesController : ControllerBase
             // Filter by category if provided
             if (!string.IsNullOrEmpty(category))
             {
-                query = query.Where(e => e.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
+                query = query.Where(e => e.Category.ToLower() == category.ToLower());
             }
 
             var expenses = await query
