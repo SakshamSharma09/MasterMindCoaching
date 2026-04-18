@@ -398,9 +398,9 @@ public class StudentsController : ControllerBase
 
             if (classId.HasValue)
             {
-                // Get students who are not already mapped to this specific class
-                query = query.Where(s => !_context.StudentClasses
-                    .Any(sc => sc.StudentId == s.Id && sc.ClassId == classId.Value && sc.IsActive));
+                // Prefer navigation-based predicate so EF translates to a single SQL query
+                query = query.Where(s => !s.StudentClasses.Any(sc =>
+                    sc.ClassId == classId.Value && sc.IsActive));
             }
 
             var students = await query

@@ -18,12 +18,14 @@ public class FinanceService : IFinanceService
 
     public async Task<FinancialSummary> GetFinancialSummaryAsync()
     {
-        var currentSession = await _context.Sessions
-            .Where(s => s.IsActive)
+        var activeSessionId = await _context.Sessions
+            .Where(s => s.IsActive && !s.IsDeleted)
+            .Select(s => (int?)s.Id)
             .FirstOrDefaultAsync();
 
         var totalStudents = await _context.Students
-            .CountAsync(s => !s.IsDeleted && s.IsActive && (currentSession == null || s.SessionId == currentSession.Id));
+            .CountAsync(s => !s.IsDeleted && s.IsActive &&
+                (!activeSessionId.HasValue || s.SessionId == activeSessionId));
 
         // Calculate total revenue from payments
         var totalRevenue = await _context.Payments
@@ -55,8 +57,9 @@ public class FinanceService : IFinanceService
             .Distinct()
             .CountAsync();
 
+        var today = DateOnly.FromDateTime(DateTime.Today);
         var overdueStudents = await _context.StudentFees
-            .Where(sf => sf.Status != FeeStatus.Paid && DateOnly.FromDateTime(DateTime.Today) > sf.DueDate)
+            .Where(sf => sf.Status != FeeStatus.Paid && today > sf.DueDate)
             .Select(sf => sf.StudentId)
             .Distinct()
             .CountAsync();
@@ -312,21 +315,23 @@ public class FinanceService : IFinanceService
 
     public async Task<IEnumerable<StudentFee>> GetOverdueFeesAsync()
     {
+        var today = DateOnly.FromDateTime(DateTime.Today);
         return await _context.StudentFees
             .Include(sf => sf.Student)
                 .ThenInclude(s => s.StudentClasses)
                     .ThenInclude(sc => sc.Class)
             .Include(sf => sf.FeeStructure)
-            .Where(sf => sf.Status != FeeStatus.Paid && DateOnly.FromDateTime(DateTime.Today) > sf.DueDate)
+            .Where(sf => sf.Status != FeeStatus.Paid && today > sf.DueDate)
             .OrderBy(sf => sf.DueDate)
             .ToListAsync();
     }
 
     public async Task<bool> SendRemindersAsync(List<int>? feeIds = null)
     {
+        var today = DateOnly.FromDateTime(DateTime.Today);
         var query = _context.StudentFees
             .Include(sf => sf.Student)
-            .Where(sf => sf.Status != FeeStatus.Paid && DateOnly.FromDateTime(DateTime.Today) > sf.DueDate);
+            .Where(sf => sf.Status != FeeStatus.Paid && today > sf.DueDate);
 
         if (feeIds != null && feeIds.Any())
         {

@@ -250,7 +250,7 @@ public class TeachersController : ControllerBase
             if (updateData.TryGetProperty("classIds", out JsonElement classIdsElement))
             {
                 // Remove existing class assignments
-                var existingClasses = _context.TeacherClasses.Where(tc => tc.TeacherId == id).ToList();
+                var existingClasses = await _context.TeacherClasses.Where(tc => tc.TeacherId == id).ToListAsync();
                 _context.TeacherClasses.RemoveRange(existingClasses);
 
                 // Add new class assignments

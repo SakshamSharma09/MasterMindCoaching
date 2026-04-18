@@ -44,6 +44,7 @@ public class ClassesController : ControllerBase
             }
 
             var classes = await classesQuery
+                .AsSplitQuery()
                 .Include(c => c.ClassSubjects)
                     .ThenInclude(cs => cs.Subject)
                 .Include(c => c.TeacherClasses)
@@ -69,10 +70,16 @@ public class ClassesController : ControllerBase
                 DaysOfWeek = c.DaysOfWeek,
                 MonthlyFee = c.MonthlyFee,
                 IsActive = c.IsActive,
-                Subjects = c.ClassSubjects?.Select(cs => cs.Subject?.Name ?? string.Empty).Where(n => !string.IsNullOrEmpty(n)).ToList() ?? new List<string>(),
-                Teachers = c.TeacherClasses?.Where(tc => tc.IsActive && tc.Teacher != null && tc.Teacher.User != null)
-                                           .Select(tc => $"{tc.Teacher!.User!.FirstName} {tc.Teacher.User.LastName}")
-                                           .ToList() ?? new List<string>(),
+                Subjects = c.ClassSubjects?
+                    .Where(cs => cs.IsActive && cs.Subject != null && cs.Subject.IsActive)
+                    .Select(cs => cs.Subject!.Name)
+                    .ToList() ?? new List<string>(),
+                Teachers = c.TeacherClasses?
+                    .Where(tc => tc.IsActive && tc.Teacher != null)
+                    .Select(tc => FormatTeacherDisplayName(tc.Teacher!))
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Distinct()
+                    .ToList() ?? new List<string>(),
                 CreatedAt = c.CreatedAt,
                 UpdatedAt = c.UpdatedAt
             }).ToList();
@@ -104,6 +111,7 @@ public class ClassesController : ControllerBase
         {
             var classEntity = await _context.Classes
                 .Where(c => c.Id == id && c.IsActive)
+                .AsSplitQuery()
                 .Include(c => c.ClassSubjects)
                     .ThenInclude(cs => cs.Subject)
                 .Include(c => c.TeacherClasses)
@@ -139,12 +147,14 @@ public class ClassesController : ControllerBase
                 MonthlyFee = classEntity.MonthlyFee,
                 IsActive = classEntity.IsActive,
                 Subjects = classEntity.ClassSubjects
-                    .Where(cs => cs.IsActive && cs.Subject.IsActive)
+                    .Where(cs => cs.IsActive && cs.Subject != null && cs.Subject.IsActive)
                     .Select(cs => cs.Subject.Name)
                     .ToList(),
                 Teachers = classEntity.TeacherClasses
-                    .Where(tc => tc.IsActive && tc.Teacher != null && tc.Teacher.User != null)
-                    .Select(tc => $"{tc.Teacher.User.FirstName} {tc.Teacher.User.LastName}")
+                    .Where(tc => tc.IsActive && tc.Teacher != null)
+                    .Select(tc => FormatTeacherDisplayName(tc.Teacher))
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Distinct()
                     .ToList(),
                 CreatedAt = classEntity.CreatedAt,
                 UpdatedAt = classEntity.UpdatedAt
@@ -219,6 +229,7 @@ public class ClassesController : ControllerBase
             // Reload with subjects
             var createdClass = await _context.Classes
                 .Where(c => c.Id == classEntity.Id)
+                .AsSplitQuery()
                 .Include(c => c.ClassSubjects)
                     .ThenInclude(cs => cs.Subject)
                 .Include(c => c.TeacherClasses)
@@ -293,6 +304,7 @@ public class ClassesController : ControllerBase
             // Reload with subjects
             var updatedClass = await _context.Classes
                 .Where(c => c.Id == id)
+                .AsSplitQuery()
                 .Include(c => c.ClassSubjects)
                     .ThenInclude(cs => cs.Subject)
                 .Include(c => c.TeacherClasses)
@@ -362,6 +374,14 @@ public class ClassesController : ControllerBase
         }
     }
 
+    /// <summary>Use linked User account name when present; otherwise teacher profile name.</summary>
+    private static string FormatTeacherDisplayName(Teacher teacher)
+    {
+        if (teacher.User != null)
+            return $"{teacher.User.FirstName} {teacher.User.LastName}".Trim();
+        return $"{teacher.FirstName} {teacher.LastName}".Trim();
+    }
+
     // Helper methods
     private async Task AddSubjectsToClass(int classId, List<string> subjectNames)
     {
@@ -372,9 +392,9 @@ public class ClassesController : ControllerBase
             var trimmedName = subjectName.Trim();
             if (string.IsNullOrEmpty(trimmedName)) continue;
 
-            // Find or create subject
+            var nameNorm = trimmedName.ToLowerInvariant();
             var subject = await _context.Subjects
-                .FirstOrDefaultAsync(s => s.Name.ToLower() == trimmedName.ToLower());
+                .FirstOrDefaultAsync(s => s.Name.ToLower() == nameNorm);
 
             if (subject == null)
             {
@@ -450,12 +470,14 @@ public class ClassesController : ControllerBase
             MonthlyFee = classEntity.MonthlyFee,
             IsActive = classEntity.IsActive,
             Subjects = classEntity.ClassSubjects
-                .Where(cs => cs.IsActive && cs.Subject.IsActive)
+                .Where(cs => cs.IsActive && cs.Subject != null && cs.Subject.IsActive)
                 .Select(cs => cs.Subject.Name)
                 .ToList(),
             Teachers = classEntity.TeacherClasses?
-                .Where(tc => tc.IsActive && tc.Teacher != null && tc.Teacher.User != null)
-                .Select(tc => $"{tc.Teacher!.User!.FirstName} {tc.Teacher.User.LastName}")
+                .Where(tc => tc.IsActive && tc.Teacher != null)
+                .Select(tc => FormatTeacherDisplayName(tc.Teacher!))
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Distinct()
                 .ToList() ?? new List<string>(),
             CreatedAt = classEntity.CreatedAt,
             UpdatedAt = classEntity.UpdatedAt

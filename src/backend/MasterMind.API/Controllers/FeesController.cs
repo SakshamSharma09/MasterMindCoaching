@@ -38,28 +38,59 @@ public class FeesController : ControllerBase
     {
         try
         {
-            // Simplified query - load data first, then project
-            var studentFees = await _context.StudentFees
+            IQueryable<StudentFee> query = _context.StudentFees
+                .AsNoTracking()
                 .Include(sf => sf.Student)
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
-                .Include(sf => sf.FeeStructure)
+                .Include(sf => sf.FeeStructure);
+
+            if (classId.HasValue)
+            {
+                query = query.Where(sf =>
+                    sf.Student.StudentClasses.Any(sc => sc.ClassId == classId.Value && sc.IsActive));
+            }
+
+            FeeStatus? statusFilter = null;
+            if (!string.IsNullOrEmpty(status))
+            {
+                if (!Enum.TryParse<FeeStatus>(status, ignoreCase: true, out var parsedStatus))
+                {
+                    return Ok(new ApiResponse<IEnumerable<StudentFeeDto>>
+                    {
+                        Success = true,
+                        Message = "Fees retrieved successfully",
+                        Data = Array.Empty<StudentFeeDto>()
+                    });
+                }
+
+                statusFilter = parsedStatus;
+            }
+
+            if (statusFilter.HasValue)
+            {
+                query = query.Where(sf => sf.Status == statusFilter.Value);
+            }
+
+            if (!string.IsNullOrEmpty(month))
+            {
+                query = query.Where(sf => sf.Month == month);
+            }
+
+            var studentFees = await query
                 .OrderByDescending(sf => sf.DueDate)
-                .Take(100)
                 .ToListAsync();
 
-            // Apply filters and project in memory
             var fees = studentFees
-                .Where(sf => !classId.HasValue || (sf.Student?.StudentClasses?.Any(sc => sc.ClassId == classId.Value) ?? false))
-                .Where(sf => string.IsNullOrEmpty(status) || sf.Status.ToString().Equals(status, StringComparison.OrdinalIgnoreCase))
-                .Where(sf => string.IsNullOrEmpty(month) || sf.Month == month)
                 .Select(sf => new StudentFeeDto
                 {
                     Id = sf.Id,
                     StudentId = sf.StudentId,
                     StudentName = sf.Student != null ? $"{sf.Student.FirstName} {sf.Student.LastName}" : "Unknown",
-                    ClassId = sf.Student?.StudentClasses?.FirstOrDefault()?.ClassId ?? 0,
-                    ClassName = sf.Student?.StudentClasses?.FirstOrDefault()?.Class?.Name ?? "N/A",
+                    ClassId = (sf.Student?.StudentClasses?.FirstOrDefault(sc => sc.IsActive)
+                        ?? sf.Student?.StudentClasses?.FirstOrDefault())?.ClassId ?? 0,
+                    ClassName = (sf.Student?.StudentClasses?.FirstOrDefault(sc => sc.IsActive)
+                        ?? sf.Student?.StudentClasses?.FirstOrDefault())?.Class?.Name ?? "N/A",
                     FeeType = sf.FeeStructure?.Name ?? "N/A",
                     Amount = sf.FinalAmount,
                     DueDate = sf.DueDate.ToString("yyyy-MM-dd"),
@@ -319,9 +350,10 @@ public class FeesController : ControllerBase
     {
         try
         {
+            var today = DateOnly.FromDateTime(DateTime.Today);
             var query = _context.StudentFees
                 .Include(sf => sf.Student)
-                .Where(sf => sf.Status != FeeStatus.Paid && DateOnly.FromDateTime(DateTime.Today) > sf.DueDate);
+                .Where(sf => sf.Status != FeeStatus.Paid && today > sf.DueDate);
 
             if (request.FeeIds != null && request.FeeIds.Any())
             {

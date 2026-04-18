@@ -33,12 +33,14 @@ public class FinanceController : ControllerBase
     {
         try
         {
-            var currentSession = await _context.Sessions
-                .Where(s => s.IsActive)
+            var activeSessionId = await _context.Sessions
+                .Where(s => s.IsActive && !s.IsDeleted)
+                .Select(s => (int?)s.Id)
                 .FirstOrDefaultAsync();
 
             var totalStudents = await _context.Students
-                .CountAsync(s => !s.IsDeleted && s.IsActive && (currentSession == null || s.SessionId == currentSession.Id));
+                .CountAsync(s => !s.IsDeleted && s.IsActive &&
+                    (!activeSessionId.HasValue || s.SessionId == activeSessionId));
 
             // Calculate total revenue from payments
             var totalRevenue = await _context.Payments
@@ -73,8 +75,9 @@ public class FinanceController : ControllerBase
                 .Distinct()
                 .CountAsync();
 
+            var todaySummary = DateOnly.FromDateTime(DateTime.Today);
             var overdueStudents = await _context.StudentFees
-                .Where(sf => sf.Status != FeeStatus.Paid && DateOnly.FromDateTime(DateTime.Today) > sf.DueDate)
+                .Where(sf => sf.Status != FeeStatus.Paid && todaySummary > sf.DueDate)
                 .Select(sf => sf.StudentId)
                 .Distinct()
                 .CountAsync();
@@ -484,30 +487,36 @@ public class FinanceController : ControllerBase
     {
         try
         {
-            var fees = await _context.StudentFees
+            var feeRows = await _context.StudentFees
+                .AsNoTracking()
                 .Include(sf => sf.Student)
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
                 .Where(sf => !sf.IsDeleted)
-                .Select(sf => new
+                .OrderByDescending(sf => sf.DueDate)
+                .ToListAsync();
+
+            var fees = feeRows.Select(sf =>
+            {
+                var studentClass = sf.Student?.StudentClasses?.FirstOrDefault(sc => sc.IsActive)
+                    ?? sf.Student?.StudentClasses?.FirstOrDefault();
+                return new
                 {
                     sf.Id,
                     sf.StudentId,
-                    StudentName = sf.Student.FirstName + " " + sf.Student.LastName,
-                    ClassId = sf.Student.StudentClasses.FirstOrDefault() != null ? 
-                        sf.Student.StudentClasses.FirstOrDefault().ClassId : 0,
-                    ClassName = sf.Student.StudentClasses.FirstOrDefault() != null ? 
-                        sf.Student.StudentClasses.FirstOrDefault().Class.Name : "Not Assigned",
-                    FeeType = sf.FeeStructure.Type,
+                    StudentName = sf.Student != null ? $"{sf.Student.FirstName} {sf.Student.LastName}" : "Unknown",
+                    ClassId = studentClass?.ClassId ?? 0,
+                    ClassName = studentClass?.Class?.Name ?? "Not Assigned",
+                    FeeType = sf.FeeStructure != null ? sf.FeeStructure.Type : FeeType.Tuition,
                     sf.Amount,
                     sf.PaidAmount,
                     BalanceAmount = sf.FinalAmount - sf.PaidAmount,
                     sf.DueDate,
                     Status = sf.Status.ToString(),
                     Description = sf.Remarks
-                })
-                .ToListAsync();
+                };
+            }).ToList();
 
             return Ok(new ApiResponse<IEnumerable<object>>
             {
@@ -539,23 +548,31 @@ public class FinanceController : ControllerBase
         try
         {
             var today = DateOnly.FromDateTime(DateTime.Today);
-            
-            var overdueFees = await _context.StudentFees
+
+            var overdueFeeRows = await _context.StudentFees
+                .AsNoTracking()
                 .Include(sf => sf.Student)
+                    .ThenInclude(s => s.StudentClasses)
+                        .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => !sf.IsDeleted && 
-                           sf.Status != FeeStatus.Paid && 
+                .Where(sf => !sf.IsDeleted &&
+                           sf.Status != FeeStatus.Paid &&
                            today > sf.DueDate)
-                .Select(sf => new
+                .OrderBy(sf => sf.DueDate)
+                .ToListAsync();
+
+            var overdueFees = overdueFeeRows.Select(sf =>
+            {
+                var studentClass = sf.Student?.StudentClasses?.FirstOrDefault(sc => sc.IsActive)
+                    ?? sf.Student?.StudentClasses?.FirstOrDefault();
+                return new
                 {
                     sf.Id,
                     sf.StudentId,
-                    StudentName = sf.Student.FirstName + " " + sf.Student.LastName,
-                    ClassId = sf.Student.StudentClasses.FirstOrDefault() != null ? 
-                        sf.Student.StudentClasses.FirstOrDefault().ClassId : 0,
-                    ClassName = sf.Student.StudentClasses.FirstOrDefault() != null ? 
-                        sf.Student.StudentClasses.FirstOrDefault().Class.Name : "Not Assigned",
-                    FeeType = sf.FeeStructure.Type,
+                    StudentName = sf.Student != null ? $"{sf.Student.FirstName} {sf.Student.LastName}" : "Unknown",
+                    ClassId = studentClass?.ClassId ?? 0,
+                    ClassName = studentClass?.Class?.Name ?? "Not Assigned",
+                    FeeType = sf.FeeStructure != null ? sf.FeeStructure.Type : FeeType.Tuition,
                     sf.Amount,
                     sf.PaidAmount,
                     BalanceAmount = sf.FinalAmount - sf.PaidAmount,
@@ -563,9 +580,8 @@ public class FinanceController : ControllerBase
                     Status = sf.Status.ToString(),
                     Description = sf.Remarks,
                     DaysOverdue = today.DayNumber - sf.DueDate.DayNumber
-                })
-                .OrderBy(sf => sf.DueDate)
-                .ToListAsync();
+                };
+            }).ToList();
 
             return Ok(new ApiResponse<IEnumerable<object>>
             {

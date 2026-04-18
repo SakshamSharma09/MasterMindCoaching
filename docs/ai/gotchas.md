@@ -1,6 +1,6 @@
 # MasterMind Coaching - AI Gotchas & Lessons Learned
 
-> **Last Updated**: 2026-04-17 (System Audit)
+> **Last Updated**: 2026-04-18 (Azure SQL migrations)
 
 > **Purpose**: This file is automatically updated by AI assistants when bugs require more than one attempt to fix. It serves as a permanent memory system that prevents the same mistakes from being repeated.
 
@@ -35,6 +35,13 @@ var result = data.Select(x => new Dto {
     Name = x.Related?.SubRelated?.FirstOrDefault()?.Name ?? "N/A"
 }).ToList();
 ```
+
+### Azure SQL: EnsureCreated Does Not Migrate Existing Databases
+**Symptom**: `SqlException` (invalid column name, constraint failures) after deploying code that adds properties or relationships; CRUD fails only in Azure SQL production.  
+**Root Cause**: `Database.EnsureCreated()` creates a schema once and does not evolve existing databases. Azure SQL used that path while PostgreSQL used raw bootstrap SQL.  
+**Solution**: Use EF Core migrations and apply them at startup with `Database.MigrateAsync()` for SQL Server (see `docs/database-migrations.md`). Generate changes with `dotnet ef migrations add`.  
+**Files Affected**: `Program.cs`, `Data/Migrations/`  
+**Date Learned**: 2026-04-18
 
 ### Authorization Attribute Placement
 **Symptom**: API endpoints accessible without authentication (returns 200 instead of 401)  

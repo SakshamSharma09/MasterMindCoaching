@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-17",
+  "lastUpdated": "2026-04-18",
   "description": "Quick lookup index for AI gotchas - match symptoms to solutions",
   "gotchas": [
     {
@@ -8,6 +8,13 @@
       "symptoms": ["500 error", "internal server error", "LINQ", "SQL translation", "cannot be translated"],
       "category": "backend",
       "section": "LINQ to SQL Translation Issues",
+      "severity": "high"
+    },
+    {
+      "id": "azure-sql-migrations",
+      "symptoms": ["SqlException", "invalid column name", "Azure SQL", "migration", "schema", "constraint"],
+      "category": "backend",
+      "section": "Azure SQL: EnsureCreated Does Not Migrate Existing Databases",
       "severity": "high"
     },
     {

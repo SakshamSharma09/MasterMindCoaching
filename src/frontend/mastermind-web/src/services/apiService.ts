@@ -35,14 +35,16 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
-    // Add sessionId to params if not a session-related endpoint
+    // Add sessionId to params only for GET requests (for filtering)
+    // POST/PUT/DELETE operations should use the backend's active session logic
     const sessionEndpoints = ['/sessions', '/auth']
     const isSessionEndpoint = sessionEndpoints.some(endpoint => config.url?.startsWith(endpoint))
+    const isWriteOperation = ['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase() || '')
     
-    if (!isSessionEndpoint) {
+    if (!isSessionEndpoint && !isWriteOperation) {
       const selectedSessionId = localStorage.getItem('selectedSessionId')
       if (selectedSessionId) {
-        // Add sessionId to query params
+        // Add sessionId to query params only for GET requests
         config.params = {
           ...config.params,
           sessionId: parseInt(selectedSessionId, 10)

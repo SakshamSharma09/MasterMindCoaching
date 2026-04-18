@@ -33,29 +33,31 @@ public class FeeCollectionController : ControllerBase
         try
         {
             var payments = await _context.Payments
+                .AsSplitQuery()
                 .Include(p => p.StudentFee)
-                    .ThenInclude(sf => sf.Student)
+                    .ThenInclude(sf => sf!.Student)
                 .OrderByDescending(p => p.PaymentDate)
                 .Take(100)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.Amount,
-                    p.PaymentDate,
-                    PaymentMethod = p.Method.ToString(),
-                    p.TransactionId,
-                    p.ReceiptNumber,
-                    StudentName = p.StudentFee != null && p.StudentFee.Student != null 
-                        ? $"{p.StudentFee.Student.FirstName} {p.StudentFee.Student.LastName}" 
-                        : "Unknown"
-                })
                 .ToListAsync();
+
+            var rows = payments.Select(p => new
+            {
+                p.Id,
+                p.Amount,
+                p.PaymentDate,
+                PaymentMethod = p.Method.ToString(),
+                p.TransactionId,
+                p.ReceiptNumber,
+                StudentName = p.StudentFee?.Student != null
+                    ? $"{p.StudentFee.Student.FirstName} {p.StudentFee.Student.LastName}"
+                    : "Unknown"
+            }).ToList();
 
             return Ok(new ApiResponse<IEnumerable<object>>
             {
                 Success = true,
                 Message = "Fee collections retrieved successfully",
-                Data = payments
+                Data = rows
             });
         }
         catch (Exception ex)

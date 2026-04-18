@@ -358,9 +358,16 @@ try
 {
     Log.Information("Ensuring database exists and creating tables if needed...");
     
-    // Check if we're using PostgreSQL or SQLite
-    var isPostgreSql = dbContext.Database.IsNpgsql();
-    Log.Information("Database provider: {Provider}", isPostgreSql ? "PostgreSQL" : "SQLite");
+    var providerName = dbContext.Database.ProviderName ?? string.Empty;
+    var isPostgreSql = providerName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase);
+    var isSqlServer = providerName.Contains("SqlServer", StringComparison.OrdinalIgnoreCase);
+    var isSqlite = providerName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase);
+    Log.Information(
+        "Database provider: {ProviderName} (PostgreSQL={IsPg}, SqlServer={IsSql}, SQLite={IsLite})",
+        providerName,
+        isPostgreSql,
+        isSqlServer,
+        isSqlite);
     
     if (isPostgreSql)
     {
@@ -1022,11 +1029,18 @@ try
         
         Log.Information("PostgreSQL tables created/verified successfully");
     }
+    else if (isSqlServer)
+    {
+        Log.Information("Applying EF Core migrations for SQL Server / Azure SQL...");
+        await dbContext.Database.MigrateAsync();
+        Log.Information("EF Core migrations applied successfully.");
+    }
     else
     {
-        // For SQLite, EnsureCreated works fine
+        // SQLite (and any other provider using the fallback registration): model-first create.
+        // Do not run SQL Server migrations here — they are provider-specific.
         var created = await dbContext.Database.EnsureCreatedAsync();
-        Log.Information("Database schema created/verified: {Created}", created);
+        Log.Information("Non-relational fallback schema EnsureCreated completed: {Created}", created);
     }
     
     // Seed initial data

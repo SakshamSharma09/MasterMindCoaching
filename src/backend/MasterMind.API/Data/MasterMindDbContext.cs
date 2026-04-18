@@ -129,7 +129,6 @@ namespace MasterMind.API.Data
                 entity.Property(e => e.StudentId).IsRequired();
                 entity.Property(e => e.ClassId).IsRequired();
                 entity.Property(e => e.IsActive).IsRequired();
-                entity.Property(e => e.EnrollmentDate).HasDefaultValue(DateTime.UtcNow);
 
                 // Configure relationships
                 entity.HasOne(d => d.Student)
@@ -155,6 +154,11 @@ namespace MasterMind.API.Data
                 entity.Property(e => e.Qualification).HasMaxLength(500);
                 entity.Property(e => e.Subjects).HasMaxLength(1000);
                 entity.Property(e => e.JoiningDate).HasColumnType("date");
+
+                entity.HasOne(t => t.User)
+                    .WithMany()
+                    .HasForeignKey(t => t.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Subject configuration
@@ -172,7 +176,6 @@ namespace MasterMind.API.Data
                 entity.HasKey(cs => new { cs.ClassId, cs.SubjectId });
                 entity.Property(e => e.TeacherAssigned).HasMaxLength(200);
                 entity.Property(e => e.IsActive).HasDefaultValue(true);
-                entity.Property(e => e.CreatedAt).HasDefaultValue(DateTime.UtcNow);
 
                 // Configure relationships
                 entity.HasOne(d => d.Class)
