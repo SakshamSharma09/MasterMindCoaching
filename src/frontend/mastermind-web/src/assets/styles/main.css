@@ -283,3 +283,113 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Admin UX Refresh */
+@layer components {
+  .admin-shell {
+    background:
+      linear-gradient(120deg, rgba(14, 165, 233, 0.08), rgba(16, 185, 129, 0.06) 34%, rgba(244, 63, 94, 0.05) 68%, rgba(250, 204, 21, 0.06)),
+      #f8fafc;
+  }
+
+  .admin-surface {
+    @apply bg-white/95 border border-slate-200/80 shadow-card backdrop-blur rounded-2xl;
+  }
+
+  .admin-page-hero {
+    @apply relative overflow-hidden rounded-2xl border border-white/70 p-6 sm:p-8 shadow-premium-lg;
+    background:
+      linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(3, 105, 161, 0.9) 42%, rgba(5, 150, 105, 0.86)),
+      radial-gradient(circle at 85% 20%, rgba(250, 204, 21, 0.28), transparent 28%);
+  }
+
+  .admin-page-title {
+    @apply text-2xl sm:text-3xl font-display font-bold text-white;
+  }
+
+  .admin-page-subtitle {
+    @apply mt-2 max-w-3xl text-sm sm:text-base text-sky-50/85;
+  }
+
+  .admin-kpi-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white/95 p-5 shadow-card backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover;
+  }
+
+  .admin-table-wrap {
+    @apply overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card;
+  }
+
+  .admin-action-button {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-sky-500/20;
+  }
+
+  .admin-content h1 {
+    @apply font-display text-2xl font-bold text-slate-950 sm:text-3xl;
+  }
+
+  .admin-content h1 + p {
+    @apply mt-2 text-sm leading-6 text-slate-500;
+  }
+
+  .admin-content .card,
+  .admin-content .card-premium {
+    @apply rounded-2xl border border-slate-200/80 bg-white/95 shadow-card;
+  }
+
+  .admin-content .card-header {
+    @apply border-b border-slate-100 px-5 py-4;
+  }
+
+  .admin-content .card-title {
+    @apply text-base font-bold text-slate-900;
+  }
+
+  .admin-content .card-description {
+    @apply mt-1 text-sm text-slate-500;
+  }
+
+  .btn-primary,
+  .btn-premium {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-sky-700 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-sky-500/20;
+  }
+
+  .btn-secondary {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-sky-200 hover:bg-sky-50 focus:outline-none focus:ring-4 focus:ring-sky-500/20;
+  }
+
+  .btn-danger {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-rose-700 focus:outline-none focus:ring-4 focus:ring-sky-500/20;
+  }
+
+  .input-primary,
+  .input-search,
+  input[type='text'],
+  input[type='email'],
+  input[type='tel'],
+  input[type='number'],
+  input[type='date'],
+  select,
+  textarea {
+    @apply rounded-xl border-slate-200 bg-white text-slate-900 shadow-sm transition-all duration-200 placeholder:text-slate-400 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15;
+  }
+
+  table {
+    @apply min-w-full border-separate border-spacing-0;
+  }
+
+  thead {
+    @apply bg-slate-50;
+  }
+
+  th {
+    @apply text-xs font-bold uppercase text-slate-500;
+  }
+
+  tbody tr {
+    @apply transition-colors duration-150 hover:bg-sky-50/60;
+  }
+
+  td {
+    @apply text-slate-600;
+  }
+}

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-surface-50">
+  <div class="min-h-screen admin-shell">
     <!-- Premium Background -->
     <div class="fixed inset-0 bg-premium-mesh pointer-events-none -z-10"></div>
     
@@ -213,7 +213,7 @@
       </header>
 
       <!-- Page Content -->
-      <main class="p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
+      <main class="admin-content p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
         <div class="max-w-7xl mx-auto">
           <router-view v-slot="{ Component }">
             <Transition name="page" mode="out-in">

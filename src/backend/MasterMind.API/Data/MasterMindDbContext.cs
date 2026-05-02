@@ -120,6 +120,11 @@ namespace MasterMind.API.Data
                 entity.Property(e => e.Board).HasMaxLength(100);
                 entity.Property(e => e.AcademicYear).HasMaxLength(20);
                 entity.Property(e => e.IsActive).HasDefaultValue(true);
+
+                entity.HasOne(c => c.Session)
+                    .WithMany(session => session.Classes)
+                    .HasForeignKey(c => c.SessionId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // StudentClass configuration
@@ -158,6 +163,11 @@ namespace MasterMind.API.Data
                 entity.HasOne(t => t.User)
                     .WithMany()
                     .HasForeignKey(t => t.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(t => t.Session)
+                    .WithMany(session => session.Teachers)
+                    .HasForeignKey(t => t.SessionId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 

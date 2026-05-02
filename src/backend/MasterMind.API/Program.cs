@@ -180,7 +180,7 @@ builder.Services.AddHttpClient<ISmsService, SmsService>();
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHttpClient<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
@@ -195,6 +195,7 @@ if (!string.IsNullOrEmpty(blobConnectionString))
 }
 else
 {
+    builder.Services.AddSingleton<IBlobStorageService, DisabledBlobStorageService>();
     Log.Warning("Azure Blob Storage not configured - photo uploads will not work");
 }
 
@@ -209,7 +210,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
-// CORS - Allow all origins in production for flexibility
+// CORS
 var corsOrigins = builder.Configuration["Cors:AllowedOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
@@ -217,7 +218,15 @@ builder.Services.AddCors(options =>
     {
         if (corsOrigins.Length > 0)
         {
-            policy.WithOrigins(corsOrigins)
+            policy.WithOrigins(corsOrigins.Select(origin => origin.Trim()).ToArray())
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials()
+                .WithExposedHeaders("Token-Expired");
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            policy.WithOrigins("http://localhost:3000", "http://localhost:3003", "http://localhost:5173")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials()
@@ -225,8 +234,8 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // Fallback: Allow any origin if no origins configured (for production)
-            policy.SetIsOriginAllowed(_ => true)
+            Log.Warning("No CORS origins configured. Cross-origin browser calls will be blocked until Cors:AllowedOrigins is set.");
+            policy.WithOrigins("https://victorious-glacier-0e6507000.6.azurestaticapps.net")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials()

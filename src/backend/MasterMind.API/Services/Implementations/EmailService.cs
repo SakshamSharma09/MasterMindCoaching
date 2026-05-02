@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
 using MasterMind.API.Services.Interfaces;
@@ -12,11 +13,13 @@ public class EmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<EmailService> _logger;
+    private readonly HttpClient _httpClient;
 
-    public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+    public EmailService(IConfiguration configuration, ILogger<EmailService> logger, HttpClient httpClient)
     {
         _configuration = configuration;
         _logger = logger;
+        _httpClient = httpClient;
     }
 
     public async Task<bool> SendOtpEmailAsync(string email, string otp)
@@ -33,6 +36,14 @@ public class EmailService : IEmailService
             _logger.LogInformation("EmailService: Starting email send to {To}", to);
             
             var emailSettings = _configuration.GetSection("Email");
+            if (!IsValidEmail(to))
+            {
+                _logger.LogWarning("EmailService: Invalid recipient email address");
+                return false;
+            }
+
+            var provider = emailSettings["Provider"];
+            var apiKey = emailSettings["ApiKey"];
             var smtpServer = emailSettings["SmtpServer"];
             var port = int.Parse(emailSettings["Port"] ?? "587");
             var useSsl = bool.Parse(emailSettings["UseSsl"] ?? "true");
@@ -42,23 +53,39 @@ public class EmailService : IEmailService
             var fromEmail = emailSettings["FromEmail"];
             var fromName = emailSettings["FromName"];
 
-            _logger.LogInformation("EmailService: SMTP Server: {SmtpServer}, Port: {Port}, UseSsl: {UseSsl}, Username: {Username}, Sandbox: {Sandbox}", 
-                smtpServer, port, useSsl, username, useSandbox);
+            _logger.LogInformation("EmailService: Provider: {Provider}, SMTP Server: {SmtpServer}, Port: {Port}, UseSsl: {UseSsl}, Sandbox: {Sandbox}",
+                provider, smtpServer, port, useSsl, useSandbox);
 
             // If sandbox mode, just log and return (for testing)
             if (useSandbox)
             {
                 _logger.LogInformation("SANDBOX MODE - Email would be sent to {To}: {Subject}", to, subject);
-                _logger.LogInformation("SANDBOX MODE - OTP in email: {Body}", body);
                 return true;
             }
 
-            // If credentials are not configured, log and return (sandbox mode)
+            var useSendGrid = string.Equals(provider, "SendGrid", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(apiKey);
+
+            if (useSendGrid)
+            {
+                return await SendWithSendGridAsync(apiKey, fromEmail, fromName, to, subject, body);
+            }
+
+            if (string.Equals(provider, "SendGrid", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("EmailService: Provider is SendGrid but ApiKey is missing. Falling back to SMTP if credentials are configured.");
+            }
+
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                _logger.LogInformation("SANDBOX MODE - Email would be sent to {To}: {Subject}", to, subject);
-                _logger.LogDebug("Email body: {Body}", body);
-                return true;
+                _logger.LogError("EmailService: SMTP credentials are not configured. Enable Email:UseSandbox for local testing or provide credentials.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(smtpServer))
+            {
+                _logger.LogError("EmailService: SMTP server is not configured.");
+                return false;
             }
 
             using var client = new SmtpClient(smtpServer, port)
@@ -94,6 +121,51 @@ public class EmailService : IEmailService
             _logger.LogError(ex, "Failed to send email to {To}", to);
             return false;
         }
+    }
+
+    private async Task<bool> SendWithSendGridAsync(string? apiKey, string? fromEmail, string? fromName, string to, string subject, string body)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            _logger.LogError("EmailService: SendGrid API key is not configured. OTP email was not sent.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(fromEmail))
+        {
+            _logger.LogError("EmailService: FromEmail is required for SendGrid delivery.");
+            return false;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.sendgrid.com/v3/mail/send");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+        request.Content = JsonContent.Create(new
+        {
+            personalizations = new[]
+            {
+                new
+                {
+                    to = new[] { new { email = to } }
+                }
+            },
+            from = new { email = fromEmail, name = fromName ?? "MasterMind Coaching" },
+            subject,
+            content = new[]
+            {
+                new { type = "text/html", value = body }
+            }
+        });
+
+        var response = await _httpClient.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            _logger.LogInformation("Email sent successfully to {To} through SendGrid", to);
+            return true;
+        }
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        _logger.LogError("SendGrid email failed for {To}. Status: {StatusCode}, Body: {Body}", to, response.StatusCode, responseBody);
+        return false;
     }
 
     public bool IsValidEmail(string email)
