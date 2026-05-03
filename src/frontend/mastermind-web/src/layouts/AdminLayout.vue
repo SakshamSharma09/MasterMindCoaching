@@ -117,6 +117,9 @@
               <component :is="item.icon" />
             </span>
             <span class="flex-1">{{ item.name }}</span>
+            <span v-if="item.badge" class="badge-premium text-[10px] px-2 py-0.5">
+              {{ item.badge }}
+            </span>
           </router-link>
         </nav>
 
@@ -291,8 +294,8 @@ const mainNavigation = [
 
 const managementNavigation = [
   { name: 'Finance', href: '/admin/finance', icon: FinanceIcon, iconColor: 'text-success-500' },
-  { name: 'Template Zone', href: '/admin/template-zone', icon: TemplateIcon, iconColor: 'text-warning-500' },
-  { name: 'Notes Tracker', href: '/admin/notes-tracker', icon: NotesIcon, iconColor: 'text-accent-500' },
+  { name: 'Template Zone', href: '/admin/template-zone', icon: TemplateIcon, iconColor: 'text-warning-500', badge: 'New' },
+  { name: 'Notes Tracker', href: '/admin/notes-tracker', icon: NotesIcon, iconColor: 'text-accent-500', badge: 'New' },
   { name: 'Teachers', href: '/admin/teachers', icon: TeachersIcon, iconColor: 'text-primary-500' },
   { name: 'Leads', href: '/admin/leads', icon: LeadsIcon, iconColor: 'text-mastermind-500' },
 ]
