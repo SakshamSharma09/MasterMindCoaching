@@ -484,9 +484,15 @@ public class StudentsController : ControllerBase
             }
 
             // Delete old photo if exists
-            if (!string.IsNullOrEmpty(student.PhotoBlobName))
+            var existingBlobName = student.PhotoBlobName;
+            if (string.IsNullOrWhiteSpace(existingBlobName) && !string.IsNullOrWhiteSpace(student.ProfileImageUrl))
             {
-                await _blobStorageService.DeletePhotoAsync(student.PhotoBlobName);
+                existingBlobName = ExtractBlobNameFromUrl(student.ProfileImageUrl);
+            }
+
+            if (!string.IsNullOrWhiteSpace(existingBlobName))
+            {
+                await _blobStorageService.DeletePhotoAsync(existingBlobName);
             }
 
             // Upload new photo
@@ -556,6 +562,27 @@ public class StudentsController : ControllerBase
             Success = true,
             Message = "Student deleted successfully"
         });
+    }
+
+    private static string? ExtractBlobNameFromUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        var lastSegment = uri.Segments.LastOrDefault();
+        if (string.IsNullOrWhiteSpace(lastSegment))
+        {
+            return null;
+        }
+
+        return Uri.UnescapeDataString(lastSegment.Trim('/'));
     }
 }
 

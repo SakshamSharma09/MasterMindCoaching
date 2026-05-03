@@ -1040,6 +1040,9 @@ try
     }
     else if (isSqlServer)
     {
+        Log.Information("Applying SQL Server schema compatibility checks...");
+        await EnsureSqlServerSchemaCompatibilityAsync(dbContext);
+
         Log.Information("Applying EF Core migrations for SQL Server / Azure SQL...");
         await dbContext.Database.MigrateAsync();
         Log.Information("EF Core migrations applied successfully.");
@@ -1169,4 +1172,46 @@ static async Task SeedInitialDataAsync(MasterMindDbContext context)
     }
 
     Log.Information("All initial data seeding completed");
+}
+
+static async Task EnsureSqlServerSchemaCompatibilityAsync(MasterMindDbContext context)
+{
+    await context.Database.ExecuteSqlRawAsync(@"
+IF COL_LENGTH('dbo.Students', 'PhotoBlobName') IS NULL
+BEGIN
+    ALTER TABLE dbo.Students ADD PhotoBlobName nvarchar(260) NULL;
+END
+
+IF COL_LENGTH('dbo.Classes', 'IsActive') IS NULL
+BEGIN
+    ALTER TABLE dbo.Classes ADD IsActive bit NOT NULL CONSTRAINT DF_Classes_IsActive DEFAULT(1);
+END
+ELSE
+BEGIN
+    UPDATE dbo.Classes SET IsActive = 1 WHERE IsActive IS NULL;
+
+    IF EXISTS (
+        SELECT 1
+        FROM sys.columns c
+        INNER JOIN sys.tables t ON c.object_id = t.object_id
+        INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+        WHERE s.name = 'dbo' AND t.name = 'Classes' AND c.name = 'IsActive' AND c.is_nullable = 1
+    )
+    BEGIN
+        ALTER TABLE dbo.Classes ALTER COLUMN IsActive bit NOT NULL;
+    END
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.default_constraints dc
+        INNER JOIN sys.columns c ON c.default_object_id = dc.object_id
+        INNER JOIN sys.tables t ON t.object_id = c.object_id
+        INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+        WHERE s.name = 'dbo' AND t.name = 'Classes' AND c.name = 'IsActive'
+    )
+    BEGIN
+        ALTER TABLE dbo.Classes ADD CONSTRAINT DF_Classes_IsActive DEFAULT(1) FOR IsActive;
+    END
+END
+");
 }
