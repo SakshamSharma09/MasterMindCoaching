@@ -119,7 +119,9 @@ namespace MasterMind.API.Data
                 entity.Property(e => e.Medium).HasMaxLength(50);
                 entity.Property(e => e.Board).HasMaxLength(100);
                 entity.Property(e => e.AcademicYear).HasMaxLength(20);
-                entity.Property(e => e.IsActive).HasDefaultValue(true);
+                // Avoid relying on DB default constraints in drifted environments.
+                // Always send IsActive explicitly from application code.
+                entity.Property(e => e.IsActive).ValueGeneratedNever();
 
                 entity.HasOne(c => c.Session)
                     .WithMany(session => session.Classes)
