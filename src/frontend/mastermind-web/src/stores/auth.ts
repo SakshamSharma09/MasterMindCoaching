@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null)
 
   // Getters
-  const isAuthenticated = computed(() => !!user.value)
+  const isAuthenticated = computed(() => !!accessToken.value && !!user.value)
   const userRole = computed(() => user.value?.role || null)
   const userName = computed(() => user.value ? `${user.value.firstName} ${user.value.lastName}` : '')
 
@@ -127,13 +127,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const initializeAuth = async () => {
-    try {
-      await getCurrentUser()
-    } catch (err) {
-      if (user.value || accessToken.value || refreshToken.value) {
+    if (accessToken.value && user.value) {
+      try {
+        await getCurrentUser()
+      } catch (err) {
         console.warn('[Auth] Token validation failed, clearing auth')
+        clearAuth()
       }
-      clearAuth()
     }
   }
 
@@ -197,6 +197,6 @@ export const useAuthStore = defineStore('auth', () => {
   persist: {
     key: 'mastermind-auth',
     storage: localStorage,
-    paths: ['user']
+    paths: ['user', 'accessToken', 'refreshToken']
   }
 })

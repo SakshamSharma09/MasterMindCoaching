@@ -90,7 +90,7 @@ apiClient.interceptors.response.use(
           localStorage.removeItem('mastermind-auth')
           
           // Only redirect if not bypassed
-          if (!bypassRedirect) {
+          if (!bypassRedirect && window.location.pathname !== '/login') {
             window.location.href = '/login'
           }
           break
