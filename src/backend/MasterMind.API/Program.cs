@@ -1278,5 +1278,19 @@ BEGIN
         ADD CONSTRAINT FK_TemplateDispatchLogs_MessageTemplates
         FOREIGN KEY (MessageTemplateId) REFERENCES dbo.MessageTemplates(Id);
 END
+
+IF OBJECT_ID('dbo.AdminNotes', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.AdminNotes
+    (
+        Id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        Title nvarchar(200) NOT NULL,
+        Content nvarchar(4000) NOT NULL,
+        NoteDate date NOT NULL,
+        CreatedAt datetime2 NOT NULL DEFAULT(sysutcdatetime()),
+        UpdatedAt datetime2 NULL,
+        IsDeleted bit NOT NULL DEFAULT(0)
+    );
+END
 ");
 }

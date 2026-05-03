@@ -64,6 +64,7 @@ namespace MasterMind.API.Data
         public DbSet<ExamResult> ExamResults { get; set; }
         public DbSet<MessageTemplate> MessageTemplates { get; set; }
         public DbSet<TemplateDispatchLog> TemplateDispatchLogs { get; set; }
+        public DbSet<AdminNote> AdminNotes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -187,6 +188,14 @@ namespace MasterMind.API.Data
                     .WithMany()
                     .HasForeignKey(e => e.FeeReceiptId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<AdminNote>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Content).IsRequired().HasMaxLength(4000);
+                entity.Property(e => e.NoteDate).HasColumnType("date");
             });
 
             // Teacher configuration

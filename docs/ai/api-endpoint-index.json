@@ -1,7 +1,7 @@
 ﻿{
     "version":  "1.0.0",
     "generatedBy":  "Generate-ApiDocs.ps1",
-    "lastUpdated":  "2026-04-17",
+    "lastUpdated":  "2026-05-03",
     "services":  {
                      "auth":  "src/frontend/mastermind-web/src/services/authService.ts",
                      "api":  "src/frontend/mastermind-web/src/services/apiService.ts"
@@ -13,6 +13,8 @@
                           "admin":  {
                                         "dashboard":  "src/frontend/mastermind-web/src/views/admin/DashboardView.vue",
                                         "finance":  "src/frontend/mastermind-web/src/views/admin/FinanceView.vue",
+                                        "templateZone":  "src/frontend/mastermind-web/src/views/admin/finance/TemplateZoneView.vue",
+                                        "notesTracker":  "src/frontend/mastermind-web/src/views/admin/NotesTrackerView.vue",
                                         "attendance":  "src/frontend/mastermind-web/src/views/admin/AttendanceView.vue",
                                         "sessions":  "src/frontend/mastermind-web/src/views/admin/SessionsView.vue",
                                         "students":  "src/frontend/mastermind-web/src/views/admin/StudentsView.vue",
@@ -475,6 +477,78 @@
                                                   }
                                               ]
                                },
+                      "templatezone":  {
+                                           "requiresAuth":  true,
+                                           "controller":  "src/backend/MasterMind.API/Controllers/TemplateZoneController.cs",
+                                           "routes":  [
+                                                          {
+                                                              "method":  "GET",
+                                                              "path":  "/api/templatezone/templates",
+                                                              "action":  "GetTemplates"
+                                                          },
+                                                          {
+                                                              "method":  "POST",
+                                                              "path":  "/api/templatezone/templates",
+                                                              "action":  "CreateTemplate"
+                                                          },
+                                                          {
+                                                              "method":  "PUT",
+                                                              "path":  "/api/templatezone/templates/{id}",
+                                                              "action":  "UpdateTemplate"
+                                                          },
+                                                          {
+                                                              "method":  "DELETE",
+                                                              "path":  "/api/templatezone/templates/{id}",
+                                                              "action":  "DeleteTemplate"
+                                                          },
+                                                          {
+                                                              "method":  "GET",
+                                                              "path":  "/api/templatezone/birthday-reminders",
+                                                              "action":  "GetBirthdayReminders"
+                                                          },
+                                                          {
+                                                              "method":  "GET",
+                                                              "path":  "/api/templatezone/fee-reminders",
+                                                              "action":  "GetFeeReminders"
+                                                          },
+                                                          {
+                                                              "method":  "GET",
+                                                              "path":  "/api/templatezone/fee-receipt-logs",
+                                                              "action":  "GetFeeReceiptLogs"
+                                                          },
+                                                          {
+                                                              "method":  "POST",
+                                                              "path":  "/api/templatezone/preview",
+                                                              "action":  "PreviewTemplate"
+                                                          }
+                                                      ]
+                                       },
+                      "adminnotes":  {
+                                         "requiresAuth":  true,
+                                         "controller":  "src/backend/MasterMind.API/Controllers/AdminNotesController.cs",
+                                         "routes":  [
+                                                        {
+                                                            "method":  "GET",
+                                                            "path":  "/api/adminnotes",
+                                                            "action":  "GetNotes"
+                                                        },
+                                                        {
+                                                            "method":  "POST",
+                                                            "path":  "/api/adminnotes",
+                                                            "action":  "Create"
+                                                        },
+                                                        {
+                                                            "method":  "PUT",
+                                                            "path":  "/api/adminnotes/{id}",
+                                                            "action":  "Update"
+                                                        },
+                                                        {
+                                                            "method":  "DELETE",
+                                                            "path":  "/api/adminnotes/{id}",
+                                                            "action":  "Delete"
+                                                        }
+                                                    ]
+                                     },
                       "auth":  {
                                    "requiresAuth":  true,
                                    "controller":  "src/backend/MasterMind.API/Controllers/AuthController.cs",

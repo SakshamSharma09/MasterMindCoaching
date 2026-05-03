@@ -89,10 +89,19 @@ const router = createRouter({
             },
             {
               path: 'templates',
-              name: 'FinanceTemplates',
-              component: () => import('@/views/admin/finance/TemplateZoneView.vue')
+              redirect: '/admin/template-zone'
             }
           ]
+        },
+        {
+          path: 'template-zone',
+          name: 'AdminTemplateZone',
+          component: () => import('@/views/admin/finance/TemplateZoneView.vue')
+        },
+        {
+          path: 'notes-tracker',
+          name: 'AdminNotesTracker',
+          component: () => import('@/views/admin/NotesTrackerView.vue')
         },
         {
           path: 'teachers',

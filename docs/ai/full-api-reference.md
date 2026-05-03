@@ -120,6 +120,18 @@
 | DELETE | `/api/teachers/{id}` | DeleteTeacher |
 | GET | `/api/test/student-count` | GetStudentCount |
 | GET | `/api/test/student-columns` | GetStudentColumns |
+| GET | `/api/templatezone/templates` | GetTemplates |
+| POST | `/api/templatezone/templates` | CreateTemplate |
+| PUT | `/api/templatezone/templates/{id}` | UpdateTemplate |
+| DELETE | `/api/templatezone/templates/{id}` | DeleteTemplate |
+| GET | `/api/templatezone/birthday-reminders` | GetBirthdayReminders |
+| GET | `/api/templatezone/fee-reminders` | GetFeeReminders |
+| GET | `/api/templatezone/fee-receipt-logs` | GetFeeReceiptLogs |
+| POST | `/api/templatezone/preview` | PreviewTemplate |
+| GET | `/api/adminnotes` | GetNotes |
+| POST | `/api/adminnotes` | Create |
+| PUT | `/api/adminnotes/{id}` | Update |
+| DELETE | `/api/adminnotes/{id}` | Delete |
 
 ---
 
@@ -156,4 +168,4 @@ Authorization: Bearer <access_token>
 
 ---
 
-*This file is auto-generated. Do not edit manually.*
+*Auto-generated baseline with manual updates through 2026-05-03 for AdminNotes and TemplateZone.*

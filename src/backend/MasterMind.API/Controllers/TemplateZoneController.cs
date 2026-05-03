@@ -98,7 +98,8 @@ public class TemplateZoneController : ControllerBase
                 StudentName = s.FirstName + " " + s.LastName,
                 s.DateOfBirth,
                 s.ProfileImageUrl,
-                ParentName = s.ParentName ?? string.Empty
+                ParentName = s.ParentName ?? string.Empty,
+                ParentMobile = s.ParentMobile ?? string.Empty
             })
             .ToListAsync();
 
@@ -108,7 +109,7 @@ public class TemplateZoneController : ControllerBase
                 var dob = DateOnly.FromDateTime(s.DateOfBirth);
                 var next = new DateOnly(today.Year, dob.Month, dob.Day);
                 if (next < today) next = next.AddYears(1);
-                return new { s.Id, s.StudentName, s.ParentName, s.ProfileImageUrl, DateOfBirth = dob, NextBirthday = next, DaysLeft = next.DayNumber - today.DayNumber };
+                return new { s.Id, s.StudentName, s.ParentName, s.ParentMobile, s.ProfileImageUrl, DateOfBirth = dob, NextBirthday = next, DaysLeft = next.DayNumber - today.DayNumber };
             })
             .Where(x => x.NextBirthday <= end)
             .OrderBy(x => x.NextBirthday)
@@ -130,6 +131,7 @@ public class TemplateZoneController : ControllerBase
                 sf.StudentId,
                 StudentName = sf.Student.FirstName + " " + sf.Student.LastName,
                 ParentName = sf.Student.ParentName,
+                ParentMobile = sf.Student.ParentMobile,
                 ClassName = sf.Student.StudentClasses.Where(sc => sc.IsActive).Select(sc => sc.Class != null ? sc.Class.Name : "N/A").FirstOrDefault(),
                 FeeAmount = sf.FinalAmount - sf.PaidAmount,
                 DueDate = sf.DueDate,
@@ -147,6 +149,7 @@ public class TemplateZoneController : ControllerBase
                 x.StudentId,
                 x.StudentName,
                 x.ParentName,
+                x.ParentMobile,
                 ClassName = x.ClassName ?? "N/A",
                 x.FeeAmount,
                 Month = x.DueDate.ToString("yyyy-MM"),
@@ -184,6 +187,9 @@ public class TemplateZoneController : ControllerBase
                 ParentName = p.StudentFee != null && p.StudentFee.Student != null
                     ? p.StudentFee.Student.ParentName
                     : "",
+                ParentMobile = p.StudentFee != null && p.StudentFee.Student != null
+                    ? p.StudentFee.Student.ParentMobile
+                    : "",
                 FeePeriod = p.StudentFee != null ? (p.StudentFee.Month ?? p.StudentFee.AcademicYear) : "",
                 PaidAmount = p.Amount,
                 TotalAmount = p.StudentFee != null ? p.StudentFee.FinalAmount : p.Amount,
@@ -198,6 +204,7 @@ public class TemplateZoneController : ControllerBase
             r.ReceiptNumber,
             r.StudentName,
             r.ParentName,
+            r.ParentMobile,
             r.FeePeriod,
             r.PaidAmount,
             r.TotalAmount,
