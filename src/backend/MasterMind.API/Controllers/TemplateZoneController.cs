@@ -120,39 +120,43 @@ public class TemplateZoneController : ControllerBase
     [HttpGet("fee-reminders")]
     public async Task<ActionResult<ApiResponse<IEnumerable<object>>>> GetFeeReminders([FromQuery] string? month = null)
     {
-        var targetMonth = string.IsNullOrWhiteSpace(month)
-            ? DateTime.Today.ToString("yyyy-MM")
-            : month;
+        var targetMonth = string.IsNullOrWhiteSpace(month) ? DateTime.Today.ToString("yyyy-MM") : month;
 
-        var fees = await _context.StudentFees
-            .AsSplitQuery()
-            .Include(sf => sf.Student)
-                .ThenInclude(s => s.StudentClasses)
-                    .ThenInclude(sc => sc.Class)
-            .Include(sf => sf.FeeStructure)
-            .Where(sf => !sf.IsDeleted && sf.Status != FeeStatus.Paid && sf.Month != null && sf.Month == targetMonth)
-            .OrderBy(sf => sf.DueDate)
-            .ToListAsync();
-
-        var data = fees.Select(sf =>
-        {
-            var className = sf.Student.StudentClasses.FirstOrDefault(sc => sc.IsActive)?.Class?.Name ?? "N/A";
-            return new
+        var data = await _context.StudentFees
+            .Where(sf => sf.Status != FeeStatus.Paid)
+            .Select(sf => new
             {
                 sf.Id,
-                StudentId = sf.StudentId,
-                StudentName = $"{sf.Student.FirstName} {sf.Student.LastName}",
+                sf.StudentId,
+                StudentName = sf.Student.FirstName + " " + sf.Student.LastName,
                 ParentName = sf.Student.ParentName,
-                ClassName = className,
+                ClassName = sf.Student.StudentClasses.Where(sc => sc.IsActive).Select(sc => sc.Class != null ? sc.Class.Name : "N/A").FirstOrDefault(),
                 FeeAmount = sf.FinalAmount - sf.PaidAmount,
-                sf.Month,
-                DueDate = sf.DueDate.ToString("yyyy-MM-dd"),
-                JoiningDate = sf.Student.AdmissionDate.ToString("yyyy-MM-dd"),
+                DueDate = sf.DueDate,
+                JoiningDate = sf.Student.AdmissionDate,
                 Frequency = sf.FeeStructure.Frequency.ToString()
-            };
-        }).ToList();
+            })
+            .ToListAsync();
 
-        return Ok(new ApiResponse<IEnumerable<object>> { Success = true, Data = data, Message = "Fee reminder dataset generated successfully" });
+        var filtered = data
+            .Where(x => x.DueDate.ToString("yyyy-MM") == targetMonth)
+            .OrderBy(x => x.DueDate)
+            .Select(x => new
+            {
+                x.Id,
+                x.StudentId,
+                x.StudentName,
+                x.ParentName,
+                ClassName = x.ClassName ?? "N/A",
+                x.FeeAmount,
+                Month = x.DueDate.ToString("yyyy-MM"),
+                DueDate = x.DueDate.ToString("yyyy-MM-dd"),
+                JoiningDate = x.JoiningDate.ToString("yyyy-MM-dd"),
+                x.Frequency
+            })
+            .ToList();
+
+        return Ok(new ApiResponse<IEnumerable<object>> { Success = true, Data = filtered, Message = "Fee reminder dataset generated successfully" });
     }
 
     [HttpGet("fee-receipt-logs")]
@@ -162,7 +166,6 @@ public class TemplateZoneController : ControllerBase
         if (take > 300) take = 300;
 
         var logs = await _context.FeeReceipts
-            .Where(r => !r.IsDeleted)
             .OrderByDescending(r => r.ReceiptDate)
             .Take(take)
             .Select(r => new
