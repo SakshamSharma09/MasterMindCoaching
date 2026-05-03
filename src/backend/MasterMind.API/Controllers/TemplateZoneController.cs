@@ -165,7 +165,7 @@ public class TemplateZoneController : ControllerBase
         if (take < 1) take = 1;
         if (take > 300) take = 300;
 
-        var logs = await _context.FeeReceipts
+        var logsRaw = await _context.FeeReceipts
             .OrderByDescending(r => r.ReceiptDate)
             .Take(take)
             .Select(r => new
@@ -178,9 +178,22 @@ public class TemplateZoneController : ControllerBase
                 r.PaidAmount,
                 r.TotalAmount,
                 r.PaymentMethod,
-                ReceiptDate = r.ReceiptDate.ToString("yyyy-MM-dd HH:mm:ss")
+                r.ReceiptDate
             })
             .ToListAsync();
+
+        var logs = logsRaw.Select(r => new
+        {
+            r.Id,
+            r.ReceiptNumber,
+            r.StudentName,
+            r.ParentName,
+            r.FeePeriod,
+            r.PaidAmount,
+            r.TotalAmount,
+            r.PaymentMethod,
+            ReceiptDate = r.ReceiptDate.ToString("yyyy-MM-dd HH:mm:ss")
+        }).ToList();
 
         return Ok(new ApiResponse<IEnumerable<object>> { Success = true, Data = logs, Message = "Fee receipt logs retrieved successfully" });
     }
