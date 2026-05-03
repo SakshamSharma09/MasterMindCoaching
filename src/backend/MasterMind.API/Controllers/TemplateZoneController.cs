@@ -165,20 +165,30 @@ public class TemplateZoneController : ControllerBase
         if (take < 1) take = 1;
         if (take > 300) take = 300;
 
-        var logsRaw = await _context.FeeReceipts
-            .OrderByDescending(r => r.ReceiptDate)
+        var logsRaw = await _context.Payments
+            .AsSplitQuery()
+            .Include(p => p.StudentFee)
+                .ThenInclude(sf => sf!.Student)
+                    .ThenInclude(s => s.StudentClasses)
+                        .ThenInclude(sc => sc.Class)
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .OrderByDescending(p => p.PaymentDate)
             .Take(take)
-            .Select(r => new
+            .Select(p => new
             {
-                r.Id,
-                r.ReceiptNumber,
-                r.StudentName,
-                r.ParentName,
-                r.FeePeriod,
-                r.PaidAmount,
-                r.TotalAmount,
-                r.PaymentMethod,
-                r.ReceiptDate
+                p.Id,
+                p.ReceiptNumber,
+                StudentName = p.StudentFee != null && p.StudentFee.Student != null
+                    ? p.StudentFee.Student.FirstName + " " + p.StudentFee.Student.LastName
+                    : "Unknown",
+                ParentName = p.StudentFee != null && p.StudentFee.Student != null
+                    ? p.StudentFee.Student.ParentName
+                    : "",
+                FeePeriod = p.StudentFee != null ? (p.StudentFee.Month ?? p.StudentFee.AcademicYear) : "",
+                PaidAmount = p.Amount,
+                TotalAmount = p.StudentFee != null ? p.StudentFee.FinalAmount : p.Amount,
+                PaymentMethod = p.Method.ToString(),
+                ReceiptDate = p.PaymentDate
             })
             .ToListAsync();
 
