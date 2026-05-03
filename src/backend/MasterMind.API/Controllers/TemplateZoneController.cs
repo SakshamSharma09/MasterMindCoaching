@@ -178,9 +178,7 @@ public class TemplateZoneController : ControllerBase
                 r.PaidAmount,
                 r.TotalAmount,
                 r.PaymentMethod,
-                ReceiptDate = r.ReceiptDate.ToString("yyyy-MM-dd HH:mm:ss"),
-                r.IsEmailSent,
-                r.IsSmsSent
+                ReceiptDate = r.ReceiptDate.ToString("yyyy-MM-dd HH:mm:ss")
             })
             .ToListAsync();
 
