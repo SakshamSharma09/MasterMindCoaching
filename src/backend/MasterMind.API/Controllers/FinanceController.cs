@@ -29,11 +29,11 @@ public class FinanceController : ControllerBase
     [HttpGet("summary")]
     //[Authorize]
     [ProducesResponseType(typeof(ApiResponse<FinancialSummary>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<FinancialSummary>>> GetFinancialSummary()
+    public async Task<ActionResult<ApiResponse<FinancialSummary>>> GetFinancialSummary([FromQuery] int? sessionId = null)
     {
         try
         {
-            var activeSessionId = await _context.Sessions
+            var activeSessionId = sessionId ?? await _context.Sessions
                 .Where(s => s.IsActive && !s.IsDeleted)
                 .Select(s => (int?)s.Id)
                 .FirstOrDefaultAsync();
@@ -44,12 +44,14 @@ public class FinanceController : ControllerBase
 
             // Calculate total revenue from payments
             var totalRevenue = await _context.Payments
-                .Where(p => p.Status == PaymentStatus.Completed)
+                .Where(p => p.Status == PaymentStatus.Completed &&
+                    (!activeSessionId.HasValue || p.StudentFee.Student.SessionId == activeSessionId))
                 .SumAsync(p => (decimal)p.Amount);
 
             // Calculate pending payments
             var pendingPayments = await _context.StudentFees
-                .Where(sf => sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid)
+                .Where(sf => (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid) &&
+                    (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .SumAsync(sf => sf.FinalAmount - sf.PaidAmount);
 
             // Calculate total expenses (teacher salaries + other expenses)
@@ -64,20 +66,23 @@ public class FinanceController : ControllerBase
             var netProfit = totalRevenue - totalExpenses;
 
             var paidStudents = await _context.StudentFees
-                .Where(sf => sf.Status == FeeStatus.Paid)
+                .Where(sf => sf.Status == FeeStatus.Paid &&
+                    (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .Select(sf => sf.StudentId)
                 .Distinct()
                 .CountAsync();
 
             var pendingStudents = await _context.StudentFees
-                .Where(sf => sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid)
+                .Where(sf => (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid) &&
+                    (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .Select(sf => sf.StudentId)
                 .Distinct()
                 .CountAsync();
 
             var todaySummary = DateOnly.FromDateTime(DateTime.Today);
             var overdueStudents = await _context.StudentFees
-                .Where(sf => sf.Status != FeeStatus.Paid && todaySummary > sf.DueDate)
+                .Where(sf => sf.Status != FeeStatus.Paid && todaySummary > sf.DueDate &&
+                    (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .Select(sf => sf.StudentId)
                 .Distinct()
                 .CountAsync();
@@ -121,15 +126,17 @@ public class FinanceController : ControllerBase
     [HttpGet("payments")]
     //[Authorize]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<PaymentDto>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<PaymentDto>>>> GetRecentPayments([FromQuery] int limit = 10)
+    public async Task<ActionResult<ApiResponse<IEnumerable<PaymentDto>>>> GetRecentPayments([FromQuery] int limit = 10, [FromQuery] int? sessionId = null)
     {
         try
         {
+            var targetSessionId = sessionId ?? await _context.Sessions.Where(s => s.IsActive && !s.IsDeleted).Select(s => (int?)s.Id).FirstOrDefaultAsync();
             var payments = await _context.Payments
                 .Include(p => p.StudentFee)
                     .ThenInclude(sf => sf.Student)
                 .Include(p => p.StudentFee.FeeStructure)
-                .Where(p => p.Status == PaymentStatus.Completed)
+                .Where(p => p.Status == PaymentStatus.Completed &&
+                    (!targetSessionId.HasValue || p.StudentFee.Student.SessionId == targetSessionId))
                 .OrderByDescending(p => p.PaymentDate)
                 .Take(limit)
                 .Select(p => new PaymentDto
@@ -176,6 +183,7 @@ public class FinanceController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<PaymentDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<PaymentDto>>>> GetPaymentHistory(
         [FromQuery] int? studentId,
+        [FromQuery] int? sessionId,
         [FromQuery] string? startDate,
         [FromQuery] string? endDate)
     {
@@ -186,6 +194,12 @@ public class FinanceController : ControllerBase
                     .ThenInclude(sf => sf.Student)
                 .Include(p => p.StudentFee.FeeStructure)
                 .AsQueryable();
+
+            var targetSessionId = sessionId ?? await _context.Sessions.Where(s => s.IsActive && !s.IsDeleted).Select(s => (int?)s.Id).FirstOrDefaultAsync();
+            if (targetSessionId.HasValue)
+            {
+                query = query.Where(p => p.StudentFee.Student.SessionId == targetSessionId.Value);
+            }
 
             if (studentId.HasValue)
             {

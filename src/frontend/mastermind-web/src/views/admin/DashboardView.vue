@@ -281,9 +281,9 @@
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                   <div class="w-9 h-9 rounded-full bg-gradient-to-br from-mastermind-400 to-mastermind-600 flex items-center justify-center text-white text-sm font-medium">
-                    {{ lead.name.charAt(0) }}
+                    {{ (lead.name || '?').charAt(0) }}
                   </div>
-                  <span class="font-medium text-surface-900">{{ lead.name }}</span>
+                  <span class="font-medium text-surface-900">{{ lead.name || 'Unnamed Lead' }}</span>
                 </div>
               </td>
               <td class="px-6 py-4 text-surface-600">{{ lead.mobile }}</td>
@@ -313,7 +313,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
@@ -404,29 +404,34 @@ const getLeadStatusClass = (status: string) => {
 
 const loadDashboardData = async () => {
   try {
-    if (!sessionStore.selectedSessionId) {
+    const selectedSessionId = sessionStore.selectedSessionId
+    if (!selectedSessionId) {
+      stats.value = { totalStudents: 0, totalTeachers: 0, todayAttendance: 0, pendingFees: 0 }
+      recentStudents.value = []
+      recentLeads.value = []
       return
     }
 
-    const statsData = await apiService.get(API_ENDPOINTS.DASHBOARD.ADMIN_STATS)
-    stats.value = statsData
+    const statsRes = await apiService.get(API_ENDPOINTS.DASHBOARD.ADMIN_STATS, { params: { sessionId: selectedSessionId } })
+    stats.value = statsRes?.data ?? { totalStudents: 0, totalTeachers: 0, todayAttendance: 0, pendingFees: 0 }
 
-    const studentsData = await apiService.get('/dashboard/recent-students')
-    recentStudents.value = studentsData
+    const studentsRes = await apiService.get('/dashboard/recent-students', { params: { sessionId: selectedSessionId } })
+    recentStudents.value = studentsRes?.data ?? []
 
-    recentLeads.value = [
-      { id: 1, name: 'Alice Johnson', mobile: '+91 9876543210', status: 'New', interest: 'Class 10' },
-      { id: 2, name: 'Bob Wilson', mobile: '+91 9876543211', status: 'Contacted', interest: 'Class 12' },
-      { id: 3, name: 'Carol Smith', mobile: '+91 9876543212', status: 'Interested', interest: 'JEE Prep' },
-    ]
+    const leadsRes = await apiService.get('/leads', { params: { page: 1, pageSize: 5, sessionId: selectedSessionId } })
+    const leadsData = leadsRes?.data ?? []
+    recentLeads.value = leadsData.map((l: any) => ({
+      id: l.id,
+      name: l.name || '',
+      mobile: l.phone || l.mobile || '',
+      status: l.status || 'New',
+      interest: l.interestedClass || l.interest || ''
+    }))
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
-    stats.value = {
-      totalStudents: 45,
-      totalTeachers: 5,
-      todayAttendance: 85,
-      pendingFees: 25000
-    }
+    stats.value = { totalStudents: 0, totalTeachers: 0, todayAttendance: 0, pendingFees: 0 }
+    recentStudents.value = []
+    recentLeads.value = []
   }
 }
 
@@ -436,15 +441,10 @@ onMounted(() => {
   } else {
     loadDashboardData()
   }
-  
-  sessionStore.$subscribe((mutation) => {
-    if (Array.isArray(mutation.events)) {
-      const hasSessionChange = mutation.events.some(e => 'key' in e && e.key === 'selectedSessionId')
-      if (hasSessionChange) loadDashboardData()
-    } else if ('key' in mutation.events && mutation.events.key === 'selectedSessionId') {
-      loadDashboardData()
-    }
-  })
+})
+
+watch(() => sessionStore.selectedSessionId, () => {
+  loadDashboardData()
 })
 </script>
 

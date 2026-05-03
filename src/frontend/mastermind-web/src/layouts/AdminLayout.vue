@@ -276,7 +276,7 @@ const LeadsIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'curr
 const mainNavigation = [
   { name: 'Dashboard', href: '/admin', icon: DashboardIcon, iconColor: 'text-primary-500' },
   { name: 'Sessions', href: '/admin/sessions', icon: SessionsIcon, iconColor: 'text-mastermind-500' },
-  { name: 'Students', href: '/admin/students', icon: StudentsIcon, iconColor: 'text-success-500', badge: '45' },
+  { name: 'Students', href: '/admin/students', icon: StudentsIcon, iconColor: 'text-success-500' },
   { name: 'Classes', href: '/admin/classes', icon: ClassesIcon, iconColor: 'text-warning-500' },
   { name: 'Attendance', href: '/admin/attendance', icon: AttendanceIcon, iconColor: 'text-accent-500' },
 ]

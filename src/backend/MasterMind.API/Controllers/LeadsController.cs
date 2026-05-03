@@ -31,6 +31,7 @@ public class LeadsController : ControllerBase
         [FromQuery] string? search,
         [FromQuery] string? status,
         [FromQuery] string? source,
+        [FromQuery] int? sessionId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
@@ -41,6 +42,16 @@ public class LeadsController : ControllerBase
                 .Include(l => l.LeadFollowups)
                 .Where(l => !l.IsDeleted)
                 .AsQueryable();
+
+            if (!sessionId.HasValue)
+            {
+                var activeSession = await _context.Sessions.FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+                sessionId = activeSession?.Id;
+            }
+            if (sessionId.HasValue)
+            {
+                query = query.Where(l => l.SessionId == sessionId);
+            }
 
             // Apply search filter
             if (!string.IsNullOrEmpty(search))
@@ -186,6 +197,7 @@ public class LeadsController : ControllerBase
                 NextFollowupDate = dto.NextFollowup != null ? DateTime.Parse(dto.NextFollowup) : null,
                 Remarks = dto.Notes,
                 AssignedToUserId = GetCurrentUserId(),
+                SessionId = await _context.Sessions.Where(s => s.IsActive && !s.IsDeleted).Select(s => (int?)s.Id).FirstOrDefaultAsync(),
                 CreatedAt = DateTime.UtcNow
             };
 

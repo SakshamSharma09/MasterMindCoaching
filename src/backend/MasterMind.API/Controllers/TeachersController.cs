@@ -23,12 +23,18 @@ public class TeachersController : ControllerBase
     // GET: api/Teachers
     [HttpGet]
     [Authorize]
-    public async Task<ActionResult<ApiResponse<IEnumerable<Teacher>>>> GetTeachers()
+    public async Task<ActionResult<ApiResponse<IEnumerable<Teacher>>>> GetTeachers([FromQuery] int? sessionId = null)
     {
         try
         {
+            if (!sessionId.HasValue)
+            {
+                var activeSession = await _context.Sessions.FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+                sessionId = activeSession?.Id;
+            }
+
             var teachers = await _context.Teachers
-                .Where(t => !t.IsDeleted)
+                .Where(t => !t.IsDeleted && (!sessionId.HasValue || t.SessionId == sessionId.Value))
                 .Include(t => t.TeacherClasses)
                     .ThenInclude(tc => tc.Class)
                 .Select(t => new Teacher

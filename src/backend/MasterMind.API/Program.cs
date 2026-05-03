@@ -1122,54 +1122,7 @@ static async Task SeedInitialDataAsync(MasterMindDbContext context)
         Log.Information("Admin user seeded successfully");
     }
 
-    // Seed Sample Session
-    if (!await context.Sessions.AnyAsync())
-    {
-        var session = new MasterMind.API.Models.Entities.Session
-        {
-            Name = "2024-2025",
-            DisplayName = "Academic Year 2024-25",
-            StartDate = new DateTime(2024, 4, 1),
-            EndDate = new DateTime(2025, 3, 31),
-            AcademicYear = "2024-25",
-            IsActive = true,
-            Status = MasterMind.API.Models.Entities.SessionStatus.Active
-        };
-        context.Sessions.Add(session);
-        await context.SaveChangesAsync();
-        Log.Information("Session seeded successfully");
-    }
-
-    // Seed Sample Classes
-    if (!await context.Classes.AnyAsync())
-    {
-        var classes = new[]
-        {
-            new MasterMind.API.Models.Entities.Class { Name = "Class 9 - Science", Medium = "English", Board = "CBSE", AcademicYear = "2024-25", IsActive = true, CreatedAt = DateTime.UtcNow },
-            new MasterMind.API.Models.Entities.Class { Name = "Class 10 - Science", Medium = "English", Board = "CBSE", AcademicYear = "2024-25", IsActive = true, CreatedAt = DateTime.UtcNow },
-            new MasterMind.API.Models.Entities.Class { Name = "Class 11 - Science", Medium = "English", Board = "CBSE", AcademicYear = "2024-25", IsActive = true, CreatedAt = DateTime.UtcNow },
-            new MasterMind.API.Models.Entities.Class { Name = "Class 12 - Science", Medium = "English", Board = "CBSE", AcademicYear = "2024-25", IsActive = true, CreatedAt = DateTime.UtcNow }
-        };
-        context.Classes.AddRange(classes);
-        await context.SaveChangesAsync();
-        Log.Information("Classes seeded successfully");
-    }
-
-    // Seed Sample Subjects
-    if (!await context.Subjects.AnyAsync())
-    {
-        var subjects = new[]
-        {
-            new MasterMind.API.Models.Entities.Subject { Name = "Mathematics", Code = "MATH", Description = "Mathematics for all classes", CreatedAt = DateTime.UtcNow },
-            new MasterMind.API.Models.Entities.Subject { Name = "Physics", Code = "PHY", Description = "Physics for science stream", CreatedAt = DateTime.UtcNow },
-            new MasterMind.API.Models.Entities.Subject { Name = "Chemistry", Code = "CHEM", Description = "Chemistry for science stream", CreatedAt = DateTime.UtcNow },
-            new MasterMind.API.Models.Entities.Subject { Name = "Biology", Code = "BIO", Description = "Biology for science stream", CreatedAt = DateTime.UtcNow },
-            new MasterMind.API.Models.Entities.Subject { Name = "English", Code = "ENG", Description = "English language", CreatedAt = DateTime.UtcNow }
-        };
-        context.Subjects.AddRange(subjects);
-        await context.SaveChangesAsync();
-        Log.Information("Subjects seeded successfully");
-    }
+    // Intentionally do not seed sample sessions/classes/subjects.
 
     if (!await context.MessageTemplates.AnyAsync())
     {
@@ -1216,6 +1169,24 @@ static async Task EnsureSqlServerSchemaCompatibilityAsync(MasterMindDbContext co
 IF COL_LENGTH('dbo.Students', 'PhotoBlobName') IS NULL
 BEGIN
     ALTER TABLE dbo.Students ADD PhotoBlobName nvarchar(260) NULL;
+END
+
+IF COL_LENGTH('dbo.Leads', 'SessionId') IS NULL
+BEGIN
+    ALTER TABLE dbo.Leads ADD SessionId int NULL;
+END
+
+IF COL_LENGTH('dbo.Expenses', 'SessionId') IS NULL
+BEGIN
+    ALTER TABLE dbo.Expenses ADD SessionId int NULL;
+END
+
+DECLARE @ActiveSessionId int;
+SELECT TOP 1 @ActiveSessionId = Id FROM dbo.Sessions WHERE IsActive = 1 AND IsDeleted = 0 ORDER BY Id DESC;
+IF @ActiveSessionId IS NOT NULL
+BEGIN
+    UPDATE dbo.Leads SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
+    UPDATE dbo.Expenses SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
 END
 
 IF COL_LENGTH('dbo.Classes', 'IsActive') IS NULL

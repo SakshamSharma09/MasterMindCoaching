@@ -23,10 +23,12 @@ public class Lead : BaseEntity
     public int? AssignedToUserId { get; set; }
     public int? ConvertedStudentId { get; set; }
     public DateTime? ConvertedAt { get; set; }
+    public int? SessionId { get; set; }
 
     // Navigation properties
     public User? AssignedToUser { get; set; }
     public Student? ConvertedStudent { get; set; }
+    public Session? Session { get; set; }
     public ICollection<LeadFollowup> LeadFollowups { get; set; } = new List<LeadFollowup>();
 }
 

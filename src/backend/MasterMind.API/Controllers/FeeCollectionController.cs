@@ -28,14 +28,22 @@ public class FeeCollectionController : ControllerBase
     [HttpGet]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<object>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<object>>>> GetFeeCollections()
+    public async Task<ActionResult<ApiResponse<IEnumerable<object>>>> GetFeeCollections([FromQuery] int? sessionId = null)
     {
         try
         {
+            if (!sessionId.HasValue)
+            {
+                var activeSession = await _context.Sessions.FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+                sessionId = activeSession?.Id;
+            }
+
             var payments = await _context.Payments
                 .AsSplitQuery()
                 .Include(p => p.StudentFee)
                     .ThenInclude(sf => sf!.Student)
+                .ThenInclude(s => s.Session)
+                .Where(p => !sessionId.HasValue || p.StudentFee.Student.SessionId == sessionId.Value)
                 .OrderByDescending(p => p.PaymentDate)
                 .Take(100)
                 .ToListAsync();

@@ -85,12 +85,11 @@ public class DashboardController : ControllerBase
     /// </summary>
     /// <returns>Dashboard statistics</returns>
     [HttpGet("admin-stats")]
-    //[Authorize]
     [ProducesResponseType(typeof(ApiResponse<DashboardStats>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<DashboardStats>>> GetAdminStats()
+    public async Task<ActionResult<ApiResponse<DashboardStats>>> GetAdminStats([FromQuery] int? sessionId = null)
     {
         // Reuse the same logic as stats endpoint
-        return await GetStats();
+        return await GetStats(sessionId);
     }
 
     /// <summary>
@@ -166,7 +165,6 @@ public class DashboardController : ControllerBase
     /// <param name="sessionId">Optional session ID to filter students</param>
     /// <returns>List of recent students</returns>
     [HttpGet("recent-students")]
-    //[Authorize]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<Student>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<Student>>>> GetRecentStudents([FromQuery] int? sessionId = null)
     {

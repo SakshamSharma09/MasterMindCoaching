@@ -23,10 +23,12 @@ public class Expense : BaseEntity
     public string? RecurrencePattern { get; set; } // e.g., "Monthly", "Quarterly", "Yearly"
     public DateTime? NextDueDate { get; set; }
     public int? BudgetCategoryId { get; set; }
+    public int? SessionId { get; set; }
 
     // Navigation properties
     public User? ProcessedByUser { get; set; }
     public BudgetCategory? BudgetCategory { get; set; }
+    public Session? Session { get; set; }
 }
 
 public enum ExpenseStatus
