@@ -91,6 +91,7 @@ public class AuthController : ControllerBase
                 "INVALID_OTP" => Unauthorized(result),
                 "USER_NOT_FOUND" => NotFound(result),
                 "ACCOUNT_DEACTIVATED" => StatusCode(StatusCodes.Status403Forbidden, result),
+                "ACCOUNT_NOT_PROVISIONED" => StatusCode(StatusCodes.Status403Forbidden, result),
                 _ => BadRequest(result)
             };
         }

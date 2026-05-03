@@ -148,36 +148,161 @@ public class AuthService : IAuthService
         return $"mobile_{Guid.NewGuid():N}@placeholder.mastermind.local";
     }
 
-    private async Task<User> CreateAutoUserAfterOtpVerificationAsync(string identifier, bool isMobile)
+    private async Task<User?> TryProvisionLinkedUserAsync(string identifier, bool isMobile)
     {
-        var user = new User
-        {
-            Email = isMobile ? GeneratePlaceholderEmail() : identifier.ToLowerInvariant(),
-            Mobile = isMobile ? identifier : GeneratePlaceholderMobile(),
-            FirstName = "User",
-            LastName = "",
-            IsActive = true,
-            IsEmailVerified = !isMobile,
-            IsMobileVerified = isMobile,
-            CreatedAt = DateTime.UtcNow
-        };
+        var normalizedIdentifier = identifier.Trim();
+        var normalizedEmail = normalizedIdentifier.ToLowerInvariant();
+        var normalizedMobile = NormalizeMobile(normalizedIdentifier);
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
-
-        var parentRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Parent");
-        if (parentRole != null)
+        if (!isMobile)
         {
-            _context.UserRoles.Add(new UserRole
+            var teacher = await _context.Teachers
+                .Where(t => !t.IsDeleted && t.Email.ToLower() == normalizedEmail)
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync();
+            if (teacher != null)
             {
-                UserId = user.Id,
-                RoleId = parentRole.Id,
-                AssignedAt = DateTime.UtcNow
-            });
+                return await EnsureTeacherLinkedUserAsync(teacher, normalizedEmail);
+            }
+
+            var students = await _context.Students
+                .Where(s => !s.IsDeleted && s.ParentEmail != null && s.ParentEmail.ToLower() == normalizedEmail)
+                .ToListAsync();
+            if (students.Any())
+            {
+                return await EnsureParentLinkedUserAsync(students, normalizedEmail);
+            }
+
+            return null;
+        }
+
+        var teacherByMobile = (await _context.Teachers.Where(t => !t.IsDeleted).ToListAsync())
+            .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.Mobile) && NormalizeMobile(t.Mobile) == normalizedMobile);
+        if (teacherByMobile != null)
+        {
+            return await EnsureTeacherLinkedUserAsync(teacherByMobile, teacherByMobile.Email.ToLowerInvariant());
+        }
+
+        var parentStudents = (await _context.Students.Where(s => !s.IsDeleted).ToListAsync())
+            .Where(s => !string.IsNullOrWhiteSpace(s.ParentMobile) && NormalizeMobile(s.ParentMobile) == normalizedMobile)
+            .ToList();
+        if (parentStudents.Any())
+        {
+            var parentEmail = parentStudents.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.ParentEmail))?.ParentEmail?.ToLowerInvariant();
+            return await EnsureParentLinkedUserAsync(parentStudents, parentEmail);
+        }
+
+        return null;
+    }
+
+    private async Task<User> EnsureTeacherLinkedUserAsync(Teacher teacher, string email)
+    {
+        User? user = null;
+        if (teacher.UserId.HasValue)
+        {
+            user = await _userService.GetByIdAsync(teacher.UserId.Value);
+        }
+
+        user ??= await _userService.GetByEmailAsync(email);
+
+        if (user == null)
+        {
+            user = new User
+            {
+                Email = email,
+                Mobile = string.IsNullOrWhiteSpace(teacher.Mobile) ? GeneratePlaceholderMobile() : teacher.Mobile,
+                FirstName = teacher.FirstName,
+                LastName = teacher.LastName,
+                IsActive = true,
+                IsEmailVerified = true,
+                IsMobileVerified = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
             await _context.SaveChangesAsync();
         }
 
-        return user;
+        await _userService.AssignRoleAsync(user.Id, "Teacher");
+
+        if (teacher.UserId != user.Id)
+        {
+            teacher.UserId = user.Id;
+            teacher.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        return (await _userService.GetByIdAsync(user.Id))!;
+    }
+
+    private async Task<User> EnsureParentLinkedUserAsync(List<Student> students, string? email)
+    {
+        var parentEmail = string.IsNullOrWhiteSpace(email)
+            ? $"{Guid.NewGuid():N}@placeholder.mastermind.local"
+            : email.ToLowerInvariant();
+        var primaryStudent = students[0];
+
+        var existingParentUserId = students.Select(s => s.ParentUserId).FirstOrDefault(id => id.HasValue);
+        User? user = null;
+        if (existingParentUserId.HasValue)
+        {
+            user = await _userService.GetByIdAsync(existingParentUserId.Value);
+        }
+
+        user ??= await _userService.GetByEmailAsync(parentEmail);
+
+        if (user == null)
+        {
+            var (firstName, lastName) = SplitName(primaryStudent.ParentName);
+            user = new User
+            {
+                Email = parentEmail,
+                Mobile = string.IsNullOrWhiteSpace(primaryStudent.ParentMobile) ? GeneratePlaceholderMobile() : primaryStudent.ParentMobile,
+                FirstName = firstName,
+                LastName = lastName,
+                IsActive = true,
+                IsEmailVerified = !parentEmail.Contains("@placeholder."),
+                IsMobileVerified = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+        }
+
+        await _userService.AssignRoleAsync(user.Id, "Parent");
+
+        foreach (var student in students.Where(s => !s.ParentUserId.HasValue || s.ParentUserId == user.Id))
+        {
+            student.ParentUserId = user.Id;
+            student.UpdatedAt = DateTime.UtcNow;
+        }
+        await _context.SaveChangesAsync();
+
+        return (await _userService.GetByIdAsync(user.Id))!;
+    }
+
+    private static string NormalizeMobile(string mobile)
+    {
+        var digitsOnly = new string(mobile.Where(char.IsDigit).ToArray());
+        if (digitsOnly.Length == 12 && digitsOnly.StartsWith("91"))
+        {
+            return digitsOnly.Substring(2);
+        }
+        return digitsOnly;
+    }
+
+    private static (string FirstName, string LastName) SplitName(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return ("Parent", "User");
+        }
+
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+        {
+            return (parts[0], "");
+        }
+        return (parts[0], string.Join(' ', parts.Skip(1)));
     }
 
     public async Task<AuthResponseDto> VerifyOtpAsync(OtpVerifyDto request)
@@ -221,7 +346,16 @@ public class AuthService : IAuthService
                 }
                 else
                 {
-                    user = await CreateAutoUserAfterOtpVerificationAsync(identifier, isMobile);
+                    user = await TryProvisionLinkedUserAsync(identifier, isMobile);
+                    if (user == null)
+                    {
+                        return new AuthResponseDto
+                        {
+                            Success = false,
+                            Message = "Account is not provisioned. Ask admin to link this email/mobile to a Teacher or Student Parent record.",
+                            ErrorCode = "ACCOUNT_NOT_PROVISIONED"
+                        };
+                    }
                 }
             }
             else

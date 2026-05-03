@@ -178,6 +178,7 @@ public class StudentsController : ControllerBase
 
         _context.Students.Add(student);
         await _context.SaveChangesAsync();
+        await LinkParentUserAsync(student);
 
         return CreatedAtAction(nameof(GetStudent),
             new { id = student.Id },
@@ -246,6 +247,7 @@ public class StudentsController : ControllerBase
         existingStudent.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await LinkParentUserAsync(existingStudent);
 
         return Ok(new ApiResponse<Student>
         {
@@ -583,6 +585,42 @@ public class StudentsController : ControllerBase
         }
 
         return Uri.UnescapeDataString(lastSegment.Trim('/'));
+    }
+
+    private async Task LinkParentUserAsync(Student student)
+    {
+        if (string.IsNullOrWhiteSpace(student.ParentEmail))
+        {
+            return;
+        }
+
+        var normalizedEmail = student.ParentEmail.Trim().ToLowerInvariant();
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => !u.IsDeleted && u.Email.ToLower() == normalizedEmail);
+
+        if (user == null)
+        {
+            return;
+        }
+
+        if (student.ParentUserId != user.Id)
+        {
+            student.ParentUserId = user.Id;
+            student.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var parentRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Parent");
+        if (parentRole != null && !await _context.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleId == parentRole.Id))
+        {
+            _context.UserRoles.Add(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = parentRole.Id,
+                AssignedAt = DateTime.UtcNow
+            });
+        }
+
+        await _context.SaveChangesAsync();
     }
 }
 

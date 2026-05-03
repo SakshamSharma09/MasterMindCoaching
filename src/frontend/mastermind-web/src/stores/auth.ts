@@ -22,8 +22,12 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = refresh
   }
 
-  const setUser = (userData: User) => {
-    user.value = userData
+  const setUser = (userData: User | any) => {
+    const normalizedRole = userData?.role || userData?.roles?.[0] || userData?.Roles?.[0] || null
+    user.value = {
+      ...userData,
+      role: normalizedRole
+    } as User
   }
 
   const clearAuth = () => {

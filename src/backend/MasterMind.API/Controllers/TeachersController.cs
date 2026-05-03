@@ -177,6 +177,8 @@ public class TeachersController : ControllerBase
             _context.Teachers.Add(teacher);
             await _context.SaveChangesAsync();
 
+            await LinkTeacherUserAsync(teacher);
+
             // Handle class assignments if provided
             if (teacherData.TryGetProperty("classIds", out JsonElement classIdsElement))
             {
@@ -274,6 +276,8 @@ public class TeachersController : ControllerBase
 
             await _context.SaveChangesAsync();
 
+            await LinkTeacherUserAsync(teacher);
+
             return Ok(new ApiResponse<Teacher>
             {
                 Success = true,
@@ -336,5 +340,42 @@ public class TeachersController : ControllerBase
     private bool TeacherExists(int id)
     {
         return _context.Teachers.Any(e => e.Id == id && !e.IsDeleted);
+    }
+
+    private async Task LinkTeacherUserAsync(Teacher teacher)
+    {
+        if (string.IsNullOrWhiteSpace(teacher.Email))
+        {
+            return;
+        }
+
+        var normalizedEmail = teacher.Email.Trim().ToLowerInvariant();
+        var user = await _context.Users
+            .Include(u => u.UserRoles)
+            .FirstOrDefaultAsync(u => !u.IsDeleted && u.Email.ToLower() == normalizedEmail);
+
+        if (user == null)
+        {
+            return;
+        }
+
+        if (teacher.UserId != user.Id)
+        {
+            teacher.UserId = user.Id;
+            teacher.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var teacherRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Teacher");
+        if (teacherRole != null && !await _context.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleId == teacherRole.Id))
+        {
+            _context.UserRoles.Add(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = teacherRole.Id,
+                AssignedAt = DateTime.UtcNow
+            });
+        }
+
+        await _context.SaveChangesAsync();
     }
 }
