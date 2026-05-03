@@ -14,6 +14,8 @@ namespace MasterMind.API.Controllers;
 [Produces("application/json")]
 public class AuthController : ControllerBase
 {
+    private const string AccessTokenCookieName = "mm_access_token";
+    private const string RefreshTokenCookieName = "mm_refresh_token";
     private readonly IAuthService _authService;
     private readonly IDeviceService _deviceService;
     private readonly ILogger<AuthController> _logger;
@@ -96,6 +98,7 @@ public class AuthController : ControllerBase
             };
         }
 
+        WriteAuthCookies(result);
         return Ok(result);
     }
 
@@ -120,6 +123,7 @@ public class AuthController : ControllerBase
                 _ => BadRequest(result)
             };
         }
+        WriteAuthCookies(result);
         return Ok(result);
     }
 
@@ -143,6 +147,10 @@ public class AuthController : ControllerBase
         }
 
         var result = await _authService.QuickLoginAsync(request.Email);
+        if (result.Success)
+        {
+            WriteAuthCookies(result);
+        }
         return Ok(result);
     }
 
@@ -177,6 +185,14 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponseDto>> RefreshToken([FromBody] RefreshTokenDto request)
     {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken) &&
+            Request.Cookies.TryGetValue(RefreshTokenCookieName, out var cookieRefreshToken))
+        {
+            request.RefreshToken = cookieRefreshToken;
+            ModelState.Clear();
+            TryValidateModel(request);
+        }
+
         if (!ModelState.IsValid)
         {
             return BadRequest(new AuthResponseDto
@@ -194,6 +210,7 @@ public class AuthController : ControllerBase
             return Unauthorized(result);
         }
 
+        WriteAuthCookies(result);
         return Ok(result);
     }
 
@@ -214,10 +231,18 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Invalid token" });
         }
 
-        var success = await _authService.LogoutAsync(userId.Value, request?.RefreshToken);
+        var refreshToken = request?.RefreshToken;
+        if (string.IsNullOrWhiteSpace(refreshToken) &&
+            Request.Cookies.TryGetValue(RefreshTokenCookieName, out var cookieRefreshToken))
+        {
+            refreshToken = cookieRefreshToken;
+        }
+
+        var success = await _authService.LogoutAsync(userId.Value, refreshToken);
         
         if (success)
         {
+            ClearAuthCookies();
             return Ok(new { message = "Logged out successfully" });
         }
 
@@ -244,6 +269,7 @@ public class AuthController : ControllerBase
         
         if (success)
         {
+            ClearAuthCookies();
             return Ok(new { message = "Logged out from all devices successfully" });
         }
 
@@ -408,6 +434,49 @@ public class AuthController : ControllerBase
         }
 
         return null;
+    }
+
+    private void WriteAuthCookies(AuthResponseDto result)
+    {
+        if (!result.Success || string.IsNullOrWhiteSpace(result.AccessToken) || string.IsNullOrWhiteSpace(result.RefreshToken))
+        {
+            return;
+        }
+
+        var accessTokenCookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Expires = result.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
+            IsEssential = true
+        };
+
+        var refreshTokenCookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Expires = DateTime.UtcNow.AddDays(30),
+            IsEssential = true
+        };
+
+        Response.Cookies.Append(AccessTokenCookieName, result.AccessToken, accessTokenCookieOptions);
+        Response.Cookies.Append(RefreshTokenCookieName, result.RefreshToken, refreshTokenCookieOptions);
+    }
+
+    private void ClearAuthCookies()
+    {
+        var options = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            IsEssential = true
+        };
+
+        Response.Cookies.Delete(AccessTokenCookieName, options);
+        Response.Cookies.Delete(RefreshTokenCookieName, options);
     }
 }
 

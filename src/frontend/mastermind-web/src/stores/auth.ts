@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null)
 
   // Getters
-  const isAuthenticated = computed(() => !!accessToken.value && !!user.value)
+  const isAuthenticated = computed(() => !!user.value)
   const userRole = computed(() => user.value?.role || null)
   const userName = computed(() => user.value ? `${user.value.firstName} ${user.value.lastName}` : '')
 
@@ -58,7 +58,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const response = await authService.verifyOtp(identifier, otp, userData)
-      setTokens(response.accessToken, response.refreshToken)
+      if (response.accessToken && response.refreshToken) {
+        setTokens(response.accessToken, response.refreshToken)
+      }
       setUser(response.user)
       return response
     } catch (err: any) {
@@ -70,13 +72,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const refreshAccessToken = async () => {
-    if (!refreshToken.value) {
-      throw new Error('No refresh token available')
-    }
-
     try {
-      const response = await authService.refreshToken(refreshToken.value)
-      setTokens(response.accessToken, response.refreshToken)
+      const response = await authService.refreshToken(refreshToken.value || '')
+      if (response.accessToken && response.refreshToken) {
+        setTokens(response.accessToken, response.refreshToken)
+      }
       return response
     } catch (err: any) {
       clearAuth()
@@ -90,7 +90,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const response = await authService.loginWithPassword(email, password)
-      setTokens(response.accessToken, response.refreshToken)
+      if (response.accessToken && response.refreshToken) {
+        setTokens(response.accessToken, response.refreshToken)
+      }
       setUser(response.user)
       return response
     } catch (err: any) {
@@ -112,8 +114,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const getCurrentUser = async () => {
-    if (!accessToken.value) return null
-
     try {
       const userData = await authService.getCurrentUser()
       setUser(userData)
@@ -127,15 +127,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const initializeAuth = async () => {
-    // Pinia persistence plugin auto-restores state from localStorage
-    // We just need to verify the token is still valid if we have one
-    if (accessToken.value && user.value) {
-      try {
-        await getCurrentUser()
-      } catch (err) {
+    try {
+      await getCurrentUser()
+    } catch (err) {
+      if (user.value || accessToken.value || refreshToken.value) {
         console.warn('[Auth] Token validation failed, clearing auth')
-        clearAuth()
       }
+      clearAuth()
     }
   }
 
@@ -199,6 +197,6 @@ export const useAuthStore = defineStore('auth', () => {
   persist: {
     key: 'mastermind-auth',
     storage: localStorage,
-    paths: ['user', 'accessToken', 'refreshToken']
+    paths: ['user']
   }
 })

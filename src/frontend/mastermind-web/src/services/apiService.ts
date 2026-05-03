@@ -12,6 +12,7 @@ const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
   headers: DEFAULT_HEADERS,
+  withCredentials: true,
 })
 
 // Request interceptor to add auth token
