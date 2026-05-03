@@ -87,7 +87,7 @@
       </div>
     </div>
 
-    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true" aria-label="Template Editor">
       <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6">
         <h3 class="text-lg font-semibold mb-4">{{ editingId ? 'Edit Template' : 'New Template' }}</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -110,7 +110,7 @@
       </div>
     </div>
 
-    <div v-if="previewOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div v-if="previewOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true" aria-label="Template Preview">
       <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-lg font-semibold">Template Preview</h3>
@@ -136,12 +136,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { templateZoneService, type MessageTemplate } from '@/services/templateZoneService'
+import { templateZoneService, type MessageTemplate, type BirthdayReminder, type FeeReminder, type FeeReceiptLog, type TemplatePreviewResponse } from '@/services/templateZoneService'
 
 const templates = ref<MessageTemplate[]>([])
-const birthdayReminders = ref<any[]>([])
-const feeReminders = ref<any[]>([])
-const receiptLogs = ref<any[]>([])
+const birthdayReminders = ref<BirthdayReminder[]>([])
+const feeReminders = ref<FeeReminder[]>([])
+const receiptLogs = ref<FeeReceiptLog[]>([])
 
 const selectedType = ref('')
 const monthFilter = ref(new Date().toISOString().slice(0, 7))
@@ -149,9 +149,10 @@ const birthdayDaysAhead = ref(7)
 
 const showModal = ref(false)
 const editingId = ref<number | null>(null)
-const form = ref<any>({ name: '', type: 1, subject: '', body: '', isActive: true, frequency: '', autoReminderDaysBefore: 0 })
+type TemplateEditorForm = Partial<MessageTemplate> & { imageUrl?: string }
+const form = ref<TemplateEditorForm>({ name: '', type: 1, subject: '', body: '', isActive: true, frequency: '', autoReminderDaysBefore: 0, imageUrl: '' })
 const previewOpen = ref(false)
-const previewData = ref<any>(null)
+const previewData = ref<TemplatePreviewResponse | null>(null)
 const previewImageUrl = ref('')
 
 const filteredTemplates = computed(() =>
@@ -218,7 +219,7 @@ const runPreview = async (template: MessageTemplate) => {
   const sampleFee = feeReminders.value[0]
   const sampleReceipt = receiptLogs.value[0]
 
-  const payload: any = { templateId: template.id }
+  const payload: { templateId: number; studentId?: number; studentFeeId?: number; feeReceiptId?: number } = { templateId: template.id }
   if (template.type === 1 && sampleBirthday?.id) payload.studentId = sampleBirthday.id
   if (template.type === 2 && sampleFee?.id) payload.studentFeeId = sampleFee.id
   if (template.type === 3 && sampleReceipt?.id) payload.feeReceiptId = sampleReceipt.id
