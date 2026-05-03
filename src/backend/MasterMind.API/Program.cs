@@ -1087,39 +1087,53 @@ static async Task SeedInitialDataAsync(MasterMindDbContext context)
         Log.Information("Roles seeded successfully");
     }
 
-    // Seed Admin User
-    var adminExists = await context.Users.AnyAsync(u => u.Email == "admin@mastermind-coaching.com");
-    if (!adminExists)
+    // Seed/Ensure Admin User
+    const string adminEmail = "themastermindcoachingclasses@gmail.com";
+    const string adminDefaultPassword = "11223344";
+    var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail && !u.IsDeleted);
+    if (adminUser == null)
     {
-        var adminUser = new MasterMind.API.Models.Entities.User
+        adminUser = new MasterMind.API.Models.Entities.User
         {
-            Email = "admin@mastermind-coaching.com",
+            Email = adminEmail,
             Mobile = "9999999999",
             FirstName = "Admin",
             LastName = "User",
             IsActive = true,
             IsEmailVerified = true,
             IsMobileVerified = true,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminDefaultPassword),
             CreatedAt = DateTime.UtcNow
         };
 
         context.Users.Add(adminUser);
         await context.SaveChangesAsync();
-
-        // Assign Admin role
-        var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
-        if (adminRole != null)
-        {
-            context.UserRoles.Add(new MasterMind.API.Models.Entities.UserRole
-            {
-                UserId = adminUser.Id,
-                RoleId = adminRole.Id,
-                AssignedAt = DateTime.UtcNow
-            });
-            await context.SaveChangesAsync();
-        }
-
         Log.Information("Admin user seeded successfully");
+    }
+    else
+    {
+        adminUser.IsActive = true;
+        adminUser.IsEmailVerified = true;
+        if (string.IsNullOrWhiteSpace(adminUser.PasswordHash))
+        {
+            adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminDefaultPassword);
+        }
+        adminUser.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+        Log.Information("Admin user ensured.");
+    }
+
+    // Assign Admin role
+    var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
+    if (adminRole != null && !await context.UserRoles.AnyAsync(ur => ur.UserId == adminUser.Id && ur.RoleId == adminRole.Id))
+    {
+        context.UserRoles.Add(new MasterMind.API.Models.Entities.UserRole
+        {
+            UserId = adminUser.Id,
+            RoleId = adminRole.Id,
+            AssignedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
     }
 
     // Intentionally do not seed sample sessions/classes/subjects.

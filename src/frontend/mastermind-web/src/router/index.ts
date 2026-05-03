@@ -103,6 +103,11 @@ const router = createRouter({
           path: 'leads',
           name: 'AdminLeads',
           component: () => import('@/views/admin/LeadsView.vue')
+        },
+        {
+          path: 'change-password',
+          name: 'AdminChangePassword',
+          component: () => import('@/views/admin/ChangePasswordView.vue')
         }
       ]
     },

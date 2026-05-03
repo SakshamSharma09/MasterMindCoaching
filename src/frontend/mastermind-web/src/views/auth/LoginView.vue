@@ -58,13 +58,6 @@
             Coaching Management System
           </p>
           
-          <!-- Enhanced demo badge -->
-          <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 
-                      rounded-full text-xs text-yellow-100 border border-yellow-300/30
-                      backdrop-blur-sm">
-            <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
-            Demo Mode Active
-          </div>
         </div>
 
         <!-- Form Section -->
@@ -111,6 +104,30 @@
               </div>
             </div>
 
+            <div v-if="isAdminEmail" class="space-y-2">
+              <label
+                for="password"
+                class="block text-sm font-semibold text-gray-700 flex items-center gap-2"
+              >
+                <i class="fas fa-lock text-indigo-500"></i>
+                Password
+              </label>
+              <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <i class="fas fa-key text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                </div>
+                <input
+                  id="password"
+                  v-model="form.password"
+                  type="password"
+                  required
+                  :disabled="isLoading"
+                  placeholder="Enter admin password"
+                  class="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-300 disabled:bg-gray-50 bg-gray-50/50 hover:bg-white focus:bg-white shadow-sm hover:shadow-md focus:shadow-lg"
+                />
+              </div>
+            </div>
+
             <!-- Enhanced Error Message -->
             <div
               v-if="error"
@@ -127,7 +144,7 @@
             <!-- Enhanced Submit Button -->
             <button
               type="submit"
-              :disabled="isLoading || !form.identifier.trim()"
+              :disabled="isLoading || !form.identifier.trim() || (isAdminEmail && !form.password.trim())"
               class="w-full py-4 rounded-2xl font-bold text-white text-base
                      bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600
                      hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700
@@ -169,114 +186,6 @@
             </button>
           </form>
 
-          <!-- Enhanced Demo Accounts Section -->
-          <div class="mt-8">
-            <div class="relative mb-6">
-              <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-gray-200/60"></div>
-              </div>
-              <div class="relative flex justify-center">
-                <span class="bg-white px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Quick Access
-                </span>
-              </div>
-            </div>
-
-            <div class="space-y-3">
-              <!-- Enhanced Admin Account -->
-              <div
-                class="group p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 
-                       rounded-2xl cursor-pointer hover:from-blue-100 hover:to-indigo-100 
-                       transition-all duration-300 hover:shadow-lg hover:scale-[1.02]
-                       relative overflow-hidden animate-stagger-1"
-                @click="form.identifier = 'admin@mastermind.com'"
-              >
-                <div class="absolute inset-0 bg-gradient-to-r from-blue-400/5 to-indigo-400/5 opacity-0 
-                            group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div class="relative flex items-center justify-between">
-                  <div class="flex items-center">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl 
-                                flex items-center justify-center mr-4 shadow-md group-hover:shadow-lg 
-                                transition-all duration-300 group-hover:scale-110">
-                      <i class="fas fa-shield-alt text-white"></i>
-                    </div>
-                    <div>
-                      <p class="font-semibold text-gray-900 text-sm">Administrator</p>
-                      <p class="text-xs text-gray-600">Full system access</p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <code class="text-xs bg-white/80 px-3 py-1.5 rounded-lg border border-blue-200/60 
-                                   font-mono text-gray-700 backdrop-blur-sm">admin@mastermind.com</code>
-                    <i class="fas fa-arrow-right text-blue-500 opacity-0 group-hover:opacity-100 
-                               transition-opacity duration-300 transform group-hover:translate-x-1"></i>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Enhanced Teacher Account -->
-              <div
-                class="group p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/60 
-                       rounded-2xl cursor-pointer hover:from-green-100 hover:to-emerald-100 
-                       transition-all duration-300 hover:shadow-lg hover:scale-[1.02]
-                       relative overflow-hidden animate-stagger-2"
-                @click="form.identifier = 'teacher@mastermind.com'"
-              >
-                <div class="absolute inset-0 bg-gradient-to-r from-green-400/5 to-emerald-400/5 opacity-0 
-                            group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div class="relative flex items-center justify-between">
-                  <div class="flex items-center">
-                    <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl 
-                                flex items-center justify-center mr-4 shadow-md group-hover:shadow-lg 
-                                transition-all duration-300 group-hover:scale-110">
-                      <i class="fas fa-chalkboard-teacher text-white"></i>
-                    </div>
-                    <div>
-                      <p class="font-semibold text-gray-900 text-sm">Teacher</p>
-                      <p class="text-xs text-gray-600">Class management</p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <code class="text-xs bg-white/80 px-3 py-1.5 rounded-lg border border-green-200/60 
-                                   font-mono text-gray-700 backdrop-blur-sm">teacher@mastermind.com</code>
-                    <i class="fas fa-arrow-right text-green-500 opacity-0 group-hover:opacity-100 
-                               transition-opacity duration-300 transform group-hover:translate-x-1"></i>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Enhanced Parent Account -->
-              <div
-                class="group p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200/60 
-                       rounded-2xl cursor-pointer hover:from-purple-100 hover:to-pink-100 
-                       transition-all duration-300 hover:shadow-lg hover:scale-[1.02]
-                       relative overflow-hidden animate-stagger-3"
-                @click="form.identifier = 'parent@mastermind.com'"
-              >
-                <div class="absolute inset-0 bg-gradient-to-r from-purple-400/5 to-pink-400/5 opacity-0 
-                            group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div class="relative flex items-center justify-between">
-                  <div class="flex items-center">
-                    <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl 
-                                flex items-center justify-center mr-4 shadow-md group-hover:shadow-lg 
-                                transition-all duration-300 group-hover:scale-110">
-                      <i class="fas fa-heart text-white"></i>
-                    </div>
-                    <div>
-                      <p class="font-semibold text-gray-900 text-sm">Parent</p>
-                      <p class="text-xs text-gray-600">Student monitoring</p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <code class="text-xs bg-white/80 px-3 py-1.5 rounded-lg border border-purple-200/60 
-                                   font-mono text-gray-700 backdrop-blur-sm">parent@mastermind.com</code>
-                    <i class="fas fa-arrow-right text-purple-500 opacity-0 group-hover:opacity-100 
-                               transition-opacity duration-300 transform group-hover:translate-x-1"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Enhanced Footer -->
@@ -288,13 +197,6 @@
         </div>
       </div>
 
-      <!-- Floating action hint -->
-      <div class="mt-6 text-center">
-        <p class="text-white/80 text-sm animate-pulse">
-          <i class="fas fa-mouse-pointer mr-2"></i>
-          Click on demo accounts for quick access
-        </p>
-      </div>
     </div>
   </div>
 </template>
@@ -308,7 +210,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const form = reactive({
-  identifier: ''
+  identifier: '',
+  password: ''
 })
 
 const isLoading = ref(false)
@@ -318,13 +221,12 @@ const error = ref<string | null>(null)
 const buttonText = computed(() => {
   if (isLoading.value) return 'Authenticating…'
   
-  const testEmails = ['admin@mastermind.com', 'teacher@mastermind.com', 'parent@mastermind.com']
-  if (testEmails.includes(form.identifier)) {
-    return 'Quick Access'
-  }
-  
-  return 'Send OTP'
+  return isAdminEmail.value ? 'Login with Password' : 'Send OTP'
 })
+
+const isAdminEmail = computed(() =>
+  form.identifier.trim().toLowerCase() === 'themastermindcoachingclasses@gmail.com'
+)
 
 const handleSubmit = async () => {
   if (!form.identifier.trim()) return
@@ -333,21 +235,11 @@ const handleSubmit = async () => {
   error.value = null
 
   try {
-    // Check if this is a test email for bypass authentication
-    const testEmails = ['admin@mastermind.com', 'teacher@mastermind.com', 'parent@mastermind.com']
-    
-    if (testEmails.includes(form.identifier)) {
-      // Use bypass authentication for test emails
-      await authStore.bypassAuth(form.identifier)
-      
-      // Redirect to appropriate dashboard based on role
+    if (isAdminEmail.value) {
+      await authStore.loginWithPassword(form.identifier.trim(), form.password)
       const role = authStore.userRole
       if (role === 'Admin') {
         router.push({ name: 'AdminDashboard' })
-      } else if (role === 'Teacher') {
-        router.push({ name: 'TeacherDashboard' })
-      } else if (role === 'Parent') {
-        router.push({ name: 'ParentDashboard' })
       }
     } else {
       // Normal OTP flow for other emails
