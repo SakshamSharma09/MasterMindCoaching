@@ -4,6 +4,7 @@ using MasterMind.API.Models.Entities;
 using MasterMind.API.Models.Settings;
 using MasterMind.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 
 namespace MasterMind.API.Services.Implementations;
@@ -84,7 +85,15 @@ public class OtpService : IOtpService
             };
 
             _context.OtpRecords.Add(otpRecord);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogWarning(dbEx, "EF insert for OtpRecord failed; attempting SQL fallback insert for {Identifier}", identifier);
+                await InsertOtpRecordFallbackAsync(otpRecord);
+            }
             _logger.LogInformation("OTP record saved to database for {Identifier}", identifier);
 
             // Send OTP via appropriate channel
@@ -211,5 +220,54 @@ public class OtpService : IOtpService
     private static bool VerifyOtp(string otp, string hashedOtp)
     {
         return BCrypt.Net.BCrypt.Verify(otp, hashedOtp);
+    }
+
+    private async Task InsertOtpRecordFallbackAsync(OtpRecord otpRecord)
+    {
+        var provider = _context.Database.ProviderName ?? string.Empty;
+        if (!provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("OTP save failed and fallback is only available for SQL Server.");
+        }
+
+        var hasIsDeleted = await _context.Database.SqlQueryRaw<int>(@"
+SELECT COUNT(1)
+FROM sys.columns c
+JOIN sys.tables t ON c.object_id = t.object_id
+WHERE t.name = 'OtpRecords' AND c.name = 'IsDeleted'").FirstAsync() > 0;
+
+        if (hasIsDeleted)
+        {
+            await _context.Database.ExecuteSqlRawAsync(@"
+INSERT INTO dbo.OtpRecords (Identifier, OtpCode, Type, Purpose, ExpiresAt, IsUsed, AttemptCount, UserId, CreatedAt, UpdatedAt, IsDeleted)
+VALUES (@identifier, @otpCode, @type, @purpose, @expiresAt, @isUsed, @attemptCount, @userId, @createdAt, @updatedAt, @isDeleted)",
+                new SqlParameter("@identifier", otpRecord.Identifier),
+                new SqlParameter("@otpCode", otpRecord.OtpCode),
+                new SqlParameter("@type", (int)otpRecord.Type),
+                new SqlParameter("@purpose", (int)otpRecord.Purpose),
+                new SqlParameter("@expiresAt", otpRecord.ExpiresAt),
+                new SqlParameter("@isUsed", otpRecord.IsUsed),
+                new SqlParameter("@attemptCount", otpRecord.AttemptCount),
+                new SqlParameter("@userId", (object?)otpRecord.UserId ?? DBNull.Value),
+                new SqlParameter("@createdAt", otpRecord.CreatedAt),
+                new SqlParameter("@updatedAt", (object?)otpRecord.UpdatedAt ?? DBNull.Value),
+                new SqlParameter("@isDeleted", false));
+        }
+        else
+        {
+            await _context.Database.ExecuteSqlRawAsync(@"
+INSERT INTO dbo.OtpRecords (Identifier, OtpCode, Type, Purpose, ExpiresAt, IsUsed, AttemptCount, UserId, CreatedAt, UpdatedAt)
+VALUES (@identifier, @otpCode, @type, @purpose, @expiresAt, @isUsed, @attemptCount, @userId, @createdAt, @updatedAt)",
+                new SqlParameter("@identifier", otpRecord.Identifier),
+                new SqlParameter("@otpCode", otpRecord.OtpCode),
+                new SqlParameter("@type", (int)otpRecord.Type),
+                new SqlParameter("@purpose", (int)otpRecord.Purpose),
+                new SqlParameter("@expiresAt", otpRecord.ExpiresAt),
+                new SqlParameter("@isUsed", otpRecord.IsUsed),
+                new SqlParameter("@attemptCount", otpRecord.AttemptCount),
+                new SqlParameter("@userId", (object?)otpRecord.UserId ?? DBNull.Value),
+                new SqlParameter("@createdAt", otpRecord.CreatedAt),
+                new SqlParameter("@updatedAt", (object?)otpRecord.UpdatedAt ?? DBNull.Value));
+        }
     }
 }
