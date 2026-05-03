@@ -120,6 +120,19 @@ BEGIN
         IsDeleted bit NOT NULL DEFAULT(0)
     );
 END
+
+IF COL_LENGTH('dbo.AdminNotes', 'Title') IS NULL
+    ALTER TABLE dbo.AdminNotes ADD Title nvarchar(200) NOT NULL CONSTRAINT DF_AdminNotes_Title DEFAULT('');
+IF COL_LENGTH('dbo.AdminNotes', 'Content') IS NULL
+    ALTER TABLE dbo.AdminNotes ADD Content nvarchar(4000) NOT NULL CONSTRAINT DF_AdminNotes_Content DEFAULT('');
+IF COL_LENGTH('dbo.AdminNotes', 'NoteDate') IS NULL
+    ALTER TABLE dbo.AdminNotes ADD NoteDate date NOT NULL CONSTRAINT DF_AdminNotes_NoteDate DEFAULT(CONVERT(date, SYSUTCDATETIME()));
+IF COL_LENGTH('dbo.AdminNotes', 'CreatedAt') IS NULL
+    ALTER TABLE dbo.AdminNotes ADD CreatedAt datetime2 NOT NULL CONSTRAINT DF_AdminNotes_CreatedAt DEFAULT(sysutcdatetime());
+IF COL_LENGTH('dbo.AdminNotes', 'UpdatedAt') IS NULL
+    ALTER TABLE dbo.AdminNotes ADD UpdatedAt datetime2 NULL;
+IF COL_LENGTH('dbo.AdminNotes', 'IsDeleted') IS NULL
+    ALTER TABLE dbo.AdminNotes ADD IsDeleted bit NOT NULL CONSTRAINT DF_AdminNotes_IsDeleted DEFAULT(0);
 ");
     }
 }
