@@ -82,48 +82,8 @@ public class AuthService : IAuthService
             // Parse purpose (default to Login if not specified)
             var purpose = ParseOtpPurpose(request.Purpose);
 
-            // Auto-register new users for login purpose (common OTP auth pattern)
-            // This allows users to just enter their mobile/email and get OTP without separate registration
-            if (isNewUser && purpose == OtpPurpose.Login)
-            {
-                _logger.LogInformation("Auto-registering new user for identifier: {Identifier}", 
-                    MaskIdentifier(identifier, isMobile));
-                
-                // Create a placeholder user account
-                var newUser = new User
-                {
-                    Email = isMobile ? GeneratePlaceholderEmail() : identifier,
-                    Mobile = isMobile ? identifier : GeneratePlaceholderMobile(),
-                    FirstName = "User", // Placeholder - will be updated during OTP verification if needed
-                    LastName = "",
-                    IsActive = true,
-                    IsEmailVerified = !isMobile,
-                    IsMobileVerified = isMobile,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.Users.Add(newUser);
-                await _context.SaveChangesAsync();
-
-                // Assign default Parent role
-                var parentRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Parent");
-                if (parentRole != null)
-                {
-                    _context.UserRoles.Add(new UserRole
-                    {
-                        UserId = newUser.Id,
-                        RoleId = parentRole.Id,
-                        AssignedAt = DateTime.UtcNow
-                    });
-                    await _context.SaveChangesAsync();
-                }
-
-                existingUser = newUser;
-                isNewUser = true;
-                
-                _logger.LogInformation("Auto-created user {UserId} for identifier {Identifier}", 
-                    newUser.Id, MaskIdentifier(identifier, isMobile));
-            }
+            // Do not auto-create users during OTP request.
+            // User creation is deferred to OTP verification.
 
             // For explicit registration, user must not exist
             if (purpose == OtpPurpose.Registration && !isNewUser)
@@ -188,6 +148,38 @@ public class AuthService : IAuthService
         return $"mobile_{Guid.NewGuid():N}@placeholder.mastermind.local";
     }
 
+    private async Task<User> CreateAutoUserAfterOtpVerificationAsync(string identifier, bool isMobile)
+    {
+        var user = new User
+        {
+            Email = isMobile ? GeneratePlaceholderEmail() : identifier.ToLowerInvariant(),
+            Mobile = isMobile ? identifier : GeneratePlaceholderMobile(),
+            FirstName = "User",
+            LastName = "",
+            IsActive = true,
+            IsEmailVerified = !isMobile,
+            IsMobileVerified = isMobile,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        var parentRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Parent");
+        if (parentRole != null)
+        {
+            _context.UserRoles.Add(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = parentRole.Id,
+                AssignedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+        }
+
+        return user;
+    }
+
     public async Task<AuthResponseDto> VerifyOtpAsync(OtpVerifyDto request)
     {
         try
@@ -213,28 +205,24 @@ public class AuthService : IAuthService
 
             if (user == null)
             {
-                // Registration flow - create new user
-                if (purpose != OtpPurpose.Registration)
+                if (purpose == OtpPurpose.Registration)
                 {
-                    return new AuthResponseDto
+                    if (request.RegistrationDetails == null)
                     {
-                        Success = false,
-                        Message = "User not found",
-                        ErrorCode = "USER_NOT_FOUND"
-                    };
-                }
+                        return new AuthResponseDto
+                        {
+                            Success = false,
+                            Message = "Registration details are required",
+                            ErrorCode = "REGISTRATION_DETAILS_REQUIRED"
+                        };
+                    }
 
-                if (request.RegistrationDetails == null)
+                    user = await _userService.CreateUserAsync(request.RegistrationDetails, identifier, isMobile);
+                }
+                else
                 {
-                    return new AuthResponseDto
-                    {
-                        Success = false,
-                        Message = "Registration details are required",
-                        ErrorCode = "REGISTRATION_DETAILS_REQUIRED"
-                    };
+                    user = await CreateAutoUserAfterOtpVerificationAsync(identifier, isMobile);
                 }
-
-                user = await _userService.CreateUserAsync(request.RegistrationDetails, identifier, isMobile);
             }
             else
             {
