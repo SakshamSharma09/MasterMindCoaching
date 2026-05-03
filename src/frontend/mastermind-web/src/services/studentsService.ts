@@ -188,5 +188,10 @@ export const studentsService = {
     }
 
     await apiService.delete(API_ENDPOINTS.STUDENTS.DELETE(id.toString()))
+  },
+
+  async uploadStudentPhoto(studentId: number, file: File): Promise<{ blobName: string; url: string }> {
+    const response = await apiService.upload(API_ENDPOINTS.STUDENTS.UPDATE(studentId.toString()) + '/photo', file)
+    return response.data
   }
 }

@@ -438,11 +438,19 @@
               <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Photo</label>
                 <input
-                  v-model="form.photo"
-                  type="text"
-                  placeholder="Enter photo URL or upload file"
+                  type="file"
+                  accept="image/*"
+                  @change="onPhotoSelected"
                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
                 />
+                <p class="mt-1 text-xs text-gray-500">Max 5MB. Allowed: jpg, jpeg, png, gif, webp.</p>
+                <div v-if="selectedPhotoPreviewUrl || form.photo" class="mt-3">
+                  <img
+                    :src="selectedPhotoPreviewUrl || form.photo"
+                    alt="Student photo preview"
+                    class="h-16 w-16 rounded-lg object-cover border border-gray-200"
+                  />
+                </div>
               </div>
               <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
@@ -528,6 +536,8 @@ const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showMappingModal = ref(false)
 const editingStudent = ref<ExtendedStudent | null>(null)
+const selectedPhotoFile = ref<File | null>(null)
+const selectedPhotoPreviewUrl = ref('')
 
 // Form data
 const form = ref<CreateStudentRequest>({
@@ -699,6 +709,8 @@ const resetForm = () => {
     rollNumber: '',
     standard: ''
   }
+  selectedPhotoFile.value = null
+  selectedPhotoPreviewUrl.value = ''
 }
 
 const handleImageError = () => {
@@ -710,6 +722,19 @@ const closeModal = () => {
   showEditModal.value = false
   editingStudent.value = null
   resetForm()
+}
+
+const onPhotoSelected = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0] ?? null
+  selectedPhotoFile.value = file
+
+  if (!file) {
+    selectedPhotoPreviewUrl.value = ''
+    return
+  }
+
+  selectedPhotoPreviewUrl.value = URL.createObjectURL(file)
 }
 
 const editStudent = (student: ExtendedStudent) => {
@@ -735,6 +760,8 @@ const editStudent = (student: ExtendedStudent) => {
     rollNumber: student.rollNumber,
     standard: student.standard
   }
+  selectedPhotoFile.value = null
+  selectedPhotoPreviewUrl.value = student.photo || ''
   showEditModal.value = true
 }
 
@@ -742,21 +769,34 @@ const submitForm = async () => {
   try {
     if (showEditModal.value && editingStudent.value) {
       // Update existing student via API
-      await studentsService.updateStudent(editingStudent.value.id, form.value)
+      const updatedStudent = await studentsService.updateStudent(editingStudent.value.id, form.value)
+      let photoUrl = form.value.photo || editingStudent.value.photo
+      if (selectedPhotoFile.value) {
+        const uploadResult = await studentsService.uploadStudentPhoto(editingStudent.value.id, selectedPhotoFile.value)
+        photoUrl = uploadResult.url
+      }
       const index = students.value.findIndex(s => s.id === editingStudent.value!.id)
       if (index !== -1) {
         students.value[index] = {
           ...editingStudent.value,
-          ...form.value
+          ...form.value,
+          ...updatedStudent,
+          photo: photoUrl
         }
       }
     } else {
       // Add new student via API
       const newStudent = await studentsService.createStudent(form.value)
+      let photoUrl = form.value.photo || ''
+      if (selectedPhotoFile.value && newStudent?.id) {
+        const uploadResult = await studentsService.uploadStudentPhoto(newStudent.id, selectedPhotoFile.value)
+        photoUrl = uploadResult.url
+      }
       students.value.push({
         ...newStudent,
         id: newStudent.id || Date.now(),
-        createdAt: newStudent.createdAt || new Date().toISOString()
+        createdAt: newStudent.createdAt || new Date().toISOString(),
+        photo: photoUrl
       })
     }
     closeModal()
