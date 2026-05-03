@@ -251,6 +251,7 @@ public class FeeCollectionController : ControllerBase
 
             _context.FeeReceipts.Add(receipt);
             await _context.SaveChangesAsync();
+            await LogFeeReceiptTemplateUsageAsync(receipt);
 
             // Map to DTO
             var receiptDto = new FeeReceiptDto
@@ -297,6 +298,52 @@ public class FeeCollectionController : ControllerBase
                 Message = "Error collecting payment"
             });
         }
+    }
+
+    private async Task LogFeeReceiptTemplateUsageAsync(FeeReceipt receipt)
+    {
+        var template = await _context.MessageTemplates
+            .Where(t => !t.IsDeleted && t.IsActive && t.Type == TemplateType.FeeReceipt)
+            .OrderByDescending(t => t.UpdatedAt ?? t.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (template == null)
+        {
+            return;
+        }
+
+        var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ReceiptNumber"] = receipt.ReceiptNumber,
+            ["ReceiptDate"] = receipt.ReceiptDate.ToString("yyyy-MM-dd HH:mm:ss"),
+            ["StudentName"] = receipt.StudentName,
+            ["ParentName"] = receipt.ParentName,
+            ["ClassName"] = receipt.StudentClass,
+            ["FeeAmount"] = receipt.PaidAmount.ToString("0.00")
+        };
+
+        var renderedSubject = template.Subject;
+        var renderedBody = template.Body;
+        foreach (var token in tokens)
+        {
+            renderedSubject = renderedSubject.Replace($"{{{{{token.Key}}}}}", token.Value, StringComparison.OrdinalIgnoreCase);
+            renderedBody = renderedBody.Replace($"{{{{{token.Key}}}}}", token.Value, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var log = new TemplateDispatchLog
+        {
+            MessageTemplateId = template.Id,
+            StudentId = receipt.StudentId,
+            FeeReceiptId = receipt.Id,
+            Channel = "System",
+            Status = "Generated",
+            RenderedSubject = renderedSubject,
+            RenderedBody = renderedBody,
+            GeneratedAt = DateTime.UtcNow
+        };
+
+        _context.TemplateDispatchLogs.Add(log);
+        await _context.SaveChangesAsync();
     }
 
     /// <summary>

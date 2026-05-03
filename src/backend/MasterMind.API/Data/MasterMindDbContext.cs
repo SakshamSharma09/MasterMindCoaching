@@ -62,6 +62,8 @@ namespace MasterMind.API.Data
         // Exam Management
         public DbSet<Exam> Exams { get; set; }
         public DbSet<ExamResult> ExamResults { get; set; }
+        public DbSet<MessageTemplate> MessageTemplates { get; set; }
+        public DbSet<TemplateDispatchLog> TemplateDispatchLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -147,6 +149,44 @@ namespace MasterMind.API.Data
                     .WithMany(p => p.StudentClasses)
                     .HasForeignKey(d => d.ClassId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<MessageTemplate>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(150);
+                entity.Property(e => e.Subject).HasMaxLength(300);
+                entity.Property(e => e.Frequency).HasMaxLength(50);
+                entity.Property(e => e.Body).IsRequired();
+            });
+
+            modelBuilder.Entity<TemplateDispatchLog>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Channel).HasMaxLength(50);
+                entity.Property(e => e.Status).HasMaxLength(50);
+                entity.Property(e => e.RenderedSubject).HasMaxLength(300);
+                entity.Property(e => e.RenderedBody).IsRequired();
+
+                entity.HasOne(e => e.MessageTemplate)
+                    .WithMany()
+                    .HasForeignKey(e => e.MessageTemplateId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Student)
+                    .WithMany()
+                    .HasForeignKey(e => e.StudentId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.StudentFee)
+                    .WithMany()
+                    .HasForeignKey(e => e.StudentFeeId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.FeeReceipt)
+                    .WithMany()
+                    .HasForeignKey(e => e.FeeReceiptId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Teacher configuration

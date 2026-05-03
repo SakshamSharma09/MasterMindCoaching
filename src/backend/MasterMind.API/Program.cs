@@ -1171,6 +1171,42 @@ static async Task SeedInitialDataAsync(MasterMindDbContext context)
         Log.Information("Subjects seeded successfully");
     }
 
+    if (!await context.MessageTemplates.AnyAsync())
+    {
+        context.MessageTemplates.AddRange(
+            new MasterMind.API.Models.Entities.MessageTemplate
+            {
+                Name = "Birthday Wish - Default",
+                Type = MasterMind.API.Models.Entities.TemplateType.BirthdayWish,
+                Subject = "Happy Birthday {{StudentName}}",
+                Body = "Dear {{StudentName}}, wishing you a wonderful birthday from MasterMind Coaching. Keep shining!",
+                IsActive = true,
+                AutoReminderDaysBefore = 0
+            },
+            new MasterMind.API.Models.Entities.MessageTemplate
+            {
+                Name = "Fee Reminder - Monthly",
+                Type = MasterMind.API.Models.Entities.TemplateType.FeeReminder,
+                Subject = "Fee Reminder for {{StudentName}} - {{ClassName}}",
+                Body = "Dear {{ParentName}}, this is a reminder that {{StudentName}}'s fee of {{FeeAmount}} for {{FeePeriod}} is due on {{DueDate}}.",
+                IsActive = true,
+                AutoReminderDaysBefore = 3,
+                Frequency = "Monthly"
+            },
+            new MasterMind.API.Models.Entities.MessageTemplate
+            {
+                Name = "Fee Receipt - Default",
+                Type = MasterMind.API.Models.Entities.TemplateType.FeeReceipt,
+                Subject = "Fee Receipt {{ReceiptNumber}} for {{StudentName}}",
+                Body = "Dear {{ParentName}}, payment of {{FeeAmount}} has been received for {{StudentName}} ({{ClassName}}). Receipt No: {{ReceiptNumber}} on {{ReceiptDate}}.",
+                IsActive = true
+            }
+        );
+
+        await context.SaveChangesAsync();
+        Log.Information("Default message templates seeded successfully");
+    }
+
     Log.Information("All initial data seeding completed");
 }
 
@@ -1212,6 +1248,50 @@ BEGIN
     BEGIN
         ALTER TABLE dbo.Classes ADD CONSTRAINT DF_Classes_IsActive DEFAULT(1) FOR IsActive;
     END
+END
+
+IF OBJECT_ID('dbo.MessageTemplates', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.MessageTemplates
+    (
+        Id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        Name nvarchar(150) NOT NULL,
+        Type int NOT NULL,
+        Subject nvarchar(300) NOT NULL,
+        Body nvarchar(max) NOT NULL,
+        IsActive bit NOT NULL DEFAULT(1),
+        AutoReminderDaysBefore int NOT NULL DEFAULT(0),
+        Frequency nvarchar(50) NULL,
+        VariablesJson nvarchar(max) NULL,
+        CreatedAt datetime2 NOT NULL DEFAULT(sysutcdatetime()),
+        UpdatedAt datetime2 NULL,
+        IsDeleted bit NOT NULL DEFAULT(0)
+    );
+END
+
+IF OBJECT_ID('dbo.TemplateDispatchLogs', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.TemplateDispatchLogs
+    (
+        Id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        MessageTemplateId int NOT NULL,
+        StudentId int NULL,
+        StudentFeeId int NULL,
+        FeeReceiptId int NULL,
+        Channel nvarchar(50) NOT NULL DEFAULT('System'),
+        Status nvarchar(50) NOT NULL DEFAULT('Generated'),
+        GeneratedAt datetime2 NOT NULL DEFAULT(sysutcdatetime()),
+        SentAt datetime2 NULL,
+        RenderedSubject nvarchar(300) NOT NULL,
+        RenderedBody nvarchar(max) NOT NULL,
+        CreatedAt datetime2 NOT NULL DEFAULT(sysutcdatetime()),
+        UpdatedAt datetime2 NULL,
+        IsDeleted bit NOT NULL DEFAULT(0)
+    );
+
+    ALTER TABLE dbo.TemplateDispatchLogs
+        ADD CONSTRAINT FK_TemplateDispatchLogs_MessageTemplates
+        FOREIGN KEY (MessageTemplateId) REFERENCES dbo.MessageTemplates(Id);
 END
 ");
 }

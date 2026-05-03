@@ -86,6 +86,11 @@ const router = createRouter({
               path: 'reports',
               name: 'FinanceReports',
               component: () => import('@/views/admin/finance/FinanceReportsView.vue')
+            },
+            {
+              path: 'templates',
+              name: 'FinanceTemplates',
+              component: () => import('@/views/admin/finance/TemplateZoneView.vue')
             }
           ]
         },

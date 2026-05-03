@@ -182,13 +182,18 @@ const DocumentIcon = () => h('svg', { class: 'h-4 w-4', fill: 'none', stroke: 'c
   h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })
 ])
 
+const TemplateIcon = () => h('svg', { class: 'h-4 w-4', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5l5 5v11a2 2 0 01-2 2z' })
+])
+
 const tabs = computed(() => [
   { name: 'Overview', route: '/admin/finance', icon: ChartBarIcon, badge: null },
   { name: 'Fees Management', route: '/admin/finance/fees', icon: CurrencyIcon, badge: null },
   { name: 'Fee Collection', route: '/admin/finance/fee-collection', icon: CreditCardIcon, badge: null },
   { name: 'Expenses', route: '/admin/finance/expenses', icon: ReceiptIcon, badge: null },
   { name: 'Overdue Fees', route: '/admin/finance/overdue', icon: ExclamationIcon, badge: overdueFeeCount.value > 0 ? overdueFeeCount.value.toString() : null },
-  { name: 'Reports', route: '/admin/finance/reports', icon: DocumentIcon, badge: null }
+  { name: 'Reports', route: '/admin/finance/reports', icon: DocumentIcon, badge: null },
+  { name: 'Template Zone', route: '/admin/finance/templates', icon: TemplateIcon, badge: null }
 ])
 
 const currentSectionName = computed(() => {
