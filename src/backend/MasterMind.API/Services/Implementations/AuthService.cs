@@ -49,8 +49,12 @@ public class AuthService : IAuthService
     {
         try
         {
-            var isMobile = request.Type.ToLower() == "mobile";
+            var isMobile = string.Equals(request.Type?.Trim(), "mobile", StringComparison.OrdinalIgnoreCase);
             var identifier = request.Identifier.Trim();
+            if (!isMobile)
+            {
+                identifier = identifier.ToLowerInvariant();
+            }
 
             // Validate identifier format
             if (isMobile && !_smsService.IsValidMobileNumber(identifier))
@@ -88,8 +92,8 @@ public class AuthService : IAuthService
                 // Create a placeholder user account
                 var newUser = new User
                 {
-                    Email = isMobile ? string.Empty : identifier,
-                    Mobile = isMobile ? identifier : string.Empty,
+                    Email = isMobile ? GeneratePlaceholderEmail() : identifier,
+                    Mobile = isMobile ? identifier : GeneratePlaceholderMobile(),
                     FirstName = "User", // Placeholder - will be updated during OTP verification if needed
                     LastName = "",
                     IsActive = true,
@@ -171,6 +175,17 @@ public class AuthService : IAuthService
                 Message = $"An error occurred: {ex.Message}"
             };
         }
+    }
+
+    private static string GeneratePlaceholderMobile()
+    {
+        // 20-char max in schema; keep deterministic length and uniqueness.
+        return $"E{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+    }
+
+    private static string GeneratePlaceholderEmail()
+    {
+        return $"mobile_{Guid.NewGuid():N}@placeholder.mastermind.local";
     }
 
     public async Task<AuthResponseDto> VerifyOtpAsync(OtpVerifyDto request)

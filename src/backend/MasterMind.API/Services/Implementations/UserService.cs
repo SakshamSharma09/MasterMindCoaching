@@ -59,13 +59,22 @@ public class UserService : IUserService
 
     public async Task<User> CreateUserAsync(RegistrationDetailsDto details, string identifier, bool isMobile)
     {
+        var normalizedIdentifier = identifier.Trim();
+        if (!isMobile)
+        {
+            normalizedIdentifier = normalizedIdentifier.ToLowerInvariant();
+        }
+
+        var fallbackMobile = $"E{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+        var fallbackEmail = $"mobile_{Guid.NewGuid():N}@placeholder.mastermind.local";
+
         var user = new User
         {
             FirstName = details.FirstName,
             LastName = details.LastName,
-            Email = isMobile ? (details.Email ?? string.Empty) : identifier,
-            Mobile = isMobile ? NormalizeMobile(identifier) : (details.Mobile ?? string.Empty),
-            IsEmailVerified = !isMobile && !string.IsNullOrEmpty(identifier),
+            Email = isMobile ? (!string.IsNullOrWhiteSpace(details.Email) ? details.Email.Trim().ToLowerInvariant() : fallbackEmail) : normalizedIdentifier,
+            Mobile = isMobile ? NormalizeMobile(normalizedIdentifier) : (!string.IsNullOrWhiteSpace(details.Mobile) ? NormalizeMobile(details.Mobile) : fallbackMobile),
+            IsEmailVerified = !isMobile && !string.IsNullOrEmpty(normalizedIdentifier),
             IsMobileVerified = isMobile,
             IsActive = true,
             CreatedAt = DateTime.UtcNow

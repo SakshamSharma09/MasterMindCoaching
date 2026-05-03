@@ -97,9 +97,14 @@ public class OtpService : IOtpService
 
             if (!sent)
             {
-                _logger.LogWarning("Failed to send OTP to {Identifier} via {Type}, but OTP record was created", identifier, type);
-                // Don't throw - OTP is still valid, just delivery failed
-                // In production, you might want to implement retry logic
+                _logger.LogWarning("Failed to send OTP to {Identifier} via {Type}. Marking OTP as invalid.", identifier, type);
+                otpRecord.IsUsed = true;
+                otpRecord.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                throw new InvalidOperationException(type == OtpType.Email
+                    ? "Unable to deliver OTP email right now. Please try again shortly."
+                    : "Unable to deliver OTP SMS right now. Please try again shortly.");
             }
 
             _logger.LogInformation("OTP generated for {Identifier} ({Type}) for {Purpose}", identifier, type, purpose);
