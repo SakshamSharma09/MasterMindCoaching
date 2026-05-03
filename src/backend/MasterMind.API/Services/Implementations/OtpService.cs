@@ -230,11 +230,33 @@ public class OtpService : IOtpService
             throw new InvalidOperationException("OTP save failed and fallback is only available for SQL Server.");
         }
 
-        var hasIsDeleted = await _context.Database.SqlQueryRaw<int>(@"
+        var hasIsDeleted = false;
+        var connection = _context.Database.GetDbConnection();
+        var shouldClose = connection.State != System.Data.ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync();
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = @"
 SELECT COUNT(1)
 FROM sys.columns c
 JOIN sys.tables t ON c.object_id = t.object_id
-WHERE t.name = 'OtpRecords' AND c.name = 'IsDeleted'").FirstAsync() > 0;
+WHERE t.name = 'OtpRecords' AND c.name = 'IsDeleted'";
+            var result = await command.ExecuteScalarAsync();
+            var count = Convert.ToInt32(result ?? 0);
+            hasIsDeleted = count > 0;
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
 
         if (hasIsDeleted)
         {
