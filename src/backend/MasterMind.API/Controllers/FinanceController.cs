@@ -1040,6 +1040,23 @@ public class FinanceController : ControllerBase
         }
 
         await _context.Database.ExecuteSqlRawAsync(@"
+IF COL_LENGTH('dbo.FeeStructures', 'Category') IS NULL
+    ALTER TABLE dbo.FeeStructures ADD Category int NOT NULL CONSTRAINT DF_FeeStructures_Category DEFAULT(0);
+IF COL_LENGTH('dbo.FeeStructures', 'DurationMonths') IS NULL
+    ALTER TABLE dbo.FeeStructures ADD DurationMonths int NOT NULL CONSTRAINT DF_FeeStructures_DurationMonths DEFAULT(0);
+IF COL_LENGTH('dbo.FeeStructures', 'LateFeePerDay') IS NULL
+    ALTER TABLE dbo.FeeStructures ADD LateFeePerDay decimal(18,2) NULL;
+IF COL_LENGTH('dbo.FeeStructures', 'DiscountAmount') IS NULL
+    ALTER TABLE dbo.FeeStructures ADD DiscountAmount decimal(18,2) NULL;
+IF COL_LENGTH('dbo.FeeStructures', 'DiscountDaysBeforeDue') IS NULL
+    ALTER TABLE dbo.FeeStructures ADD DiscountDaysBeforeDue int NULL;
+IF COL_LENGTH('dbo.FeeStructures', 'IsRefundable') IS NULL
+    ALTER TABLE dbo.FeeStructures ADD IsRefundable bit NOT NULL CONSTRAINT DF_FeeStructures_IsRefundable DEFAULT(0);
+IF COL_LENGTH('dbo.FeeStructures', 'RefundPercentage') IS NULL
+    ALTER TABLE dbo.FeeStructures ADD RefundPercentage decimal(18,2) NULL;
+IF COL_LENGTH('dbo.FeeStructures', 'TermsAndConditions') IS NULL
+    ALTER TABLE dbo.FeeStructures ADD TermsAndConditions nvarchar(max) NULL;
+
 IF COL_LENGTH('dbo.StudentFees', 'FeeCategory') IS NULL
     ALTER TABLE dbo.StudentFees ADD FeeCategory int NOT NULL CONSTRAINT DF_StudentFees_FeeCategory DEFAULT(0);
 IF COL_LENGTH('dbo.StudentFees', 'StartDate') IS NULL
