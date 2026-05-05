@@ -7,6 +7,10 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
+    "build:mobile": "npm run build && npx cap sync android",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/",
     "test": "vitest",
@@ -26,6 +30,9 @@
     "vue-router": "^4.2.5"
   },
   "devDependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
     "@rushstack/eslint-patch": "^1.3.3",
     "@tsconfig/node20": "^20.1.2",
     "@types/node": "^20.10.5",

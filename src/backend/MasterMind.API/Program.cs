@@ -196,9 +196,16 @@ builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 
 // Azure Blob Storage for student photos
-var blobConnectionString = builder.Configuration["AzureBlobStorage:ConnectionString"];
-if (!string.IsNullOrEmpty(blobConnectionString))
+var blobConnectionString =
+    builder.Configuration["AzureBlobStorage:ConnectionString"] ??
+    builder.Configuration["AzureBlobStorage__ConnectionString"] ??
+    builder.Configuration["ConnectionStrings:AzureBlobStorage"] ??
+    builder.Configuration["ConnectionStrings__AzureBlobStorage"] ??
+    builder.Configuration["AzureWebJobsStorage"];
+
+if (!string.IsNullOrWhiteSpace(blobConnectionString))
 {
+    builder.Configuration["AzureBlobStorage:ConnectionString"] = blobConnectionString;
     builder.Services.AddSingleton<IBlobStorageService, BlobStorageService>();
     Log.Information("Azure Blob Storage configured for student photos");
 }
