@@ -199,8 +199,11 @@ builder.Services.AddScoped<IFinanceService, FinanceService>();
 var blobConnectionString =
     builder.Configuration["AzureBlobStorage:ConnectionString"] ??
     builder.Configuration["AzureBlobStorage__ConnectionString"] ??
+    builder.Configuration["AzureBlobStorage_ConnectionString"] ??
+    builder.Configuration["AzureBlobStorageConnectionString"] ??
     builder.Configuration["ConnectionStrings:AzureBlobStorage"] ??
     builder.Configuration["ConnectionStrings__AzureBlobStorage"] ??
+    builder.Configuration["ConnectionStrings_AzureBlobStorage"] ??
     builder.Configuration["AzureWebJobsStorage"];
 
 if (!string.IsNullOrWhiteSpace(blobConnectionString))
