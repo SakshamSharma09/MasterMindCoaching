@@ -37,6 +37,8 @@ public class LeadsController : ControllerBase
     {
         try
         {
+            await EnsureLeadsSchemaAsync();
+
             var query = _context.Leads
                 .Include(l => l.AssignedToUser)
                 .Include(l => l.LeadFollowups)
@@ -56,11 +58,11 @@ public class LeadsController : ControllerBase
             // Apply search filter
             if (!string.IsNullOrEmpty(search))
             {
-                var searchLower = search.ToLower();
+                var searchLike = $"%{search.Trim()}%";
                 query = query.Where(l => 
-                    l.Name.ToLower().Contains(searchLower) ||
-                    l.Mobile.Contains(search) ||
-                    (l.Email != null && l.Email.ToLower().Contains(searchLower)));
+                    EF.Functions.Like(l.Name, searchLike) ||
+                    EF.Functions.Like(l.Mobile, searchLike) ||
+                    (l.Email != null && EF.Functions.Like(l.Email, searchLike)));
             }
 
             // Apply status filter
@@ -600,6 +602,33 @@ public class LeadsController : ControllerBase
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return int.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    private async Task EnsureLeadsSchemaAsync()
+    {
+        if (!_context.Database.IsSqlServer())
+        {
+            return;
+        }
+
+        await _context.Database.ExecuteSqlRawAsync(@"
+IF COL_LENGTH('dbo.Leads', 'SessionId') IS NULL
+    ALTER TABLE dbo.Leads ADD SessionId int NULL;
+IF COL_LENGTH('dbo.Leads', 'SourceDetails') IS NULL
+    ALTER TABLE dbo.Leads ADD SourceDetails nvarchar(max) NULL;
+IF COL_LENGTH('dbo.Leads', 'InterestedClass') IS NULL
+    ALTER TABLE dbo.Leads ADD InterestedClass nvarchar(max) NULL;
+IF COL_LENGTH('dbo.Leads', 'InterestedSubject') IS NULL
+    ALTER TABLE dbo.Leads ADD InterestedSubject nvarchar(max) NULL;
+IF COL_LENGTH('dbo.Leads', 'Priority') IS NULL
+    ALTER TABLE dbo.Leads ADD Priority int NOT NULL CONSTRAINT DF_Leads_Priority DEFAULT(1);
+IF COL_LENGTH('dbo.Leads', 'NextFollowupDate') IS NULL
+    ALTER TABLE dbo.Leads ADD NextFollowupDate datetime2 NULL;
+IF COL_LENGTH('dbo.Leads', 'ConvertedAt') IS NULL
+    ALTER TABLE dbo.Leads ADD ConvertedAt datetime2 NULL;
+IF COL_LENGTH('dbo.Leads', 'IsDeleted') IS NULL
+    ALTER TABLE dbo.Leads ADD IsDeleted bit NOT NULL CONSTRAINT DF_Leads_IsDeleted DEFAULT(0);
+");
     }
 
     private static LeadSource ParseLeadSource(string? source)

@@ -501,6 +501,8 @@ public class FinanceController : ControllerBase
     {
         try
         {
+            await EnsureFinanceFeeSchemaAsync();
+
             var feeRows = await _context.StudentFees
                 .AsNoTracking()
                 .Include(sf => sf.Student)
@@ -561,6 +563,8 @@ public class FinanceController : ControllerBase
     {
         try
         {
+            await EnsureFinanceFeeSchemaAsync();
+
             var today = DateOnly.FromDateTime(DateTime.Today);
 
             var overdueFeeRows = await _context.StudentFees
@@ -691,6 +695,58 @@ public class FinanceController : ControllerBase
     {
         try
         {
+            await EnsureFinanceFeeSchemaAsync();
+
+            if (!ModelState.IsValid)
+            {
+                var allErrors = string.Join("; ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .Where(msg => !string.IsNullOrWhiteSpace(msg)));
+
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = string.IsNullOrWhiteSpace(allErrors) ? "Invalid fee payload" : allErrors
+                });
+            }
+
+            if (request.StudentId <= 0 || request.FeeStructureId <= 0)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Student and fee structure are required"
+                });
+            }
+
+            if (request.Amount <= 0)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Fee amount must be greater than zero"
+                });
+            }
+
+            if (!Enum.IsDefined(typeof(FeeCategory), request.FeeCategory))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid fee category. Use Monthly, FullCourse, or Additional."
+                });
+            }
+
+            if (request.StartDate.HasValue && request.EndDate.HasValue && request.EndDate < request.StartDate)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "End date cannot be before start date"
+                });
+            }
+
             // Validate student exists
             var student = await _context.Students.FindAsync(request.StudentId);
             if (student == null)
@@ -753,7 +809,7 @@ public class FinanceController : ControllerBase
             return StatusCode(500, new ApiResponse<object>
             {
                 Success = false,
-                Message = "Error creating fee"
+                Message = $"Error creating fee: {ex.Message}"
             });
         }
     }
@@ -762,6 +818,7 @@ public class FinanceController : ControllerBase
     {
         var startDate = request.StartDate ?? today;
         var dueDay = request.RecurringDayOfMonth ?? startDate.Day;
+        dueDay = Math.Clamp(dueDay, 1, 31);
         var endDate = request.EndDate ?? startDate.AddMonths(12); // Default 12 months
 
         // Create parent fee record for tracking
@@ -772,11 +829,11 @@ public class FinanceController : ControllerBase
             Amount = request.Amount,
             DiscountAmount = request.DiscountAmount,
             FinalAmount = request.Amount - (request.DiscountAmount ?? 0),
-            DueDate = new DateOnly(startDate.Year, startDate.Month, dueDay),
+            DueDate = BuildMonthDueDate(startDate.Year, startDate.Month, dueDay),
             FeeCategory = FeeCategory.Monthly,
             StartDate = startDate,
             EndDate = endDate,
-            RecurringDayOfMonth = (int?)dueDay,
+            RecurringDayOfMonth = dueDay,
             IsRecurring = true,
             LateFeePerDay = request.LateFeePerDay ?? feeStructure.LateFeePerDay,
             GracePeriodDays = request.GracePeriodDays,
@@ -795,11 +852,14 @@ public class FinanceController : ControllerBase
         
         while (currentDate <= endDate)
         {
-            var dueDate = new DateOnly(currentDate.Year, currentDate.Month, dueDay);
+            var dueDate = BuildMonthDueDate(currentDate.Year, currentDate.Month, dueDay);
             
             // Skip if due date is in the past for future months
             if (dueDate < today && currentDate > today)
+            {
+                currentDate = currentDate.AddMonths(1);
                 continue;
+            }
 
             var monthlyFee = new StudentFee
             {
@@ -812,7 +872,7 @@ public class FinanceController : ControllerBase
                 FeeCategory = FeeCategory.Monthly,
                 StartDate = startDate,
                 EndDate = endDate,
-                RecurringDayOfMonth = (int?)dueDay,
+                RecurringDayOfMonth = dueDay,
                 IsRecurring = false, // Individual instances are not recurring
                 ParentFeeId = parentFee.Id,
                 LateFeePerDay = request.LateFeePerDay ?? feeStructure.LateFeePerDay,
@@ -857,10 +917,17 @@ public class FinanceController : ControllerBase
             parentFee.EndDate,
             FeeCategory = "Monthly (Recurring)",
             IsRecurring = true,
-            RecurringDayOfMonth = (int?)dueDay,
+            RecurringDayOfMonth = dueDay,
             GeneratedMonths = monthlyFees.Count,
             MonthlyInstances = monthlyFees
         };
+    }
+
+    private static DateOnly BuildMonthDueDate(int year, int month, int dueDay)
+    {
+        var maxDay = DateTime.DaysInMonth(year, month);
+        var safeDay = Math.Min(Math.Max(dueDay, 1), maxDay);
+        return new DateOnly(year, month, safeDay);
     }
 
     private async Task<object> CreateCourseFee(CreateFeeRequest request, Student student, FeeStructure feeStructure, DateOnly today)
@@ -963,6 +1030,37 @@ public class FinanceController : ControllerBase
     {
         var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         return int.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    private async Task EnsureFinanceFeeSchemaAsync()
+    {
+        if (!_context.Database.IsSqlServer())
+        {
+            return;
+        }
+
+        await _context.Database.ExecuteSqlRawAsync(@"
+IF COL_LENGTH('dbo.StudentFees', 'FeeCategory') IS NULL
+    ALTER TABLE dbo.StudentFees ADD FeeCategory int NOT NULL CONSTRAINT DF_StudentFees_FeeCategory DEFAULT(0);
+IF COL_LENGTH('dbo.StudentFees', 'StartDate') IS NULL
+    ALTER TABLE dbo.StudentFees ADD StartDate date NULL;
+IF COL_LENGTH('dbo.StudentFees', 'EndDate') IS NULL
+    ALTER TABLE dbo.StudentFees ADD EndDate date NULL;
+IF COL_LENGTH('dbo.StudentFees', 'RecurringDayOfMonth') IS NULL
+    ALTER TABLE dbo.StudentFees ADD RecurringDayOfMonth int NULL;
+IF COL_LENGTH('dbo.StudentFees', 'IsRecurring') IS NULL
+    ALTER TABLE dbo.StudentFees ADD IsRecurring bit NOT NULL CONSTRAINT DF_StudentFees_IsRecurring DEFAULT(0);
+IF COL_LENGTH('dbo.StudentFees', 'ParentFeeId') IS NULL
+    ALTER TABLE dbo.StudentFees ADD ParentFeeId int NULL;
+IF COL_LENGTH('dbo.StudentFees', 'LateFeePerDay') IS NULL
+    ALTER TABLE dbo.StudentFees ADD LateFeePerDay decimal(18,2) NULL;
+IF COL_LENGTH('dbo.StudentFees', 'GracePeriodDays') IS NULL
+    ALTER TABLE dbo.StudentFees ADD GracePeriodDays int NOT NULL CONSTRAINT DF_StudentFees_GracePeriodDays DEFAULT(0);
+IF COL_LENGTH('dbo.StudentFees', 'Month') IS NULL
+    ALTER TABLE dbo.StudentFees ADD [Month] nvarchar(20) NULL;
+IF COL_LENGTH('dbo.StudentFees', 'AcademicYear') IS NULL
+    ALTER TABLE dbo.StudentFees ADD AcademicYear nvarchar(20) NOT NULL CONSTRAINT DF_StudentFees_AcademicYear DEFAULT('');
+");
     }
 }
 
