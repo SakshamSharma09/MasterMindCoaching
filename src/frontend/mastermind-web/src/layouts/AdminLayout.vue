@@ -135,7 +135,7 @@
             </div>
             <button
               @click="logout"
-              class="p-2 rounded-lg text-surface-400 hover:text-error-600 hover:bg-error-50 transition-colors opacity-0 group-hover:opacity-100"
+              class="p-2 rounded-lg text-surface-400 hover:text-error-600 hover:bg-error-50 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
               title="Logout"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

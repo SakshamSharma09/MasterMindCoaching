@@ -50,6 +50,44 @@ export interface CreateStudentRequest {
   standard?: string
 }
 
+const toIsoDateOrToday = (value?: string): string => {
+  if (!value) return new Date().toISOString()
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return new Date().toISOString()
+  return parsed.toISOString()
+}
+
+const toGenderEnum = (value?: 'Male' | 'Female' | 'Other'): number => {
+  if (value === 'Female') return 1
+  if (value === 'Other') return 2
+  return 0
+}
+
+const mapStudentPayload = (studentData: Partial<CreateStudentRequest>, id?: number) => {
+  const parentFirst = (studentData.motherName || '').trim()
+  const parentLast = (studentData.fatherName || '').trim()
+  const parentName = `${parentFirst} ${parentLast}`.trim() || 'Parent'
+
+  return {
+    ...(id ? { id } : {}),
+    firstName: (studentData.firstName || '').trim(),
+    lastName: (studentData.lastName || '').trim(),
+    dateOfBirth: toIsoDateOrToday(studentData.dateOfBirth),
+    gender: toGenderEnum(studentData.gender),
+    address: studentData.address || '',
+    studentMobile: studentData.phone || '',
+    studentEmail: studentData.email || '',
+    profileImageUrl: studentData.photo || '',
+    admissionNumber: studentData.rollNumber || '',
+    admissionDate: new Date().toISOString(),
+    isActive: studentData.status !== 'Inactive',
+    parentName,
+    parentMobile: studentData.whatsappNumber || studentData.textNumber || studentData.phone || '',
+    parentEmail: '',
+    parentOccupation: ''
+  }
+}
+
 export const studentsService = {
   async getStudents(page = 1, pageSize = 50, classId?: number): Promise<{ data: Student[], totalCount: number }> {
     if (USE_MOCK_API) {
@@ -157,7 +195,8 @@ export const studentsService = {
       }
     }
 
-    const response = await apiService.post(API_ENDPOINTS.STUDENTS.CREATE, studentData)
+    const payload = mapStudentPayload(studentData)
+    const response = await apiService.post(API_ENDPOINTS.STUDENTS.CREATE, payload)
     return response.data
   },
 
@@ -176,7 +215,8 @@ export const studentsService = {
       }
     }
 
-    const response = await apiService.put(API_ENDPOINTS.STUDENTS.UPDATE(id.toString()), studentData)
+    const payload = mapStudentPayload(studentData, id)
+    const response = await apiService.put(API_ENDPOINTS.STUDENTS.UPDATE(id.toString()), payload)
     return response.data
   },
 

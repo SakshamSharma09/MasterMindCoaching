@@ -1,12 +1,12 @@
 <template>
   <div class="space-y-6">
     <!-- Header Section with Background -->
-    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-xl p-8 text-white">
-      <div class="flex items-center justify-between">
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-xl p-5 sm:p-8 text-white">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-bold mb-2">Students Management</h1>
-          <p class="text-blue-100 text-lg">Manage student records, enrollment, and academic progress</p>
-          <div class="mt-4 flex items-center space-x-4">
+          <h1 class="text-2xl sm:text-3xl font-bold mb-2">Students Management</h1>
+          <p class="text-blue-100 text-base sm:text-lg">Manage student records, enrollment, and academic progress</p>
+          <div class="mt-4 flex flex-wrap items-center gap-3 sm:gap-4">
             <div class="flex items-center space-x-2">
               <div class="h-8 w-8 bg-white/20 rounded-lg flex items-center justify-center">
                 <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,28 +26,30 @@
             </div>
           </div>
         </div>
-        <button
-          @click="showAddModal = true"
-          class="bg-white text-indigo-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 mr-3"
-        >
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button
+            @click="showAddModal = true"
+            class="bg-white text-indigo-600 px-5 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
           <div class="flex items-center space-x-2">
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
             </svg>
             <span>Add New Student</span>
           </div>
-        </button>
-        <button
-          @click="showMappingModal = true"
-          class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
+          </button>
+          <button
+            @click="showMappingModal = true"
+            class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-5 py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
           <div class="flex items-center space-x-2">
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
             </svg>
             <span>Map Students to Classes</span>
           </div>
-        </button>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -192,7 +194,7 @@
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table class="min-w-[980px] w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -348,7 +350,7 @@
         <div class="fixed inset-0 transition-opacity" @click="closeModal">
           <div class="absolute inset-0 bg-gray-900 opacity-50 backdrop-blur-sm"></div>
         </div>
-        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full w-full">
           <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
             <h3 class="text-lg font-semibold text-white">
               {{ showEditModal ? 'Edit Student' : 'Add New Student' }}
@@ -356,7 +358,7 @@
           </div>
           <form @submit.prevent="submitForm">
             <div class="bg-white px-6 py-5">
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                   <input
@@ -802,7 +804,8 @@ const submitForm = async () => {
     closeModal()
   } catch (error) {
     console.error('Error saving student:', error)
-    alert('Failed to save student. Please try again.')
+    const message = (error as any)?.response?.data?.message || (error as any)?.message || 'Failed to save student. Please try again.'
+    alert(message)
   }
 }
 

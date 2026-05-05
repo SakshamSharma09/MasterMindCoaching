@@ -70,7 +70,7 @@
                 class="block text-sm font-semibold text-gray-700 flex items-center gap-2"
               >
                 <i class="fas fa-user-circle text-indigo-500"></i>
-                Email or Phone Number
+                Email Address
               </label>
 
               <div class="relative group">
@@ -84,7 +84,7 @@
                   type="text"
                   required
                   :disabled="isLoading"
-                  placeholder="you@example.com or 9876543210"
+                  placeholder="you@example.com"
                   class="w-full pl-12 pr-4 py-4 rounded-2xl
                          border border-gray-200
                          focus:ring-2 focus:ring-indigo-500/50
@@ -242,15 +242,17 @@ const handleSubmit = async () => {
         router.push({ name: 'AdminDashboard' })
       }
     } else {
-      // Normal OTP flow for other emails
+      // OTP flow for non-admin users is email-only
       const isEmail = form.identifier.includes('@')
-      const type = isEmail ? 'email' : 'mobile'
+      if (!isEmail) {
+        throw new Error('Please enter a valid email address.')
+      }
 
-      await authStore.requestOtp(form.identifier, type)
+      await authStore.requestOtp(form.identifier, 'email')
 
       router.push({
         name: 'OtpVerify',
-        query: { identifier: form.identifier, type }
+        query: { identifier: form.identifier, type: 'email' }
       })
     }
   } catch (err: any) {

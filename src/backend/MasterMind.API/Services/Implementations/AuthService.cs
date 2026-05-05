@@ -463,16 +463,6 @@ public class AuthService : IAuthService
 
             var validPassword = BCrypt.Net.BCrypt.Verify(inputPassword, user.PasswordHash);
 
-            // One-time bootstrap fallback: if admin uses default password and hash drift happened,
-            // repair hash automatically and continue login.
-            if (!validPassword && normalizedEmail == BootstrapAdminEmail && inputPassword == BootstrapAdminPassword)
-            {
-                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(BootstrapAdminPassword);
-                user.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-                validPassword = true;
-            }
-
             if (!validPassword)
             {
                 return new AuthResponseDto
