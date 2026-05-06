@@ -62,6 +62,7 @@ namespace MasterMind.API.Data
         // Exam Management
         public DbSet<Exam> Exams { get; set; }
         public DbSet<ExamResult> ExamResults { get; set; }
+        public DbSet<AcademicPlannerEntry> AcademicPlannerEntries { get; set; }
         public DbSet<MessageTemplate> MessageTemplates { get; set; }
         public DbSet<TemplateDispatchLog> TemplateDispatchLogs { get; set; }
         public DbSet<AdminNote> AdminNotes { get; set; }
@@ -196,6 +197,33 @@ namespace MasterMind.API.Data
                 entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Content).IsRequired().HasMaxLength(4000);
                 entity.Property(e => e.NoteDate).HasColumnType("date");
+            });
+
+            modelBuilder.Entity<AcademicPlannerEntry>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SchoolName).HasMaxLength(200);
+                entity.Property(e => e.Subject).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Syllabus).IsRequired();
+                entity.Property(e => e.ExamDate).HasColumnType("date");
+                entity.Property(e => e.StartTime).HasColumnType("time");
+                entity.Property(e => e.EndTime).HasColumnType("time");
+                entity.Property(e => e.Notes).HasMaxLength(2000);
+
+                entity.HasOne(e => e.Session)
+                    .WithMany()
+                    .HasForeignKey(e => e.SessionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Student)
+                    .WithMany()
+                    .HasForeignKey(e => e.StudentId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Class)
+                    .WithMany()
+                    .HasForeignKey(e => e.ClassId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Teacher configuration

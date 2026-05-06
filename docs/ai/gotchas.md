@@ -1,6 +1,6 @@
 # MasterMind Coaching - AI Gotchas & Lessons Learned
 
-> **Last Updated**: 2026-04-18 (Azure SQL migrations)
+> **Last Updated**: 2026-05-05 (Fee structure compatibility + production finance save)
 
 > **Purpose**: This file is automatically updated by AI assistants when bugs require more than one attempt to fix. It serves as a permanent memory system that prevents the same mistakes from being repeated.
 
@@ -42,6 +42,16 @@ var result = data.Select(x => new Dto {
 **Solution**: Use EF Core migrations and apply them at startup with `Database.MigrateAsync()` for SQL Server (see `docs/database-migrations.md`). Generate changes with `dotnet ef migrations add`.  
 **Files Affected**: `Program.cs`, `Data/Migrations/`  
 **Date Learned**: 2026-04-18
+
+### Fee Save Failure Due to Missing/Hardcoded Fee Structures
+**Symptom**: `POST /api/finance/fees` fails with `400` and message `Fee structure not found`, especially when frontend sends fixed IDs (like `1..7`) but the database has no fee structure rows.  
+**Root Cause**: Frontend had hardcoded fee structure IDs; production DB can have empty or different IDs, so payload references invalid records.  
+**Solution**:  
+1. Load fee structures dynamically in UI instead of hardcoding IDs.  
+2. Add backend compatibility fallback to auto-create a valid fee structure for legacy payloads when ID is missing.  
+3. Surface backend message in UI toast for fast diagnosis.  
+**Files Affected**: `FinanceController.cs`, `FeesManagementView.vue`  
+**Date Learned**: 2026-05-05
 
 ### Authorization Attribute Placement
 **Symptom**: API endpoints accessible without authentication (returns 200 instead of 401)  

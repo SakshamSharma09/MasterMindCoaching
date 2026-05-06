@@ -15,6 +15,16 @@ public class FinanceController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly ILogger<FinanceController> _logger;
+    private static readonly Dictionary<int, (string Name, FeeType Type)> LegacyFeeStructureCatalog = new()
+    {
+        [1] = ("Tuition Fee", FeeType.Tuition),
+        [2] = ("Exam Fee", FeeType.Examination),
+        [3] = ("Lab Fee", FeeType.Laboratory),
+        [4] = ("Library Fee", FeeType.Library),
+        [5] = ("Sports Fee", FeeType.Sports),
+        [6] = ("Transport Fee", FeeType.Transport),
+        [7] = ("Other Fee", FeeType.Other)
+    };
 
     public FinanceController(MasterMindDbContext context, ILogger<FinanceController> logger)
     {
@@ -758,14 +768,25 @@ public class FinanceController : ControllerBase
                 });
             }
 
-            // Validate fee structure exists
-            var feeStructure = await _context.FeeStructures.FindAsync(request.FeeStructureId);
+            // Resolve fee structure; create fallback structure for legacy clients when needed.
+            var feeStructure = await ResolveFeeStructureForCreateAsync(request);
             if (feeStructure == null)
             {
+                var availableIds = await _context.FeeStructures
+                    .AsNoTracking()
+                    .Where(fs => fs.IsActive && !fs.IsDeleted)
+                    .OrderBy(fs => fs.Id)
+                    .Select(fs => fs.Id)
+                    .ToListAsync();
+
+                var availableHint = availableIds.Count == 0
+                    ? "No active fee structures exist."
+                    : $"Available feeStructureId values: {string.Join(", ", availableIds)}";
+
                 return BadRequest(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "Fee structure not found"
+                    Message = $"Fee structure not found. {availableHint}"
                 });
             }
 
@@ -825,7 +846,7 @@ public class FinanceController : ControllerBase
         var parentFee = new StudentFee
         {
             StudentId = request.StudentId,
-            FeeStructureId = request.FeeStructureId,
+            FeeStructureId = feeStructure.Id,
             Amount = request.Amount,
             DiscountAmount = request.DiscountAmount,
             FinalAmount = request.Amount - (request.DiscountAmount ?? 0),
@@ -864,7 +885,7 @@ public class FinanceController : ControllerBase
             var monthlyFee = new StudentFee
             {
                 StudentId = request.StudentId,
-                FeeStructureId = request.FeeStructureId,
+                FeeStructureId = feeStructure.Id,
                 Amount = request.Amount,
                 DiscountAmount = request.DiscountAmount,
                 FinalAmount = request.Amount - (request.DiscountAmount ?? 0),
@@ -930,6 +951,55 @@ public class FinanceController : ControllerBase
         return new DateOnly(year, month, safeDay);
     }
 
+    private async Task<FeeStructure?> ResolveFeeStructureForCreateAsync(CreateFeeRequest request)
+    {
+        var directMatch = await _context.FeeStructures
+            .FirstOrDefaultAsync(fs => fs.Id == request.FeeStructureId && fs.IsActive && !fs.IsDeleted);
+        if (directMatch != null)
+        {
+            return directMatch;
+        }
+
+        if (request.FeeStructureId <= 0)
+        {
+            return null;
+        }
+
+        (string Name, FeeType Type) catalog = LegacyFeeStructureCatalog.TryGetValue(request.FeeStructureId, out var mapped)
+            ? mapped
+            : ($"Adhoc Fee {request.FeeStructureId}", FeeType.Other);
+
+        var existingByName = await _context.FeeStructures.FirstOrDefaultAsync(fs =>
+            fs.IsActive && !fs.IsDeleted &&
+            fs.Name == catalog.Name &&
+            fs.Category == request.FeeCategory);
+
+        if (existingByName != null)
+        {
+            return existingByName;
+        }
+
+        var fallback = new FeeStructure
+        {
+            Name = catalog.Name,
+            Type = catalog.Type,
+            Category = request.FeeCategory,
+            Amount = request.Amount,
+            Frequency = request.FeeCategory == FeeCategory.Monthly ? FeeFrequency.Monthly : FeeFrequency.OneTime,
+            Description = "Auto-generated fee structure for compatibility",
+            IsActive = true,
+            AcademicYear = string.IsNullOrWhiteSpace(request.AcademicYear) ? GetCurrentAcademicYear() : request.AcademicYear,
+            DurationMonths = request.FeeCategory == FeeCategory.FullCourse ? 12 : 0,
+            LateFeePerDay = request.LateFeePerDay,
+            IsDeleted = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.FeeStructures.Add(fallback);
+        await _context.SaveChangesAsync();
+        return fallback;
+    }
+
     private async Task<object> CreateCourseFee(CreateFeeRequest request, Student student, FeeStructure feeStructure, DateOnly today)
     {
         var startDate = request.StartDate ?? today;
@@ -937,7 +1007,7 @@ public class FinanceController : ControllerBase
         var courseFee = new StudentFee
         {
             StudentId = request.StudentId,
-            FeeStructureId = request.FeeStructureId,
+            FeeStructureId = feeStructure.Id,
             Amount = request.Amount,
             DiscountAmount = request.DiscountAmount,
             FinalAmount = request.Amount - (request.DiscountAmount ?? 0),
@@ -982,7 +1052,7 @@ public class FinanceController : ControllerBase
         var additionalFee = new StudentFee
         {
             StudentId = request.StudentId,
-            FeeStructureId = request.FeeStructureId,
+            FeeStructureId = feeStructure.Id,
             Amount = request.Amount,
             DiscountAmount = request.DiscountAmount,
             FinalAmount = request.Amount - (request.DiscountAmount ?? 0),

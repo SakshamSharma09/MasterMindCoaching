@@ -124,14 +124,13 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">Fee Type</label>
                   <select v-model="feeForm.feeStructureId" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                     <option value="">Select Fee Type</option>
-                    <option value="1">Tuition Fee</option>
-                    <option value="2">Exam Fee</option>
-                    <option value="3">Lab Fee</option>
-                    <option value="4">Library Fee</option>
-                    <option value="5">Sports Fee</option>
-                    <option value="6">Transport Fee</option>
-                    <option value="7">Other</option>
+                    <option v-for="structure in feeStructures" :key="structure.id" :value="String(structure.id)">
+                      {{ structure.name }}
+                    </option>
                   </select>
+                  <p v-if="feeStructures.length === 0" class="mt-1 text-xs text-amber-700">
+                    No fee structures were found. A compatible structure will be auto-generated on save.
+                  </p>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
@@ -193,10 +192,16 @@ interface StudentItem {
   lastName: string
 }
 
+interface FeeStructureItem {
+  id: number
+  name: string
+}
+
 const loading = ref(false)
 const fees = ref<Fee[]>([])
 const students = ref<StudentItem[]>([])
 const classes = ref<Class[]>([])
+const feeStructures = ref<FeeStructureItem[]>([])
 const showFeeModal = ref(false)
 const isEditingFee = ref(false)
 
@@ -264,11 +269,23 @@ const loadClasses = async () => {
   }
 }
 
+const loadFeeStructures = async () => {
+  try {
+    feeStructures.value = await financeService.getFeeStructures()
+  } catch (error) {
+    console.error('Error loading fee structures:', error)
+    feeStructures.value = []
+  }
+}
+
 const openAddFeeModal = () => {
   isEditingFee.value = false
   feeForm.value = {
     id: 0, studentId: '', feeStructureId: '', feeCategory: 'Monthly',
     amount: '', discountAmount: '', startDate: '', endDate: '', dueDate: '', remarks: ''
+  }
+  if (feeStructures.value.length > 0) {
+    feeForm.value.feeStructureId = String(feeStructures.value[0].id)
   }
   showFeeModal.value = true
 }
@@ -303,6 +320,11 @@ const saveFee = async () => {
       }
       await financeService.updateFee(feeForm.value.id, updateData)
     } else {
+      if (!feeForm.value.feeStructureId) {
+        toast.error('Fee type is required', 'Please select a fee type.')
+        return
+      }
+
       const feeData = {
         studentId: parseInt(feeForm.value.studentId),
         feeStructureId: parseInt(feeForm.value.feeStructureId),
@@ -319,9 +341,10 @@ const saveFee = async () => {
     await loadFees()
     closeFeeModal()
     toast.success(isEditingFee.value ? 'Fee updated' : 'Fee created', 'Fee saved successfully.')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving fee:', error)
-    toast.error('Failed to save fee', 'Please try again.')
+    const apiMessage = error?.response?.data?.message
+    toast.error('Failed to save fee', apiMessage || 'Please try again.')
   } finally {
     loading.value = false
   }
@@ -340,6 +363,6 @@ const deleteFee = async (feeId: number) => {
 }
 
 onMounted(async () => {
-  await Promise.allSettled([loadFees(), loadStudents(), loadClasses()])
+  await Promise.allSettled([loadFees(), loadStudents(), loadClasses(), loadFeeStructures()])
 })
 </script>

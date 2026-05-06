@@ -61,6 +61,14 @@ MasterMindCoaching/
 
 **Parent** - View child attendance, Performance reports, Fee status
 
+### Recent Enhancements (May 2026)
+- **Academic Planner (Admin)**: New `Syllabus & Timetable Tracker` for Unit Test / Half-Yearly / Yearly planning.
+- **Template Zone + Notes Tracker**: Admin productivity tools for reminders and internal tracking.
+- **Finance robustness**: Fee creation now handles legacy fee-structure IDs more safely and surfaces actionable validation messages.
+- **Play Store docs**: Android release workflow and policy checklist are documented in:
+  - `docs/README_PLAYSTORE.md`
+  - `docs/PLAYSTORE_RELEASE_CHECKLIST.md`
+
 ## Local Development
 
 ### Prerequisites
@@ -98,6 +106,8 @@ Jwt__Secret                          = JWT signing key (min 32 chars)
 Sms__ApiKey                          = Fast2SMS API key
 Email__Username                      = SMTP email
 Email__Password                      = SMTP app password
+AzureBlobStorage__ConnectionString   = Azure Blob Storage connection string (student photos)
+AzureBlobStorage__ContainerName      = Blob container name (recommended: student-photos)
 Cors__AllowedOrigins                 = Comma-separated allowed origins
 ASPNETCORE_ENVIRONMENT               = Production
 ```

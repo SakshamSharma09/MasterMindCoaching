@@ -132,6 +132,22 @@
 | POST | `/api/adminnotes` | Create |
 | PUT | `/api/adminnotes/{id}` | Update |
 | DELETE | `/api/adminnotes/{id}` | Delete |
+| GET | `/api/academicplanner` | GetEntries |
+| POST | `/api/academicplanner` | Create |
+| PUT | `/api/academicplanner/{id}` | Update |
+| DELETE | `/api/academicplanner/{id}` | Delete |
+
+### AcademicPlannerController
+
+**File:** `src/backend/MasterMind.API/Controllers/AcademicPlannerController.cs`  
+**Auth Required:** Yes (`[Authorize(Policy = "Staff")]`)
+
+| Method | Path | Action |
+|--------|------|--------|
+| GET | `/api/academicplanner` | GetEntries |
+| POST | `/api/academicplanner` | Create |
+| PUT | `/api/academicplanner/{id}` | Update |
+| DELETE | `/api/academicplanner/{id}` | Delete |
 
 ---
 
@@ -168,4 +184,4 @@ Authorization: Bearer <access_token>
 
 ---
 
-*Auto-generated baseline with manual updates through 2026-05-03 for AdminNotes and TemplateZone.*
+*Auto-generated baseline with manual updates through 2026-05-05 for AdminNotes, TemplateZone, and AcademicPlanner.*

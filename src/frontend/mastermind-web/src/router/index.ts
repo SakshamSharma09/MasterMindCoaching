@@ -104,6 +104,11 @@ const router = createRouter({
           component: () => import('@/views/admin/NotesTrackerView.vue')
         },
         {
+          path: 'academic-planner',
+          name: 'AdminAcademicPlanner',
+          component: () => import('@/views/admin/AcademicPlannerView.vue')
+        },
+        {
           path: 'teachers',
           name: 'AdminTeachers',
           component: () => import('@/views/admin/TeachersView.vue')

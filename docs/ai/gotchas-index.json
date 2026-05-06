@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-18",
+  "lastUpdated": "2026-05-05",
   "description": "Quick lookup index for AI gotchas - match symptoms to solutions",
   "gotchas": [
     {
@@ -65,6 +65,13 @@
       "category": "database",
       "section": "DateTime Functions",
       "severity": "medium"
+    },
+    {
+      "id": "fee-structure-id-mismatch",
+      "symptoms": ["fee save failed", "fee structure not found", "finance fee 400", "hardcoded fee structure id"],
+      "category": "backend",
+      "section": "Fee Save Failure Due to Missing/Hardcoded Fee Structures",
+      "severity": "high"
     }
   ]
 }
