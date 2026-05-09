@@ -13,14 +13,27 @@ public class BlobStorageService : IBlobStorageService
     public BlobStorageService(IConfiguration configuration, ILogger<BlobStorageService> logger)
     {
         _logger = logger;
-        var connectionString = configuration["AzureBlobStorage:ConnectionString"];
-        
-        if (string.IsNullOrEmpty(connectionString))
+        var connectionString =
+            configuration["AzureBlobStorage:ConnectionString"] ??
+            configuration["AzureBlobStorage__ConnectionString"] ??
+            configuration["AzureBlobStorage_ConnectionString"] ??
+            configuration["AzureBlobStorageConnectionString"] ??
+            configuration["ConnectionStrings:AzureBlobStorage"] ??
+            configuration["ConnectionStrings__AzureBlobStorage"] ??
+            configuration["ConnectionStrings_AzureBlobStorage"] ??
+            configuration["ConnectionStrings:AzureBlobStorageConnectionString"] ??
+            configuration["ConnectionStrings__AzureBlobStorageConnectionString"] ??
+            configuration["ConnectionStrings_AzureBlobStorageConnectionString"] ??
+            Environment.GetEnvironmentVariable("CUSTOMCONNSTR_AzureBlobStorage") ??
+            Environment.GetEnvironmentVariable("CUSTOMCONNSTR_AzureBlobStorageConnectionString") ??
+            configuration["AzureWebJobsStorage"];
+
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
             throw new InvalidOperationException("Azure Blob Storage connection string is not configured.");
         }
 
-        var blobServiceClient = new BlobServiceClient(connectionString);
+        var blobServiceClient = new BlobServiceClient(connectionString.Trim());
         _containerClient = blobServiceClient.GetBlobContainerClient(_containerName);
         _containerClient.CreateIfNotExists(PublicAccessType.Blob);
     }

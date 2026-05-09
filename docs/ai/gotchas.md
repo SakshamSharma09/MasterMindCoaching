@@ -1,6 +1,6 @@
 # MasterMind Coaching - AI Gotchas & Lessons Learned
 
-> **Last Updated**: 2026-05-05 (Fee structure compatibility + production finance save)
+> **Last Updated**: 2026-05-09 (Blob storage key compatibility hardening)
 
 > **Purpose**: This file is automatically updated by AI assistants when bugs require more than one attempt to fix. It serves as a permanent memory system that prevents the same mistakes from being repeated.
 
@@ -52,6 +52,13 @@ var result = data.Select(x => new Dto {
 3. Surface backend message in UI toast for fast diagnosis.  
 **Files Affected**: `FinanceController.cs`, `FeesManagementView.vue`  
 **Date Learned**: 2026-05-05
+
+### Blob Upload Fails When Connection String Is Set Under Different Azure Key Names
+**Symptom**: Student photo upload returns `Error uploading photo: Photo uploads are disabled because Azure Blob Storage is not configured.` even when a storage connection string exists in Azure App Service.  
+**Root Cause**: Production configuration can store the blob value under different keys (`App Settings`, `Connection Strings`, or `CUSTOMCONNSTR_*`), while service registration only checked a narrow subset.  
+**Solution**: Resolve blob connection string from a broader key list (including `ConnectionStrings:AzureBlobStorageConnectionString` and `CUSTOMCONNSTR_*`), then normalize into `AzureBlobStorage:ConnectionString`. Log the key source (not the secret value).  
+**Files Affected**: `Program.cs`, `BlobStorageService.cs`  
+**Date Learned**: 2026-05-09
 
 ### Authorization Attribute Placement
 **Symptom**: API endpoints accessible without authentication (returns 200 instead of 401)  

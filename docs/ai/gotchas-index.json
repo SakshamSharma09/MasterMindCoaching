@@ -72,6 +72,13 @@
       "category": "backend",
       "section": "Fee Save Failure Due to Missing/Hardcoded Fee Structures",
       "severity": "high"
+    },
+    {
+      "id": "blob-storage-config-key-mismatch",
+      "symptoms": ["photo upload disabled", "azure blob storage not configured", "error uploading photo", "students photo upload 500", "disabledblobstorageservice"],
+      "category": "deployment",
+      "section": "Blob Upload Fails When Connection String Is Set Under Different Azure Key Names",
+      "severity": "high"
     }
   ]
 }

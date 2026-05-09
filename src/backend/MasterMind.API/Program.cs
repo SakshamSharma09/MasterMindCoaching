@@ -196,26 +196,36 @@ builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 
 // Azure Blob Storage for student photos
-var blobConnectionString =
-    builder.Configuration["AzureBlobStorage:ConnectionString"] ??
-    builder.Configuration["AzureBlobStorage__ConnectionString"] ??
-    builder.Configuration["AzureBlobStorage_ConnectionString"] ??
-    builder.Configuration["AzureBlobStorageConnectionString"] ??
-    builder.Configuration["ConnectionStrings:AzureBlobStorage"] ??
-    builder.Configuration["ConnectionStrings__AzureBlobStorage"] ??
-    builder.Configuration["ConnectionStrings_AzureBlobStorage"] ??
-    builder.Configuration["AzureWebJobsStorage"];
+var blobConnectionCandidates = new (string Key, string? Value)[]
+{
+    ("AzureBlobStorage:ConnectionString", builder.Configuration["AzureBlobStorage:ConnectionString"]),
+    ("AzureBlobStorage__ConnectionString", builder.Configuration["AzureBlobStorage__ConnectionString"]),
+    ("AzureBlobStorage_ConnectionString", builder.Configuration["AzureBlobStorage_ConnectionString"]),
+    ("AzureBlobStorageConnectionString", builder.Configuration["AzureBlobStorageConnectionString"]),
+    ("ConnectionStrings:AzureBlobStorage", builder.Configuration["ConnectionStrings:AzureBlobStorage"]),
+    ("ConnectionStrings__AzureBlobStorage", builder.Configuration["ConnectionStrings__AzureBlobStorage"]),
+    ("ConnectionStrings_AzureBlobStorage", builder.Configuration["ConnectionStrings_AzureBlobStorage"]),
+    ("ConnectionStrings:AzureBlobStorageConnectionString", builder.Configuration["ConnectionStrings:AzureBlobStorageConnectionString"]),
+    ("ConnectionStrings__AzureBlobStorageConnectionString", builder.Configuration["ConnectionStrings__AzureBlobStorageConnectionString"]),
+    ("ConnectionStrings_AzureBlobStorageConnectionString", builder.Configuration["ConnectionStrings_AzureBlobStorageConnectionString"]),
+    ("CUSTOMCONNSTR_AzureBlobStorage", Environment.GetEnvironmentVariable("CUSTOMCONNSTR_AzureBlobStorage")),
+    ("CUSTOMCONNSTR_AzureBlobStorageConnectionString", Environment.GetEnvironmentVariable("CUSTOMCONNSTR_AzureBlobStorageConnectionString")),
+    ("AzureWebJobsStorage", builder.Configuration["AzureWebJobsStorage"])
+};
+
+var blobConfigMatch = blobConnectionCandidates.FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate.Value));
+var blobConnectionString = blobConfigMatch.Value?.Trim();
 
 if (!string.IsNullOrWhiteSpace(blobConnectionString))
 {
     builder.Configuration["AzureBlobStorage:ConnectionString"] = blobConnectionString;
     builder.Services.AddSingleton<IBlobStorageService, BlobStorageService>();
-    Log.Information("Azure Blob Storage configured for student photos");
+    Log.Information("Azure Blob Storage configured for student photos using key {BlobConfigKey}", blobConfigMatch.Key);
 }
 else
 {
     builder.Services.AddSingleton<IBlobStorageService, DisabledBlobStorageService>();
-    Log.Warning("Azure Blob Storage not configured - photo uploads will not work");
+    Log.Warning("Azure Blob Storage not configured - photo uploads will not work. Checked keys: {BlobConfigKeys}", string.Join(", ", blobConnectionCandidates.Select(c => c.Key)));
 }
 
 // FluentValidation
