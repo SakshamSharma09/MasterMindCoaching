@@ -3,6 +3,19 @@ apply plugin: 'com.android.application'
 android {
     namespace "com.mastermind.coaching"
     compileSdk rootProject.ext.compileSdkVersion
+    signingConfigs {
+        release {
+            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE') &&
+                project.hasProperty('MYAPP_UPLOAD_KEY_ALIAS') &&
+                project.hasProperty('MYAPP_UPLOAD_STORE_PASSWORD') &&
+                project.hasProperty('MYAPP_UPLOAD_KEY_PASSWORD')) {
+                storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            }
+        }
+    }
     defaultConfig {
         applicationId "com.mastermind.coaching"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -17,8 +30,16 @@ android {
         }
     }
     buildTypes {
+        debug {
+            debuggable true
+        }
         release {
-            minifyEnabled false
+            debuggable false
+            minifyEnabled true
+            shrinkResources true
+            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                signingConfig signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

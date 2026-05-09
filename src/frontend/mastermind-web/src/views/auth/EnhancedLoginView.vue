@@ -111,14 +111,14 @@
 
           <!-- Login Form -->
           <form @submit.prevent="handleSubmit" class="space-y-6">
-            <!-- Enhanced Email/Mobile Input -->
+            <!-- Enhanced Email Input -->
             <div class="space-y-3">
               <label
                 for="identifier"
                 class="block text-sm font-semibold text-gray-700 flex items-center gap-2"
               >
                 <i class="fas fa-envelope text-indigo-500"></i>
-                Email or Mobile Number
+                Email Address
               </label>
 
               <div class="relative group">
@@ -127,7 +127,7 @@
                   v-model="form.identifier"
                   type="text"
                   required
-                  placeholder="Enter your email or mobile number"
+                  placeholder="Enter your email address"
                   class="w-full px-6 py-4 rounded-2xl text-base
                          border-2 border-gray-200
                          focus:ring-2 focus:ring-indigo-500/50
@@ -208,102 +208,6 @@
             </div>
           </form>
 
-          <!-- Demo Account Quick Access -->
-          <div class="mt-8 border-t border-gray-200/60 pt-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center">
-              <i class="fas fa-star text-yellow-500 mr-2"></i>
-              Quick Access - Demo Accounts
-            </h3>
-            
-            <div class="space-y-3">
-              <!-- Enhanced Admin Account -->
-              <div
-                class="group p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 
-                       rounded-2xl cursor-pointer hover:from-blue-100 hover:to-indigo-100 
-                       transition-all duration-300 hover:shadow-lg hover:scale-[1.02]
-                       relative overflow-hidden animate-stagger-1"
-                @click="useDemoAccount('admin@mastermind.com')"
-              >
-                <div class="absolute inset-0 bg-gradient-to-r from-blue-400/5 to-indigo-400/5 opacity-0 
-                            group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div class="relative flex items-center justify-between">
-                  <div class="flex items-center">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl 
-                                flex items-center justify-center shadow-md group-hover:shadow-lg 
-                                transition-all duration-300 group-hover:scale-110">
-                      <i class="fas fa-shield-alt text-white"></i>
-                    </div>
-                    <div>
-                      <div class="font-semibold text-gray-900">Administrator</div>
-                      <div class="text-sm text-gray-600">Full system access</div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 text-blue-600 opacity-0 
-                               group-hover:opacity-100 transition-opacity duration-300 transform group-hover:translate-x-1">
-                    <i class="fas fa-arrow-right"></i>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Enhanced Teacher Account -->
-              <div
-                class="group p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/60 
-                       rounded-2xl cursor-pointer hover:from-green-100 hover:to-emerald-100 
-                       transition-all duration-300 hover:shadow-lg hover:scale-[1.02]
-                       relative overflow-hidden animate-stagger-2"
-                @click="useDemoAccount('teacher@mastermind.com')"
-              >
-                <div class="absolute inset-0 bg-gradient-to-r from-green-400/5 to-emerald-400/5 opacity-0 
-                            group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div class="relative flex items-center justify-between">
-                  <div class="flex items-center">
-                    <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl 
-                                flex items-center justify-center shadow-md group-hover:shadow-lg 
-                                transition-all duration-300 group-hover:scale-110">
-                      <i class="fas fa-chalkboard-teacher text-white"></i>
-                    </div>
-                    <div>
-                      <div class="font-semibold text-gray-900">Teacher</div>
-                      <div class="text-sm text-gray-600">Class management access</div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 text-green-600 opacity-0 
-                               group-hover:opacity-100 transition-opacity duration-300 transform group-hover:translate-x-1">
-                    <i class="fas fa-arrow-right"></i>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Enhanced Parent Account -->
-              <div
-                class="group p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200/60 
-                       rounded-2xl cursor-pointer hover:from-purple-100 hover:to-pink-100 
-                       transition-all duration-300 hover:shadow-lg hover:scale-[1.02]
-                       relative overflow-hidden animate-stagger-3"
-                @click="useDemoAccount('parent@mastermind.com')"
-              >
-                <div class="absolute inset-0 bg-gradient-to-r from-purple-400/5 to-pink-400/5 opacity-0 
-                            group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div class="relative flex items-center justify-between">
-                  <div class="flex items-center">
-                    <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl 
-                                flex items-center justify-center shadow-md group-hover:shadow-lg 
-                                transition-all duration-300 group-hover:scale-110">
-                      <i class="fas fa-heart text-white"></i>
-                    </div>
-                    <div>
-                      <div class="font-semibold text-gray-900">Parent</div>
-                      <div class="text-sm text-gray-600">Student monitoring access</div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 text-purple-600 opacity-0 
-                               group-hover:opacity-100 transition-opacity duration-300 transform group-hover:translate-x-1">
-                    <i class="fas fa-arrow-right"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </form>
       </div>
     </div>
@@ -330,7 +234,7 @@ const selectedDevice = ref<Device | null>(null)
 
 const handleSubmit = async () => {
   if (!form.identifier) {
-    error.value = 'Please enter your email or mobile number'
+    error.value = 'Please enter your email address'
     return
   }
 
@@ -343,14 +247,18 @@ const handleSubmit = async () => {
       localStorage.setItem('selected_device_id', selectedDevice.value.deviceId)
     }
 
-    await authStore.requestOtp(form.identifier)
+    if (!form.identifier.includes('@')) {
+      throw new Error('Please enter a valid email address.')
+    }
+
+    await authStore.requestOtp(form.identifier, 'email')
     
     // Redirect to OTP verification page
     router.push({
       name: 'OtpVerify',
       query: {
         identifier: form.identifier,
-        type: form.identifier.includes('@') ? 'email' : 'mobile'
+        type: 'email'
       }
     })
   } catch (err: any) {
@@ -382,11 +290,6 @@ const trustDevice = async (device: Device) => {
   } catch (err) {
     console.error('Error trusting device:', err)
   }
-}
-
-const useDemoAccount = (email: string) => {
-  form.identifier = email
-  error.value = ''
 }
 
 const getDeviceIcon = (deviceType: string) => {

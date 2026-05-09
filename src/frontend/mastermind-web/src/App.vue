@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="min-h-screen bg-gradient-to-br from-mastermind-50 via-white to-primary-50 relative overflow-hidden">
+  <div id="app" class="app-safe-area min-h-[100dvh] bg-gradient-to-br from-mastermind-50 via-white to-primary-50 relative overflow-hidden">
     <!-- Background decorative elements - positioned to avoid content overlap -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10">
       <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-mastermind-200/20 to-primary-200/20 rounded-full blur-3xl animate-float-soft opacity-50"></div>

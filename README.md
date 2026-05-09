@@ -93,6 +93,17 @@ npm run dev
 # App: http://localhost:3000
 ```
 
+### Android App (Capacitor)
+```bash
+cd src/frontend/mastermind-web
+npm run build:mobile
+npm run cap:open
+```
+
+Play Store release docs:
+- `docs/README_PLAYSTORE.md`
+- `docs/PLAYSTORE_RELEASE_CHECKLIST.md`
+
 ## Configuration
 
 **Secrets are NOT stored in code.** All secrets are configured via:

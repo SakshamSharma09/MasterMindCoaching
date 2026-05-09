@@ -1,68 +1,112 @@
 # Play Store Release Checklist (MasterMind Coaching)
 
-This document lists the exact steps for building and submitting the Android app from the existing web codebase.
+This is the production checklist for publishing the Android app from the current web codebase.
 
-## 1) Build and Sync Mobile App
+## 0) One-Time Setup
 
-From:
+- [ ] Play Console developer account approved.
+- [ ] App created in Play Console (`MasterMind Coaching`).
+- [ ] Package name confirmed: `com.mastermind.coaching`.
+- [ ] Privacy policy URL published.
+- [ ] Release keystore created and stored securely.
 
-`src/frontend/mastermind-web`
+## 1) Local Build Preparation
 
-Run:
+From `src/frontend/mastermind-web`:
 
 ```bash
 npm install
 npm run build:mobile
+```
+
+This runs web build + Capacitor Android sync.
+
+## 2) Configure Signing for Local Release Builds
+
+In `src/frontend/mastermind-web/android/gradle.properties` (local machine only), add:
+
+```properties
+MYAPP_UPLOAD_STORE_FILE=../keystore/mastermind-upload.jks
+MYAPP_UPLOAD_KEY_ALIAS=mastermind_upload
+MYAPP_UPLOAD_STORE_PASSWORD=CHANGE_ME
+MYAPP_UPLOAD_KEY_PASSWORD=CHANGE_ME
+```
+
+Notes:
+- Keep keystore and passwords out of Git.
+- Use a secure password manager.
+- Losing keystore access can block future app updates if not using managed Play App Signing correctly.
+
+## 3) Generate Android App Bundle (.aab)
+
+```bash
 npm run cap:open
 ```
 
-## 2) Android Studio Setup
-
-1. Open the generated Android project in Android Studio.
-2. Wait for Gradle sync to complete.
-3. Set app package id if needed:
-   - Current: `com.mastermind.coaching`
-4. Set app name, icon, and splash assets.
-
-## 3) Create Signed App Bundle (.aab)
-
 In Android Studio:
 
-1. `Build` -> `Generate Signed Bundle / APK`
-2. Select `Android App Bundle`
-3. Create or select release keystore
+1. Build -> Generate Signed Bundle / APK  
+2. Android App Bundle  
+3. Select release keystore  
 4. Build release `.aab`
 
-## 4) Play Console Submission Steps
+## 4) Play Console Submission Flow
 
-1. Create app in Google Play Console
-2. Fill store listing (title, short/long description, screenshots, icon, feature graphic)
-3. Upload `.aab` to **Internal Testing** first
-4. Complete policy sections:
-   - App content
-   - Data safety
-   - Privacy policy URL
-   - Ads declaration
-   - Target audience
-5. Fix warnings, then promote to closed/open/production track
+Recommended rollout path:
 
-## 5) Mandatory Approval TODOs
+1. Internal Testing
+2. Closed Testing
+3. Production
 
-- [ ] Privacy Policy page publicly hosted (required)
-- [ ] Data Safety form completed accurately
-- [ ] App Access instructions provided (admin + OTP flows)
-- [ ] Test account credentials documented for Google review
-- [ ] Permission usage reviewed (camera/storage/network only if used)
-- [ ] 64-bit support verified (default with modern Android builds)
-- [ ] Target SDK updated to current Play requirement
-- [ ] Version code/version name incremented before each upload
-- [ ] Crash-free smoke test on real Android device
-- [ ] Internal testing feedback pass completed
+For the release:
 
-## 6) Post-Release Operational Checklist
+- [ ] Upload `.aab`
+- [ ] Release notes added
+- [ ] Country/region availability reviewed
 
-- [ ] Verify API base URL points to production
-- [ ] Verify login, OTP, student photo upload, fee creation, leads, template zone
-- [ ] Verify session-specific data behavior
-- [ ] Monitor App Service logs for first 24 hours
+## 5) App Content and Policy Declarations
 
+Complete all required forms:
+
+- [ ] Privacy policy URL
+- [ ] Data Safety form
+- [ ] App Access (reviewer login instructions)
+- [ ] Ads declaration
+- [ ] Target audience
+- [ ] Permissions declaration (if applicable)
+
+## 6) Test Credentials for Google Review
+
+Provide clear reviewer steps:
+
+- [ ] Admin test login steps
+- [ ] OTP test login steps (teacher/parent via email OTP)
+- [ ] If OTP is restricted, provide whitelisted reviewer account details
+
+## 7) Release Readiness QA (Must Pass)
+
+- [ ] Login works (admin password + email OTP flows)
+- [ ] Dashboard loads for Admin/Teacher/Parent
+- [ ] Student CRUD works
+- [ ] Photo upload works
+- [ ] Fee create/collection works
+- [ ] Leads and Notes Tracker work
+- [ ] Template Zone works and WhatsApp/share link works
+- [ ] Session-specific data filtering works
+- [ ] Logout/login persistence works after app restart
+
+## 8) Post-Release Verification
+
+After production rollout:
+
+- [ ] Verify API calls from Android app hit production endpoints only
+- [ ] Check App Service logs for exceptions (first 24 hours)
+- [ ] Track crash and ANR metrics in Play Console
+- [ ] Monitor OTP delivery latency and failures
+
+## 9) Every Subsequent Release
+
+- [ ] Increment `versionCode` (mandatory)
+- [ ] Update `versionName`
+- [ ] Repeat QA checklist
+- [ ] Promote gradually (not 100% instantly)

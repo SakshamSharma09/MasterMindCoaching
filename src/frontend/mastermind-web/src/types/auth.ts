@@ -22,7 +22,7 @@ export type UserRole = 'Admin' | 'Teacher' | 'Parent'
 
 export interface OtpRequest {
   identifier: string
-  type: 'email' | 'mobile'
+  type: 'email'
 }
 
 export interface OtpResponse {

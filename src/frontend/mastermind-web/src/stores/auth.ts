@@ -37,12 +37,12 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
   }
 
-  const requestOtp = async (identifier: string, type: 'email' | 'mobile') => {
+  const requestOtp = async (identifier: string, type: 'email' = 'email') => {
     isLoading.value = true
     error.value = null
 
     try {
-      const response = await authService.requestOtp(identifier, type)
+      const response = await authService.requestOtp(identifier, 'email')
       return response
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Failed to send OTP'

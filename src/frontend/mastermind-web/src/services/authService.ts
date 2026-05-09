@@ -13,7 +13,7 @@ const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true' || false
 
 export const authService = {
   // Request OTP
-  async requestOtp(identifier: string, type: 'email' | 'mobile'): Promise<OtpResponse> {
+  async requestOtp(identifier: string, type: 'email' = 'email'): Promise<OtpResponse> {
     if (USE_MOCK_API) {
       console.log('Mock API: Requesting OTP for', identifier)
       await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate network delay

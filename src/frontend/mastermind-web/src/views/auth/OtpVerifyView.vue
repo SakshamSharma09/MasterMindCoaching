@@ -398,7 +398,7 @@ const resendOtp = async () => {
   error.value = null
 
   try {
-    await authStore.requestOtp(identifier.value, type.value as 'email' | 'mobile')
+    await authStore.requestOtp(identifier.value, 'email')
     startCountdown()
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Failed to resend OTP'

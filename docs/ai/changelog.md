@@ -3,6 +3,52 @@
 > **Tracks what changed and why for AI context**  
 > Format optimized for AI assistants to understand project evolution
 
+## [2026-05-09] - Play Store Readiness Pass
+
+### Changed
+- Hardened Android release config in `android/app/build.gradle`:
+  - release minification enabled
+  - resource shrinking enabled
+  - release signing hooks added via Gradle properties
+- Hardened Android manifest security defaults:
+  - backup disabled
+  - data extraction rules added
+  - cleartext traffic disabled
+- Added Android backup configuration XML files:
+  - `res/xml/backup_rules.xml`
+  - `res/xml/data_extraction_rules.xml`
+- Improved mobile runtime ergonomics:
+  - viewport updated with `viewport-fit=cover`
+  - safe-area padding added at app root
+- Aligned OTP flow to email-only on frontend auth path
+- Upgraded Play Store documentation:
+  - `docs/README_PLAYSTORE.md`
+  - `docs/PLAYSTORE_RELEASE_CHECKLIST.md`
+  - root `README.md` Android section
+
+### Why
+- Prepare the app for production-grade Google Play submission.
+- Reduce auth confusion by removing mobile OTP path from active frontend flow.
+- Improve security defaults for packaged Android builds.
+- Provide a repeatable release process for future app updates.
+
+### Files Changed
+- `src/frontend/mastermind-web/android/app/build.gradle`
+- `src/frontend/mastermind-web/android/app/src/main/AndroidManifest.xml`
+- `src/frontend/mastermind-web/android/app/src/main/res/xml/backup_rules.xml`
+- `src/frontend/mastermind-web/android/app/src/main/res/xml/data_extraction_rules.xml`
+- `src/frontend/mastermind-web/index.html`
+- `src/frontend/mastermind-web/src/App.vue`
+- `src/frontend/mastermind-web/src/assets/styles/main.css`
+- `src/frontend/mastermind-web/src/services/authService.ts`
+- `src/frontend/mastermind-web/src/stores/auth.ts`
+- `src/frontend/mastermind-web/src/types/auth.ts`
+- `src/frontend/mastermind-web/src/views/auth/EnhancedLoginView.vue`
+- `src/frontend/mastermind-web/src/views/auth/OtpVerifyView.vue`
+- `docs/README_PLAYSTORE.md`
+- `docs/PLAYSTORE_RELEASE_CHECKLIST.md`
+- `README.md`
+
 ## [2026-04-17] - AI Documentation System
 
 ### Added
