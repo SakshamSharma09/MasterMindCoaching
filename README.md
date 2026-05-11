@@ -100,6 +100,16 @@ npm run build:mobile
 npm run cap:open
 ```
 
+Generate release artifacts from CLI (Windows):
+```bash
+cd src/frontend/mastermind-web
+npm run build:aab
+```
+
+Output:
+- AAB: `src/frontend/mastermind-web/android/app/build/outputs/bundle/release/app-release.aab`
+- APK: `src/frontend/mastermind-web/android/app/build/outputs/apk/release/app-release.apk` (if you run `npm run build:apk`)
+
 Play Store release docs:
 - `docs/README_PLAYSTORE.md`
 - `docs/PLAYSTORE_RELEASE_CHECKLIST.md`

@@ -39,6 +39,18 @@ Notes:
 
 ## 3) Generate Android App Bundle (.aab)
 
+CLI method (Windows):
+
+```bash
+npm run build:aab
+```
+
+Output file:
+
+- `src/frontend/mastermind-web/android/app/build/outputs/bundle/release/app-release.aab`
+
+Android Studio method:
+
 ```bash
 npm run cap:open
 ```

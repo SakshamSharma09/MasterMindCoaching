@@ -39,3 +39,21 @@ Use this as the single entry point for Android Play Store release work.
 2. Version bump (`versionCode` / `versionName`) for each release.
 3. Mobile UX polish fixes based on internal testing feedback.
 4. Release validation pass before each upload.
+
+## Fastest Way To Get `.aab` (Windows)
+
+From `src/frontend/mastermind-web`:
+
+```bash
+npm run build:aab
+```
+
+Generated file:
+
+- `android/app/build/outputs/bundle/release/app-release.aab`
+
+If you prefer Android Studio:
+
+1. `npm run build:mobile`
+2. `npm run cap:open`
+3. Build -> Generate Signed Bundle / APK -> Android App Bundle
