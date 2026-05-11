@@ -88,6 +88,9 @@
         </h3>
       </div>
       <div class="space-y-4">
+        <div v-if="todaysSchedule.length === 0" class="rounded-2xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-500">
+          No class schedule available.
+        </div>
         <transition-group name="schedule" tag="div">
           <div v-for="(classItem, index) in todaysSchedule" :key="classItem.id" 
                class="flex items-center justify-between p-6 bg-white/40 backdrop-blur-sm rounded-2xl border border-white/30 hover:bg-white/60 transition-all duration-300"
@@ -127,6 +130,9 @@
         </h3>
       </div>
       <div class="space-y-4">
+        <div v-if="recentActivities.length === 0" class="rounded-2xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-500">
+          No recent activity yet.
+        </div>
         <transition-group name="activity" tag="div">
           <div v-for="(activity, index) in recentActivities" :key="activity.id" 
                class="flex items-start space-x-4 p-4 rounded-xl hover:bg-white/30 transition-all duration-300"
@@ -154,6 +160,8 @@
 import { ref, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
 import { API_ENDPOINTS } from '@/config/api'
+import { teacherPortalService } from '@/services/teacherPortalService'
+import { useAuthStore } from '@/stores/auth'
 
 // Type definitions
 interface TeacherStats {
@@ -188,6 +196,7 @@ const stats = ref<TeacherStats>({
 
 const todaysSchedule = ref<ScheduleItem[]>([])
 const recentActivities = ref<ActivityItem[]>([])
+const authStore = useAuthStore()
 
 // Load teacher dashboard data
 const loadTeacherDashboardData = async () => {
@@ -196,60 +205,35 @@ const loadTeacherDashboardData = async () => {
     const statsData = await apiService.get<TeacherStats>(API_ENDPOINTS.DASHBOARD.TEACHER_STATS)
     stats.value = statsData
 
-    // Mock schedule data (you can create a schedule controller later)
-    todaysSchedule.value = [
-      {
-        id: 1,
-        subject: 'Mathematics',
-        className: 'Class 10A',
-        time: '9:00 AM - 10:00 AM',
-        students: 25
-      },
-      {
-        id: 2,
-        subject: 'Mathematics',
-        className: 'Class 9B',
-        time: '10:30 AM - 11:30 AM',
-        students: 22
-      },
-      {
-        id: 3,
-        subject: 'Mathematics',
-        className: 'Class 8C',
-        time: '2:00 PM - 3:00 PM',
-        students: 28
-      }
-    ]
+    const teacherEmail = authStore.user?.email || ''
+    const classes = teacherEmail ? await teacherPortalService.getMyClasses(teacherEmail) : []
+    const remarks = classes.length > 0
+      ? await teacherPortalService.getRemarks(classes[0].id)
+      : []
 
-    // Mock recent activities (you can create an activity controller later)
-    recentActivities.value = [
-      {
-        id: 1,
-        title: 'Attendance Marked',
-        description: 'Marked attendance for Class 10A Mathematics',
-        time: '2 hours ago'
-      },
-      {
-        id: 2,
-        title: 'Remark Added',
-        description: 'Added remark for John Doe',
-        time: '4 hours ago'
-      },
-      {
-        id: 3,
-        title: 'Test Graded',
-        description: 'Completed grading for Science test',
-        time: '1 day ago'
-      }
-    ]
+    todaysSchedule.value = classes.map((classItem) => ({
+      id: classItem.id,
+      subject: classItem.name,
+      className: `${classItem.board}-${classItem.medium}`,
+      time: 'Schedule not set',
+      students: 0
+    }))
+
+    recentActivities.value = remarks.slice(0, 8).map((remark, index) => ({
+      id: index + 1,
+      title: `Remark Added (${remark.type})`,
+      description: `${remark.studentName}: ${remark.remarks}`,
+      time: remark.date
+    }))
   } catch (error) {
     console.error('Failed to load teacher dashboard data:', error)
-    // Fallback to mock data if API fails
+    todaysSchedule.value = []
+    recentActivities.value = []
     stats.value = {
-      totalStudents: 45,
-      classesToday: 3,
-      attendanceMarked: 87,
-      remarksAdded: 12
+      totalStudents: 0,
+      classesToday: 0,
+      attendanceMarked: 0,
+      remarksAdded: 0
     }
   }
 }

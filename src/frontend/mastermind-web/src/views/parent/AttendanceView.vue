@@ -9,23 +9,25 @@
       </div>
     </div>
 
-    <!-- Child Selection -->
     <div class="mb-6">
       <label for="child-select" class="block text-sm font-medium text-gray-700">Select Child</label>
       <select
         id="child-select"
-        v-model="selectedChild"
-        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+        v-model.number="selectedChild"
+        class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
       >
         <option v-for="child in children" :key="child.id" :value="child.id">
-          {{ child.name }} - {{ child.className }}
+          {{ child.firstName }} {{ child.lastName }} - {{ child.className }}
         </option>
       </select>
     </div>
 
-    <!-- Attendance Summary -->
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
-      <div class="bg-white overflow-hidden shadow rounded-lg">
+    <div v-if="error" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {{ error }}
+    </div>
+
+    <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <div class="overflow-hidden rounded-lg bg-white shadow">
         <div class="p-5">
           <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -35,15 +37,14 @@
             </div>
             <div class="ml-5 w-0 flex-1">
               <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Present Days</dt>
+                <dt class="truncate text-sm font-medium text-gray-500">Present Days</dt>
                 <dd class="text-lg font-medium text-gray-900">{{ attendanceStats.present }}</dd>
               </dl>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="overflow-hidden rounded-lg bg-white shadow">
         <div class="p-5">
           <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -53,15 +54,14 @@
             </div>
             <div class="ml-5 w-0 flex-1">
               <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Absent Days</dt>
+                <dt class="truncate text-sm font-medium text-gray-500">Absent Days</dt>
                 <dd class="text-lg font-medium text-gray-900">{{ attendanceStats.absent }}</dd>
               </dl>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="overflow-hidden rounded-lg bg-white shadow">
         <div class="p-5">
           <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -71,7 +71,7 @@
             </div>
             <div class="ml-5 w-0 flex-1">
               <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Late Days</dt>
+                <dt class="truncate text-sm font-medium text-gray-500">Late Days</dt>
                 <dd class="text-lg font-medium text-gray-900">{{ attendanceStats.late }}</dd>
               </dl>
             </div>
@@ -80,32 +80,34 @@
       </div>
     </div>
 
-    <!-- Attendance Records Table -->
-    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+    <div class="overflow-hidden rounded-md bg-white shadow">
       <ul role="list" class="divide-y divide-gray-200">
-        <li v-for="record in attendanceRecords" :key="record.id">
+        <li v-for="record in attendanceRecords" :key="`${record.date}-${record.subject}-${record.status}`">
           <div class="px-4 py-4 sm:px-6">
             <div class="flex items-center justify-between">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div
                     :class="[
-                      record.status === 'Present' ? 'bg-green-100' :
-                      record.status === 'Absent' ? 'bg-red-100' :
+                      record.status.toLowerCase() === 'present' ? 'bg-green-100' :
+                      record.status.toLowerCase() === 'absent' ? 'bg-red-100' :
                       'bg-yellow-100'
                     ]"
-                    class="w-8 h-8 rounded-full flex items-center justify-center"
+                    class="flex h-8 w-8 items-center justify-center rounded-full"
                   >
                     <svg
                       :class="[
-                        record.status === 'Present' ? 'text-green-600' :
-                        record.status === 'Absent' ? 'text-red-600' :
+                        record.status.toLowerCase() === 'present' ? 'text-green-600' :
+                        record.status.toLowerCase() === 'absent' ? 'text-red-600' :
                         'text-yellow-600'
                       ]"
-                      class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      class="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <path v-if="record.status === 'Present'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                      <path v-else-if="record.status === 'Absent'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      <path v-if="record.status.toLowerCase() === 'present'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      <path v-else-if="record.status.toLowerCase() === 'absent'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                       <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                   </div>
@@ -115,18 +117,16 @@
                   <div class="text-sm text-gray-500">{{ record.subject }}</div>
                 </div>
               </div>
-              <div class="flex items-center">
-                <span
-                  :class="[
-                    record.status === 'Present' ? 'bg-green-100 text-green-800' :
-                    record.status === 'Absent' ? 'bg-red-100 text-red-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  ]"
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                >
-                  {{ record.status }}
-                </span>
-              </div>
+              <span
+                :class="[
+                  record.status.toLowerCase() === 'present' ? 'bg-green-100 text-green-800' :
+                  record.status.toLowerCase() === 'absent' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                ]"
+                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+              >
+                {{ record.status }}
+              </span>
             </div>
           </div>
         </li>
@@ -136,46 +136,57 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { parentService, type ChildAttendance, type ParentChild } from '@/services/parentService'
 
-// Sample data - replace with actual API calls
-const children = ref([
-  { id: 1, name: 'John Doe', className: 'Class 10A' },
-  { id: 2, name: 'Jane Doe', className: 'Class 8B' }
-])
+const children = ref<ParentChild[]>([])
+const selectedChild = ref<number | null>(null)
+const attendanceData = ref<ChildAttendance>({
+  totalClasses: 0,
+  present: 0,
+  absent: 0,
+  late: 0,
+  percentage: 0,
+  records: []
+})
+const error = ref('')
 
-const selectedChild = ref(1)
+const attendanceStats = computed(() => ({
+  present: attendanceData.value.present,
+  absent: attendanceData.value.absent,
+  late: attendanceData.value.late
+}))
 
-const attendanceData = ref({
-  1: {
-    present: 18,
-    absent: 2,
-    late: 1,
-    records: [
-      { id: 1, date: '2024-01-15', subject: 'Mathematics', status: 'Present' },
-      { id: 2, date: '2024-01-15', subject: 'Science', status: 'Present' },
-      { id: 3, date: '2024-01-14', subject: 'English', status: 'Late' },
-      { id: 4, date: '2024-01-14', subject: 'History', status: 'Present' },
-      { id: 5, date: '2024-01-13', subject: 'Mathematics', status: 'Absent' }
-    ]
-  },
-  2: {
-    present: 15,
-    absent: 1,
-    late: 0,
-    records: [
-      { id: 1, date: '2024-01-15', subject: 'Science', status: 'Present' },
-      { id: 2, date: '2024-01-15', subject: 'Mathematics', status: 'Present' },
-      { id: 3, date: '2024-01-14', subject: 'English', status: 'Present' },
-      { id: 4, date: '2024-01-13', subject: 'Science', status: 'Absent' }
-    ]
+const attendanceRecords = computed(() => attendanceData.value.records || [])
+
+const loadAttendance = async () => {
+  if (!selectedChild.value) return
+  error.value = ''
+  try {
+    attendanceData.value = await parentService.getChildAttendance(selectedChild.value)
+  } catch (err: any) {
+    error.value = err?.response?.data?.message || err?.message || 'Failed to load attendance data'
+    attendanceData.value = { totalClasses: 0, present: 0, absent: 0, late: 0, percentage: 0, records: [] }
+  }
+}
+
+const loadChildren = async () => {
+  try {
+    children.value = await parentService.getChildren()
+    selectedChild.value = children.value.length > 0 ? children.value[0].id : null
+    await loadAttendance()
+  } catch (err: any) {
+    error.value = err?.response?.data?.message || err?.message || 'Failed to load children'
+  }
+}
+
+watch(selectedChild, async (value, oldValue) => {
+  if (value && value !== oldValue) {
+    await loadAttendance()
   }
 })
 
-const attendanceStats = computed(() => attendanceData.value[selectedChild.value as keyof typeof attendanceData.value])
-const attendanceRecords = computed(() => attendanceStats.value.records)
+onMounted(async () => {
+  await loadChildren()
+})
 </script>
-
-<style scoped>
-/* Additional styles if needed */
-</style>

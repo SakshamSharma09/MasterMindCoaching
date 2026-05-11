@@ -3,6 +3,7 @@ using MasterMind.API.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace MasterMind.API.Controllers;
 
@@ -90,6 +91,98 @@ public class DashboardController : ControllerBase
     {
         // Reuse the same logic as stats endpoint
         return await GetStats(sessionId);
+    }
+
+    /// <summary>
+    /// Get teacher dashboard statistics
+    /// </summary>
+    /// <returns>Teacher dashboard statistics</returns>
+    [HttpGet("teacher-stats")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<object>>> GetTeacherStats()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var email = User.FindFirst(ClaimTypes.Email)?.Value?.Trim().ToLowerInvariant();
+
+            Teacher? teacher = null;
+            if (int.TryParse(userIdClaim, out var userId))
+            {
+                teacher = await _context.Teachers.FirstOrDefaultAsync(t => !t.IsDeleted && t.UserId == userId);
+            }
+
+            if (teacher == null && !string.IsNullOrWhiteSpace(email))
+            {
+                teacher = await _context.Teachers.FirstOrDefaultAsync(t => !t.IsDeleted && t.Email.ToLower() == email);
+            }
+
+            if (teacher == null)
+            {
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Teacher profile not found for current user",
+                    Data = new
+                    {
+                        totalStudents = 0,
+                        classesToday = 0,
+                        attendanceMarked = 0,
+                        remarksAdded = 0
+                    }
+                });
+            }
+
+            var classIds = await _context.TeacherClasses
+                .Where(tc => tc.TeacherId == teacher.Id && tc.IsActive)
+                .Select(tc => tc.ClassId)
+                .Distinct()
+                .ToListAsync();
+
+            var totalStudents = await _context.StudentClasses
+                .Where(sc => sc.IsActive && classIds.Contains(sc.ClassId))
+                .Select(sc => sc.StudentId)
+                .Distinct()
+                .CountAsync();
+
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var markedToday = await _context.Attendances
+                .Where(a => !a.IsDeleted && classIds.Contains(a.ClassId) && a.Date == today)
+                .Select(a => a.StudentId)
+                .Distinct()
+                .CountAsync();
+
+            var attendanceMarkedPercent = totalStudents == 0
+                ? 0
+                : (int)Math.Round((double)markedToday * 100.0 / totalStudents);
+
+            var remarksAdded = await _context.StudentRemarks
+                .Where(r => !r.IsDeleted && r.TeacherId == teacher.Id)
+                .CountAsync();
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Teacher dashboard stats retrieved successfully",
+                Data = new
+                {
+                    totalStudents,
+                    classesToday = classIds.Count,
+                    attendanceMarked = attendanceMarkedPercent,
+                    remarksAdded
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving teacher dashboard stats");
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Error retrieving teacher dashboard stats"
+            });
+        }
     }
 
     /// <summary>

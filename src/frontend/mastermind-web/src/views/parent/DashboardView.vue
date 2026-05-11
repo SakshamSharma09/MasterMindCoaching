@@ -129,7 +129,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { parentService, type ParentChild, type ParentDashboardStats } from '@/services/parentService'
+import { parentService, type ParentChild } from '@/services/parentService'
 
 // Reactive data
 const children = ref<ParentChild[]>([])
@@ -144,33 +144,14 @@ const currentChildStats = computed(() => {
   return childStats.value[selectedChild.value] || { attendance: 0, averageGrade: 'N/A', pendingFees: 0, remarksCount: 0 }
 })
 
-// Sample recent activities - replace with actual API call
-const recentActivities = ref([
-  {
-    id: 1,
-    title: 'Mathematics Test',
-    description: 'Scored 85% in Mathematics test',
-    date: '2024-01-15'
-  },
-  {
-    id: 2,
-    title: 'Attendance Marked',
-    description: 'Present for Science class',
-    date: '2024-01-15'
-  },
-  {
-    id: 3,
-    title: 'Fee Payment',
-    description: 'Monthly fee payment received',
-    date: '2024-01-10'
-  }
-])
+const recentActivities = ref<Array<{ id: string; title: string; description: string; date: string }>>([])
 
 // Load data
 const loadData = async () => {
   try {
     loading.value = true
     error.value = ''
+    recentActivities.value = []
     
     // Load children
     children.value = await parentService.getChildren()
@@ -187,12 +168,35 @@ const loadData = async () => {
             parentService.getChildPerformance(child.id)
           ])
           
+          const childRecentActivities = [
+            ...((performanceData.recentTests || []).slice(0, 2).map((test, index) => ({
+              id: `${child.id}-test-${index}`,
+              title: `${test.subject} Test`,
+              description: `${test.topic}: ${test.score}/${test.totalMarks}`,
+              date: test.date
+            }))),
+            ...((feesData.paymentHistory || []).slice(0, 1).map((payment, index) => ({
+              id: `${child.id}-fee-${index}`,
+              title: 'Fee Payment',
+              description: `₹${payment.amount} via ${payment.method}`,
+              date: payment.date
+            }))),
+            ...((performanceData.recentRemarks || []).slice(0, 1).map((remark, index) => ({
+              id: `${child.id}-remark-${index}`,
+              title: 'Teacher Remark',
+              description: remark.content,
+              date: remark.date
+            })))
+          ]
+
           childStats.value[child.id] = {
             attendance: attendanceData.percentage,
             averageGrade: performanceData.averageGrade,
             pendingFees: feesData.pendingFees,
-            remarksCount: 3 // Mock - implement actual remarks count
+            remarksCount: performanceData.recentRemarks?.length || 0
           }
+
+          recentActivities.value.push(...childRecentActivities)
         } catch (childError) {
           console.error(`Error loading data for child ${child.id}:`, childError)
           childStats.value[child.id] = {
@@ -203,6 +207,10 @@ const loadData = async () => {
           }
         }
       }
+
+      recentActivities.value = recentActivities.value
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 8)
     }
   } catch (err) {
     console.error('Error loading parent dashboard data:', err)

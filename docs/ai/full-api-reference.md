@@ -58,6 +58,7 @@
 | GET | `/api/dashboard/stats` | GetStats |
 | GET | `/api/dashboard/admin-stats` | GetAdminStats |
 | GET | `/api/dashboard/parent-stats` | GetParentStats |
+| GET | `/api/dashboard/teacher-stats` | GetTeacherStats |
 | GET | `/api/dashboard/recent-students` | GetRecentStudents |
 | GET | `/api/expenses` | GetExpenses |
 | GET | `/api/expenses/categories` | GetExpenseCategories |
@@ -94,6 +95,8 @@
 | GET | `/api/parent/children/{childId}/attendance` | GetChildAttendance |
 | GET | `/api/parent/children/{childId}/fees` | GetChildFees |
 | GET | `/api/parent/children/{childId}/performance` | GetChildPerformance |
+| GET | `/api/student-remarks` | GetRemarks |
+| POST | `/api/student-remarks` | CreateRemark |
 | GET | `/api/sessions` | GetSessions |
 | GET | `/api/sessions/active` | GetActiveSession |
 | POST | `/api/sessions` | CreateSession |
@@ -184,4 +187,4 @@ Authorization: Bearer <access_token>
 
 ---
 
-*Auto-generated baseline with manual updates through 2026-05-05 for AdminNotes, TemplateZone, and AcademicPlanner.*
+*Auto-generated baseline with manual updates through 2026-05-09 for AdminNotes, TemplateZone, AcademicPlanner, TeacherStats, and StudentRemarks.*

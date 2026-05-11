@@ -9,23 +9,25 @@
       </div>
     </div>
 
-    <!-- Child Selection -->
     <div class="mb-6">
       <label for="child-select" class="block text-sm font-medium text-gray-700">Select Child</label>
       <select
         id="child-select"
-        v-model="selectedChild"
-        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+        v-model.number="selectedChild"
+        class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
       >
         <option v-for="child in children" :key="child.id" :value="child.id">
-          {{ child.name }} - {{ child.className }}
+          {{ child.firstName }} {{ child.lastName }} - {{ child.className }}
         </option>
       </select>
     </div>
 
-    <!-- Fee Summary -->
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
-      <div class="bg-white overflow-hidden shadow rounded-lg">
+    <div v-if="error" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {{ error }}
+    </div>
+
+    <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <div class="overflow-hidden rounded-lg bg-white shadow">
         <div class="p-5">
           <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -35,7 +37,7 @@
             </div>
             <div class="ml-5 w-0 flex-1">
               <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Total Fees</dt>
+                <dt class="truncate text-sm font-medium text-gray-500">Total Fees</dt>
                 <dd class="text-lg font-medium text-gray-900">₹{{ feeStats.totalFees }}</dd>
               </dl>
             </div>
@@ -43,7 +45,7 @@
         </div>
       </div>
 
-      <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="overflow-hidden rounded-lg bg-white shadow">
         <div class="p-5">
           <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -53,15 +55,15 @@
             </div>
             <div class="ml-5 w-0 flex-1">
               <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Paid</dt>
-                <dd class="text-lg font-medium text-gray-900">₹{{ feeStats.paid }}</dd>
+                <dt class="truncate text-sm font-medium text-gray-500">Paid</dt>
+                <dd class="text-lg font-medium text-gray-900">₹{{ feeStats.paidFees }}</dd>
               </dl>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="overflow-hidden rounded-lg bg-white shadow">
         <div class="p-5">
           <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -71,8 +73,8 @@
             </div>
             <div class="ml-5 w-0 flex-1">
               <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Pending</dt>
-                <dd class="text-lg font-medium text-gray-900">₹{{ feeStats.pending }}</dd>
+                <dt class="truncate text-sm font-medium text-gray-500">Pending</dt>
+                <dd class="text-lg font-medium text-gray-900">₹{{ feeStats.pendingFees }}</dd>
               </dl>
             </div>
           </div>
@@ -80,47 +82,42 @@
       </div>
     </div>
 
-    <!-- Payment History -->
-    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+    <div class="overflow-hidden rounded-md bg-white shadow">
       <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">Payment History</h3>
+        <h3 class="text-lg font-medium leading-6 text-gray-900">Payment History</h3>
       </div>
       <ul role="list" class="divide-y divide-gray-200">
-        <li v-for="payment in paymentHistory" :key="payment.id">
+        <li v-for="payment in paymentHistory" :key="`${payment.date}-${payment.amount}-${payment.method}`">
           <div class="px-4 py-4 sm:px-6">
             <div class="flex items-center justify-between">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div
-                    :class="[
-                      payment.status === 'Completed' ? 'bg-green-100' : 'bg-yellow-100'
-                    ]"
-                    class="w-8 h-8 rounded-full flex items-center justify-center"
+                    :class="[payment.status.toLowerCase() === 'completed' ? 'bg-green-100' : 'bg-yellow-100']"
+                    class="flex h-8 w-8 items-center justify-center rounded-full"
                   >
                     <svg
-                      :class="[
-                        payment.status === 'Completed' ? 'text-green-600' : 'text-yellow-600'
-                      ]"
-                      class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      :class="[payment.status.toLowerCase() === 'completed' ? 'text-green-600' : 'text-yellow-600']"
+                      class="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <path v-if="payment.status === 'Completed'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      <path v-if="payment.status.toLowerCase() === 'completed'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                       <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                   </div>
                 </div>
                 <div class="ml-4">
-                  <div class="text-sm font-medium text-gray-900">{{ payment.description }}</div>
+                  <div class="text-sm font-medium text-gray-900">{{ payment.method }}</div>
                   <div class="text-sm text-gray-500">{{ payment.date }}</div>
                 </div>
               </div>
               <div class="flex items-center">
                 <span class="text-sm font-medium text-gray-900">₹{{ payment.amount }}</span>
                 <span
-                  :class="[
-                    payment.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  ]"
-                  class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                  :class="[payment.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800']"
+                  class="ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
                 >
                   {{ payment.status }}
                 </span>
@@ -134,44 +131,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { parentService, type ChildFees, type ParentChild } from '@/services/parentService'
 
-// Sample data - replace with actual API calls
-const children = ref([
-  { id: 1, name: 'John Doe', className: 'Class 10A' },
-  { id: 2, name: 'Jane Doe', className: 'Class 8B' }
-])
+const children = ref<ParentChild[]>([])
+const selectedChild = ref<number | null>(null)
+const feeStats = ref<ChildFees>({
+  totalFees: 0,
+  paidFees: 0,
+  pendingFees: 0,
+  nextDueDate: '',
+  paymentHistory: []
+})
+const error = ref('')
 
-const selectedChild = ref(1)
+const paymentHistory = computed(() => feeStats.value.paymentHistory || [])
 
-const feeData = ref({
-  1: {
-    totalFees: 25000,
-    paid: 20000,
-    pending: 5000,
-    history: [
-      { id: 1, description: 'January Tuition Fee', amount: '5000', date: '2024-01-15', status: 'Completed' },
-      { id: 2, description: 'December Tuition Fee', amount: '5000', date: '2024-01-01', status: 'Completed' },
-      { id: 3, description: 'November Tuition Fee', amount: '5000', date: '2023-12-01', status: 'Completed' },
-      { id: 4, description: 'October Tuition Fee', amount: '5000', date: '2023-11-01', status: 'Pending' }
-    ]
-  },
-  2: {
-    totalFees: 20000,
-    paid: 15000,
-    pending: 5000,
-    history: [
-      { id: 1, description: 'January Tuition Fee', amount: '4000', date: '2024-01-15', status: 'Completed' },
-      { id: 2, description: 'December Tuition Fee', amount: '4000', date: '2024-01-01', status: 'Completed' },
-      { id: 3, description: 'November Tuition Fee', amount: '4000', date: '2023-12-01', status: 'Pending' }
-    ]
+const loadFees = async () => {
+  if (!selectedChild.value) return
+  error.value = ''
+  try {
+    feeStats.value = await parentService.getChildFees(selectedChild.value)
+  } catch (err: any) {
+    error.value = err?.response?.data?.message || err?.message || 'Failed to load fee details'
+    feeStats.value = { totalFees: 0, paidFees: 0, pendingFees: 0, nextDueDate: '', paymentHistory: [] }
+  }
+}
+
+const loadChildren = async () => {
+  try {
+    children.value = await parentService.getChildren()
+    selectedChild.value = children.value.length > 0 ? children.value[0].id : null
+    await loadFees()
+  } catch (err: any) {
+    error.value = err?.response?.data?.message || err?.message || 'Failed to load children'
+  }
+}
+
+watch(selectedChild, async (value, oldValue) => {
+  if (value && value !== oldValue) {
+    await loadFees()
   }
 })
 
-const feeStats = computed(() => feeData.value[selectedChild.value as keyof typeof feeData.value])
-const paymentHistory = computed(() => feeStats.value.history)
+onMounted(async () => {
+  await loadChildren()
+})
 </script>
-
-<style scoped>
-/* Additional styles if needed */
-</style>

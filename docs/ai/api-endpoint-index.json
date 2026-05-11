@@ -1,7 +1,7 @@
 ﻿{
     "version":  "1.0.0",
     "generatedBy":  "Generate-ApiDocs.ps1",
-    "lastUpdated":  "2026-05-05",
+    "lastUpdated":  "2026-05-09",
     "services":  {
                      "auth":  "src/frontend/mastermind-web/src/services/authService.ts",
                      "api":  "src/frontend/mastermind-web/src/services/apiService.ts",
@@ -95,6 +95,11 @@
                                                            "method":  "GET",
                                                            "path":  "/api/dashboard/parent-stats",
                                                            "action":  "GetParentStats"
+                                                       },
+                                                       {
+                                                           "method":  "GET",
+                                                           "path":  "/api/dashboard/teacher-stats",
+                                                           "action":  "GetTeacherStats"
                                                        },
                                                        {
                                                            "method":  "GET",
@@ -293,6 +298,22 @@
                                                     }
                                                 ]
                                  },
+                      "studentremarks":  {
+                                              "requiresAuth":  true,
+                                              "controller":  "src/backend/MasterMind.API/Controllers/StudentRemarksController.cs",
+                                              "routes":  [
+                                                             {
+                                                                 "method":  "GET",
+                                                                 "path":  "/api/student-remarks",
+                                                                 "action":  "GetRemarks"
+                                                             },
+                                                             {
+                                                                 "method":  "POST",
+                                                                 "path":  "/api/student-remarks",
+                                                                 "action":  "CreateRemark"
+                                                             }
+                                                         ]
+                                          },
                       "fees":  {
                                    "requiresAuth":  true,
                                    "controller":  "src/backend/MasterMind.API/Controllers/FeesController.cs",

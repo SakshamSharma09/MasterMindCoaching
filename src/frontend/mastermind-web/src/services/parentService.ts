@@ -62,6 +62,15 @@ export interface ChildPerformance {
     score: number
     totalMarks: number
   }>
+  recentRemarks: Array<{
+    id: number
+    date: string
+    type: string
+    content: string
+    subject?: string
+    chapterName?: string
+    teacherName?: string
+  }>
 }
 
 class ParentService {

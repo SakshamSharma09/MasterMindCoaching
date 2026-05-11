@@ -4,46 +4,68 @@
       <div class="sm:flex-auto">
         <h1 class="text-2xl font-semibold text-gray-900">Mark Attendance</h1>
         <p class="mt-2 text-sm text-gray-700">
-          Mark attendance for your classes and view attendance records.
+          Mark attendance for your class students.
         </p>
       </div>
-      <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+      <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
         <button
           type="button"
-          class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+          @click="saveAttendance"
+          :disabled="saving || students.length === 0 || !selectedClass"
         >
-          Save Attendance
+          {{ saving ? 'Saving...' : 'Save Attendance' }}
         </button>
       </div>
     </div>
 
-    <!-- Class Selection -->
-    <div class="mb-6">
-      <label for="class-select" class="block text-sm font-medium text-gray-700">Select Class</label>
-      <select
-        id="class-select"
-        v-model="selectedClass"
-        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-md"
-      >
-        <option v-for="classItem in classes" :key="classItem.id" :value="classItem.id">
-          {{ classItem.name }} - {{ classItem.board }}-{{ classItem.medium }}
-        </option>
-      </select>
+    <div class="mb-4 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div>
+        <label for="class-select" class="block text-sm font-medium text-gray-700">Select Class</label>
+        <select
+          id="class-select"
+          v-model.number="selectedClass"
+          class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-green-500 focus:outline-none focus:ring-green-500 sm:text-sm"
+        >
+          <option v-for="classItem in classes" :key="classItem.id" :value="classItem.id">
+            {{ classItem.name }} - {{ classItem.board }}-{{ classItem.medium }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label for="attendance-date" class="block text-sm font-medium text-gray-700">Date</label>
+        <input
+          id="attendance-date"
+          v-model="attendanceDate"
+          type="date"
+          class="mt-1 block w-full rounded-md border-gray-300 py-2 px-3 text-base focus:border-green-500 focus:outline-none focus:ring-green-500 sm:text-sm"
+        />
+      </div>
     </div>
 
-    <!-- Attendance Table -->
-    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+    <div v-if="error" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {{ error }}
+    </div>
+    <div v-if="successMessage" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+      {{ successMessage }}
+    </div>
+
+    <div v-if="loading" class="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
+      Loading students...
+    </div>
+
+    <div v-else-if="students.length === 0" class="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
+      No students found in this class.
+    </div>
+
+    <div v-else class="overflow-hidden rounded-md bg-white shadow">
       <ul role="list" class="divide-y divide-gray-200">
         <li v-for="student in students" :key="student.id">
           <div class="px-4 py-4 sm:px-6">
             <div class="flex items-center justify-between">
               <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    <span class="text-sm font-medium text-gray-700">
-                      {{ student.initials }}
-                    </span>
-                  </div>
+                <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
+                  <span class="text-sm font-medium text-gray-700">{{ student.initials }}</span>
                 </div>
                 <div class="ml-4">
                   <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
@@ -51,38 +73,18 @@
                 </div>
               </div>
               <div class="flex items-center space-x-4">
-                <div class="flex items-center space-x-2">
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      :name="`attendance-${student.id}`"
-                      value="present"
-                      v-model="student.status"
-                      class="form-radio h-4 w-4 text-green-600"
-                    >
-                    <span class="ml-2 text-sm text-gray-700">Present</span>
-                  </label>
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      :name="`attendance-${student.id}`"
-                      value="absent"
-                      v-model="student.status"
-                      class="form-radio h-4 w-4 text-red-600"
-                    >
-                    <span class="ml-2 text-sm text-gray-700">Absent</span>
-                  </label>
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      :name="`attendance-${student.id}`"
-                      value="late"
-                      v-model="student.status"
-                      class="form-radio h-4 w-4 text-yellow-600"
-                    >
-                    <span class="ml-2 text-sm text-gray-700">Late</span>
-                  </label>
-                </div>
+                <label class="inline-flex items-center">
+                  <input type="radio" :name="`attendance-${student.id}`" value="present" v-model="student.status" class="h-4 w-4 text-green-600">
+                  <span class="ml-2 text-sm text-gray-700">Present</span>
+                </label>
+                <label class="inline-flex items-center">
+                  <input type="radio" :name="`attendance-${student.id}`" value="absent" v-model="student.status" class="h-4 w-4 text-red-600">
+                  <span class="ml-2 text-sm text-gray-700">Absent</span>
+                </label>
+                <label class="inline-flex items-center">
+                  <input type="radio" :name="`attendance-${student.id}`" value="late" v-model="student.status" class="h-4 w-4 text-yellow-600">
+                  <span class="ml-2 text-sm text-gray-700">Late</span>
+                </label>
               </div>
             </div>
           </div>
@@ -90,10 +92,9 @@
       </ul>
     </div>
 
-    <!-- Attendance Summary -->
-    <div class="mt-8 bg-white shadow rounded-lg">
+    <div class="mt-8 rounded-lg bg-white shadow">
       <div class="px-4 py-5 sm:p-6">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Attendance Summary</h3>
+        <h3 class="mb-4 text-lg font-medium leading-6 text-gray-900">Attendance Summary</h3>
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div class="text-center">
             <div class="text-2xl font-bold text-green-600">{{ attendanceSummary.present }}</div>
@@ -114,50 +115,134 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { ATTENDANCE_STATUS_MAP, attendanceService, type AttendanceRecord } from '@/services/attendanceService'
+import { teacherPortalService, type TeacherClassContext } from '@/services/teacherPortalService'
 
-// Sample data - replace with actual API calls
-const classes = ref([
-  { id: 1, name: 'Class 10A', subject: 'Mathematics', board: 'CBSE', medium: 'English' },
-  { id: 2, name: 'Class 9B', subject: 'Mathematics', board: 'CBSE', medium: 'Hindi' },
-  { id: 3, name: 'Class 8C', subject: 'Mathematics', board: 'RBSE', medium: 'English' }
-])
+interface StudentAttendanceRow {
+  id: number
+  name: string
+  initials: string
+  rollNo: string
+  status: 'present' | 'absent' | 'late'
+  attendanceId?: number
+}
 
-const selectedClass = ref(1)
+const authStore = useAuthStore()
 
-const studentsData = ref({
-  1: [
-    { id: 1, name: 'John Doe', rollNo: '001', initials: 'JD', status: 'present' },
-    { id: 2, name: 'Jane Smith', rollNo: '002', initials: 'JS', status: 'present' },
-    { id: 3, name: 'Bob Johnson', rollNo: '003', initials: 'BJ', status: 'absent' },
-    { id: 4, name: 'Alice Brown', rollNo: '004', initials: 'AB', status: 'late' }
-  ],
-  2: [
-    { id: 5, name: 'Charlie Wilson', rollNo: '001', initials: 'CW', status: 'present' },
-    { id: 6, name: 'Diana Prince', rollNo: '002', initials: 'DP', status: 'present' },
-    { id: 7, name: 'Eve Adams', rollNo: '003', initials: 'EA', status: 'present' }
-  ],
-  3: [
-    { id: 8, name: 'Frank Miller', rollNo: '001', initials: 'FM', status: 'present' },
-    { id: 9, name: 'Grace Lee', rollNo: '002', initials: 'GL', status: 'absent' }
-  ]
+const loading = ref(false)
+const saving = ref(false)
+const error = ref('')
+const successMessage = ref('')
+const classes = ref<TeacherClassContext[]>([])
+const selectedClass = ref<number | null>(null)
+const students = ref<StudentAttendanceRow[]>([])
+const attendanceDate = ref(new Date().toISOString().slice(0, 10))
+
+const attendanceSummary = computed(() => ({
+  present: students.value.filter(s => s.status === 'present').length,
+  absent: students.value.filter(s => s.status === 'absent').length,
+  late: students.value.filter(s => s.status === 'late').length
+}))
+
+const loadStudentsAndAttendance = async () => {
+  if (!selectedClass.value) {
+    students.value = []
+    return
+  }
+
+  loading.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    const [classStudents, attendanceRecords] = await Promise.all([
+      teacherPortalService.getClassStudents(selectedClass.value),
+      attendanceService.getAttendance(attendanceDate.value, selectedClass.value)
+    ])
+
+    const attendanceMap = new Map<number, AttendanceRecord>(
+      (attendanceRecords || []).map(record => [record.studentId, record])
+    )
+
+    students.value = classStudents.map(student => {
+      const existing = attendanceMap.get(student.id)
+      return {
+        id: student.id,
+        name: student.name,
+        initials: student.initials,
+        rollNo: student.rollNo,
+        status: ((existing?.status as 'present' | 'absent' | 'late') || 'present'),
+        attendanceId: existing?.id
+      }
+    })
+  } catch (err: any) {
+    students.value = []
+    error.value = err?.response?.data?.message || err?.message || 'Failed to load attendance data'
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadTeacherContext = async () => {
+  const email = authStore.user?.email || ''
+  if (!email) {
+    error.value = 'Teacher account email not found. Please re-login.'
+    return
+  }
+
+  loading.value = true
+  try {
+    classes.value = await teacherPortalService.getMyClasses(email)
+    selectedClass.value = classes.value.length > 0 ? classes.value[0].id : null
+    await loadStudentsAndAttendance()
+  } catch (err: any) {
+    error.value = err?.response?.data?.message || err?.message || 'Failed to load teacher classes'
+  } finally {
+    loading.value = false
+  }
+}
+
+const saveAttendance = async () => {
+  if (!selectedClass.value || students.value.length === 0) return
+
+  saving.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    for (const student of students.value) {
+      const payload = {
+        studentId: student.id,
+        classId: selectedClass.value,
+        date: attendanceDate.value,
+        status: ATTENDANCE_STATUS_MAP[student.status]
+      }
+
+      if (student.attendanceId) {
+        await attendanceService.updateAttendance(student.attendanceId, {
+          status: ATTENDANCE_STATUS_MAP[student.status]
+        })
+      } else {
+        const created = await attendanceService.markAttendance(payload)
+        student.attendanceId = created.id
+      }
+    }
+
+    successMessage.value = 'Attendance saved successfully.'
+  } catch (err: any) {
+    error.value = err?.response?.data?.message || err?.message || 'Failed to save attendance'
+  } finally {
+    saving.value = false
+  }
+}
+
+watch([selectedClass, attendanceDate], async ([newClass, newDate], [oldClass, oldDate]) => {
+  if (newClass && (newClass !== oldClass || newDate !== oldDate)) {
+    await loadStudentsAndAttendance()
+  }
 })
 
-const students = computed(() => studentsData.value[selectedClass.value as keyof typeof studentsData.value] || [])
-
-const attendanceSummary = computed(() => {
-  const present = students.value.filter(s => s.status === 'present').length
-  const absent = students.value.filter(s => s.status === 'absent').length
-  const late = students.value.filter(s => s.status === 'late').length
-  return { present, absent, late }
-})
-
-// Reset attendance when class changes
-watch(selectedClass, () => {
-  // In a real app, you might want to load saved attendance data
+onMounted(async () => {
+  await loadTeacherContext()
 })
 </script>
-
-<style scoped>
-/* Additional styles if needed */
-</style>
