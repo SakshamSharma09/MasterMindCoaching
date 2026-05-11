@@ -23,12 +23,25 @@
         <span class="font-display font-bold text-surface-900">MasterMind</span>
       </div>
       
-      <button class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors relative">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-        </svg>
-        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-accent-500 rounded-full"></span>
-      </button>
+      <div class="flex items-center gap-1">
+        <button class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors relative" type="button" aria-label="Notifications">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-accent-500 rounded-full"></span>
+        </button>
+        <button
+          class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors"
+          type="button"
+          aria-label="Change Password"
+          @click="router.push({ name: 'AdminChangePassword' })"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.567 3-3.5S13.657 4 12 4s-3 1.567-3 3.5S10.343 11 12 11z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 20v-1a7 7 0 0114 0v1"/>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <!-- Sidebar Overlay (Mobile) -->
@@ -143,6 +156,13 @@
               </svg>
             </button>
           </div>
+          <button
+            type="button"
+            @click="router.push({ name: 'AdminChangePassword' }); sidebarOpen = false"
+            class="mt-3 w-full inline-flex items-center justify-center rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+          >
+            Change Password
+          </button>
         </div>
       </div>
     </aside>
@@ -287,6 +307,11 @@ const TemplateIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'c
   h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M7 8h10M7 12h6m-9 8h16a2 2 0 002-2V6a2 2 0 00-2-2H8l-4 4v10a2 2 0 002 2z' })
 ])
 
+const SecurityIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 11c1.657 0 3-1.567 3-3.5S13.657 4 12 4s-3 1.567-3 3.5S10.343 11 12 11z' }),
+  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M5 20v-1a7 7 0 0114 0v1' })
+])
+
 // Navigation items
 const mainNavigation = [
   { name: 'Dashboard', href: '/admin', icon: DashboardIcon, iconColor: 'text-primary-500' },
@@ -300,6 +325,7 @@ const managementNavigation = [
   { name: 'Finance', href: '/admin/finance', icon: FinanceIcon, iconColor: 'text-success-500' },
   { name: 'Template Zone', href: '/admin/template-zone', icon: TemplateIcon, iconColor: 'text-warning-500', badge: 'New' },
   { name: 'Notes Tracker', href: '/admin/notes-tracker', icon: NotesIcon, iconColor: 'text-accent-500', badge: 'New' },
+  { name: 'Account Security', href: '/admin/change-password', icon: SecurityIcon, iconColor: 'text-indigo-500' },
   { name: 'Syllabus & Timetable', href: '/admin/academic-planner', icon: PlannerIcon, iconColor: 'text-indigo-500' },
   { name: 'Teachers', href: '/admin/teachers', icon: TeachersIcon, iconColor: 'text-primary-500' },
   { name: 'Leads', href: '/admin/leads', icon: LeadsIcon, iconColor: 'text-mastermind-500' },

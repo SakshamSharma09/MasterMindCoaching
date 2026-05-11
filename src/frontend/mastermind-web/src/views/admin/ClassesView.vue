@@ -319,6 +319,11 @@ const editClass = (classItem: Class) => {
 
 const submitForm = async () => {
   try {
+    if (form.value.subjects.length === 0) {
+      alert('Please add at least one subject before saving the class.')
+      return
+    }
+
     const classData = {
       name: form.value.name,
       subjects: form.value.subjects,

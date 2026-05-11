@@ -28,17 +28,28 @@
       
       <!-- Input Field -->
       <div class="relative">
-        <input
-          ref="subjectInput"
-          v-model="currentInput"
-          @input="handleInput"
-          @keydown="handleKeydown"
-          @paste="handlePaste"
-          type="text"
-          :placeholder="placeholder"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          :class="{ 'border-red-500': error }"
-        />
+        <div class="flex items-stretch gap-2">
+          <input
+            ref="subjectInput"
+            v-model="currentInput"
+            @input="handleInput"
+            @keydown="handleKeydown"
+            @paste="handlePaste"
+            @blur="handleBlur"
+            type="text"
+            :placeholder="placeholder"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            :class="{ 'border-red-500': error }"
+          />
+          <button
+            type="button"
+            class="shrink-0 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            :disabled="!currentInput.trim()"
+            @click="addCurrentSubject"
+          >
+            Add
+          </button>
+        </div>
         
         <!-- Input Indicator -->
         <div 
@@ -199,6 +210,15 @@ const addCurrentSubject = () => {
     showIndicator.value = false
     showSuggestions.value = false
   }
+}
+
+const handleBlur = () => {
+  // Small delay allows suggestion click to register first.
+  window.setTimeout(() => {
+    if (currentInput.value.trim()) {
+      addCurrentSubject()
+    }
+  }, 120)
 }
 
 const addSubject = (subject: string) => {

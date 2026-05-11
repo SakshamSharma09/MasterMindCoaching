@@ -436,12 +436,13 @@ public class AuthService : IAuthService
                 await EnsureBootstrapAdminUserAsync();
             }
 
-            var user = await _context.Users
+            var users = await _context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
-                .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail && !u.IsDeleted);
+                .Where(u => !u.IsDeleted && u.Email != null && u.Email.ToLower() == normalizedEmail)
+                .ToListAsync();
 
-            if (user == null)
+            if (!users.Any())
             {
                 return new AuthResponseDto
                 {
@@ -451,19 +452,16 @@ public class AuthService : IAuthService
                 };
             }
 
-            if (string.IsNullOrEmpty(user.PasswordHash))
-            {
-                return new AuthResponseDto
-                {
-                    Success = false,
-                    Message = "Password not set. Please use OTP login or contact admin to set a password.",
-                    ErrorCode = "PASSWORD_NOT_SET"
-                };
-            }
+            // Handle legacy duplicate admin rows safely by authenticating the first matching hash.
+            // This prevents fallback to an old duplicate password hash.
+            var user = users
+                .OrderByDescending(u => u.UpdatedAt ?? u.CreatedAt)
+                .ThenByDescending(u => u.Id)
+                .FirstOrDefault(u =>
+                    !string.IsNullOrWhiteSpace(u.PasswordHash) &&
+                    VerifyPasswordSafe(inputPassword, u.PasswordHash!));
 
-            var validPassword = BCrypt.Net.BCrypt.Verify(inputPassword, user.PasswordHash);
-
-            if (!validPassword)
+            if (user == null)
             {
                 return new AuthResponseDto
                 {
@@ -709,18 +707,62 @@ public class AuthService : IAuthService
                 return new AuthResponseDto { Success = false, Message = "Only admin users can set a password", ErrorCode = "NOT_ADMIN" };
             }
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-            user.UpdatedAt = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            var updatedUsers = 0;
+
+            // Keep bootstrap admin password consistent across any accidental duplicate rows.
+            if (!string.IsNullOrWhiteSpace(user.Email) &&
+                string.Equals(user.Email.Trim(), BootstrapAdminEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                var adminUsersWithSameEmail = await _context.Users
+                    .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                    .Where(u => !u.IsDeleted && u.Email != null && u.Email.ToLower() == BootstrapAdminEmail)
+                    .ToListAsync();
+
+                foreach (var target in adminUsersWithSameEmail.Where(u => u.UserRoles.Any(ur => ur.Role.Name == "Admin")))
+                {
+                    target.PasswordHash = hashedPassword;
+                    target.UpdatedAt = now;
+                    updatedUsers++;
+                }
+            }
+            else
+            {
+                user.PasswordHash = hashedPassword;
+                user.UpdatedAt = now;
+                updatedUsers = 1;
+            }
+
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Password set for admin user {UserId}", userId);
 
-            return new AuthResponseDto { Success = true, Message = "Password set successfully" };
+            return new AuthResponseDto
+            {
+                Success = true,
+                Message = updatedUsers > 1
+                    ? $"Password updated successfully ({updatedUsers} admin records synced)."
+                    : "Password set successfully"
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error setting password for user {UserId}", userId);
             return new AuthResponseDto { Success = false, Message = "An error occurred", ErrorCode = "SET_PASSWORD_ERROR" };
+        }
+    }
+
+    private static bool VerifyPasswordSafe(string plainPassword, string hashedPassword)
+    {
+        try
+        {
+            return BCrypt.Net.BCrypt.Verify(plainPassword, hashedPassword);
+        }
+        catch
+        {
+            return false;
         }
     }
 
