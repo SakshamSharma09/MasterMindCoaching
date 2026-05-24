@@ -79,6 +79,13 @@
       "category": "deployment",
       "section": "Blob Upload Fails When Connection String Is Set Under Different Azure Key Names",
       "severity": "high"
+    },
+    {
+      "id": "android-aab-java-sdk-path",
+      "symptoms": ["JAVA_HOME is not set", "java command could not be found", "build:aab failed", "Failed to read or create install properties file", "android sdk licenses", "build tools 34"],
+      "category": "mobile",
+      "section": "Android AAB Build Fails Due to Java or SDK Path",
+      "severity": "high"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # MasterMind Coaching - AI Gotchas & Lessons Learned
 
-> **Last Updated**: 2026-05-09 (Blob storage key compatibility hardening)
+> **Last Updated**: 2026-05-24 (Android AAB local SDK build fix)
 
 > **Purpose**: This file is automatically updated by AI assistants when bugs require more than one attempt to fix. It serves as a permanent memory system that prevents the same mistakes from being repeated.
 
@@ -143,6 +143,24 @@ const userData = {
 **Solution**: Add frontend URL to `Cors__AllowedOrigins` in Azure App Settings  
 **Files Affected**: Azure App Service Configuration  
 **Date Learned**: 2026-04-17
+
+---
+
+## Mobile / Android Builds
+
+### Android AAB Build Fails Due to Java or SDK Path
+**Symptom**: `npm run build:aab` fails with `JAVA_HOME is not set and no 'java' command could be found`, missing Android SDK licenses, or `Failed to read or create install properties file` while installing Build Tools.  
+**Root Cause**: Java was installed with Android Studio but not available in the terminal environment, and the Android SDK path pointed to `C:\Program Files (x86)\Android\android-sdk`, which can block SDK package/license writes.  
+**Solution**: Use the Android Studio bundled JDK for `JAVA_HOME`, use a user-writable SDK at `C:\Users\Saksham\AppData\Local\Android\Sdk`, accept licenses, install required SDK packages, and point `android/local.properties` to that SDK. Keep `npm run build:aab` and `npm run build:apk` behind the local build wrapper so Gradle receives the JDK/SDK paths even when the terminal has no Android environment variables.  
+**Files Affected**: `src/frontend/mastermind-web/package.json`, `src/frontend/mastermind-web/scripts/build-android-release.mjs`, `src/frontend/mastermind-web/android/local.properties`, local Windows environment variables  
+**Date Learned**: 2026-05-24
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Android\openjdk\jdk-21.0.8'
+$env:ANDROID_HOME='C:\Users\Saksham\AppData\Local\Android\Sdk'
+$env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
+@(1..80 | ForEach-Object { 'y' }) | & 'C:\Program Files (x86)\Android\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat' --sdk_root=$env:ANDROID_SDK_ROOT --licenses
+```
 
 ---
 

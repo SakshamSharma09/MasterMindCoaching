@@ -12,6 +12,15 @@ This is the production checklist for publishing the Android app from the current
 
 ## 1) Local Build Preparation
 
+Recommended Windows environment:
+
+- `JAVA_HOME=C:\Program Files\Android\openjdk\jdk-21.0.8`
+- `ANDROID_HOME=C:\Users\Saksham\AppData\Local\Android\Sdk`
+- `ANDROID_SDK_ROOT=C:\Users\Saksham\AppData\Local\Android\Sdk`
+- `android/local.properties` should point to `sdk.dir=C\:\\Users\\Saksham\\AppData\\Local\\Android\\Sdk`
+
+The `npm run build:aab` and `npm run build:apk` commands now use `scripts/build-android-release.mjs`, which auto-detects the Android Studio JDK/SDK on this Windows machine and injects those values into the Gradle process. This prevents the common `JAVA_HOME is not set` failure even when a newly opened terminal has not loaded Android variables correctly.
+
 From `src/frontend/mastermind-web`:
 
 ```bash
@@ -48,6 +57,8 @@ npm run build:aab
 Output file:
 
 - `src/frontend/mastermind-web/android/app/build/outputs/bundle/release/app-release.aab`
+
+If the command still reports SDK license/package errors, run Android Studio SDK Manager once or accept licenses with `sdkmanager --licenses` against the user SDK path above.
 
 Android Studio method:
 
