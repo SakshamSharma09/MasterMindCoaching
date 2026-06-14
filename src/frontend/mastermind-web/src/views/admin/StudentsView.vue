@@ -398,9 +398,9 @@
               </div>
               <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
-                <select v-model="form.className" required class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200">
+                <select v-model.number="form.classId" required class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200">
                   <option value="">Select Class</option>
-                  <option v-for="cls in classes" :key="cls.id" :value="cls.name">
+                  <option v-for="cls in classes" :key="cls.id" :value="cls.id">
                     {{ formatClassForDropdown(cls) }}
                   </option>
                 </select>
@@ -511,6 +511,7 @@ interface Class {
 interface ExtendedStudent extends Student {
   email: string
   phone: string
+  classId?: number | null
   className: string
   status: 'Active' | 'Inactive'
   createdAt: string
@@ -547,6 +548,7 @@ const form = ref<CreateStudentRequest>({
   lastName: '',
   email: '',
   phone: '',
+  classId: null,
   className: '',
   status: 'Active' as 'Active' | 'Inactive',
   motherName: '',
@@ -646,29 +648,34 @@ const loadData = async () => {
   try {
     // Load students using centralized service
     const studentsResponse = await studentsService.getStudents(1, 50)
-    students.value = studentsResponse.data.map((student: any) => ({
-      id: student.id,
-      firstName: student.firstName,
-      lastName: student.lastName,
-      email: student.studentEmail,
-      phone: student.studentMobile,
-      className: student.studentClasses?.find((sc: any) => sc.isActive)?.class?.name || 'Not Assigned',
-      status: student.isActive ? 'Active' : 'Inactive',
-      motherName: student.parentName?.split(' ')[0] || '',
-      fatherName: student.parentName?.split(' ').slice(1).join(' ') || '',
-      address: student.address,
-      currentSchool: '',
-      photo: student.profileImageUrl,
-      dateOfBirth: student.dateOfBirth,
-      gender: student.gender === 0 ? 'Male' : student.gender === 1 ? 'Female' : 'Other',
-      whatsappNumber: student.parentMobile,
-      textNumber: student.parentMobile,
-      aadharNumber: '',
-      caste: '',
-      rollNumber: '',
-      standard: '',
-      createdAt: student.createdAt
-    }))
+    students.value = studentsResponse.data.map((student: any) => {
+      const activeClass = student.studentClasses?.find((sc: any) => sc.isActive)
+
+      return {
+        id: student.id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        email: student.studentEmail,
+        phone: student.studentMobile,
+        classId: activeClass?.classId ?? activeClass?.class?.id ?? null,
+        className: activeClass?.class?.name || 'Not Assigned',
+        status: student.isActive ? 'Active' : 'Inactive',
+        motherName: student.parentName?.split(' ')[0] || '',
+        fatherName: student.parentName?.split(' ').slice(1).join(' ') || '',
+        address: student.address,
+        currentSchool: '',
+        photo: student.profileImageUrl,
+        dateOfBirth: student.dateOfBirth,
+        gender: student.gender === 0 ? 'Male' : student.gender === 1 ? 'Female' : 'Other',
+        whatsappNumber: student.parentMobile,
+        textNumber: student.parentMobile,
+        aadharNumber: '',
+        caste: '',
+        rollNumber: '',
+        standard: '',
+        createdAt: student.createdAt
+      }
+    })
   } catch (error) {
     console.error('Error loading students:', error)
   }
@@ -695,6 +702,7 @@ const resetForm = () => {
     lastName: '',
     email: '',
     phone: '',
+    classId: null,
     className: '',
     status: 'Active' as 'Active' | 'Inactive',
     motherName: '',
@@ -746,6 +754,7 @@ const editStudent = (student: ExtendedStudent) => {
     lastName: student.lastName,
     email: student.email,
     phone: student.phone,
+    classId: student.classId ?? null,
     className: student.className,
     status: student.status,
     motherName: student.motherName,
@@ -772,40 +781,49 @@ const submitForm = async () => {
     if (showEditModal.value && editingStudent.value) {
       // Update existing student via API
       const updatedStudent = await studentsService.updateStudent(editingStudent.value.id, form.value)
+      await syncStudentClassMapping(updatedStudent.id, editingStudent.value.classId ?? null)
       let photoUrl = form.value.photo || editingStudent.value.photo
       if (selectedPhotoFile.value) {
         const uploadResult = await studentsService.uploadStudentPhoto(editingStudent.value.id, selectedPhotoFile.value)
         photoUrl = uploadResult.url
       }
-      const index = students.value.findIndex(s => s.id === editingStudent.value!.id)
-      if (index !== -1) {
-        students.value[index] = {
-          ...editingStudent.value,
-          ...form.value,
-          ...updatedStudent,
-          photo: photoUrl
-        }
-      }
+      if (photoUrl) form.value.photo = photoUrl
     } else {
       // Add new student via API
       const newStudent = await studentsService.createStudent(form.value)
+      await syncStudentClassMapping(newStudent.id, null)
       let photoUrl = form.value.photo || ''
       if (selectedPhotoFile.value && newStudent?.id) {
         const uploadResult = await studentsService.uploadStudentPhoto(newStudent.id, selectedPhotoFile.value)
         photoUrl = uploadResult.url
       }
-      students.value.push({
-        ...newStudent,
-        id: newStudent.id || Date.now(),
-        createdAt: newStudent.createdAt || new Date().toISOString(),
-        photo: photoUrl
-      })
+      if (photoUrl) form.value.photo = photoUrl
     }
+    await loadData()
     closeModal()
   } catch (error) {
     console.error('Error saving student:', error)
     const message = (error as any)?.response?.data?.message || (error as any)?.message || 'Failed to save student. Please try again.'
     alert(message)
+  }
+}
+
+const syncStudentClassMapping = async (studentId: number, previousClassId: number | null) => {
+  const selectedClassId = form.value.classId ? Number(form.value.classId) : null
+
+  if (selectedClassId && selectedClassId !== previousClassId) {
+    try {
+      await studentsService.mapStudentToClass(studentId, selectedClassId)
+    } catch (error: any) {
+      const message = error?.response?.data?.message || error?.message || ''
+      if (!message.toLowerCase().includes('already mapped')) {
+        throw error
+      }
+    }
+  }
+
+  if (previousClassId && previousClassId !== selectedClassId) {
+    await studentsService.unmapStudentFromClass(studentId, previousClassId)
   }
 }
 

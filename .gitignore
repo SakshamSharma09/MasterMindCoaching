@@ -91,6 +91,12 @@ lerna-debug.log*
 coverage/
 *.lcov
 
+## Repowise local index artifacts
+.repowise/*
+!.repowise/
+!.repowise/config.yaml
+!.repowise/mcp.json
+
 ## TypeScript
 *.tsbuildinfo
 

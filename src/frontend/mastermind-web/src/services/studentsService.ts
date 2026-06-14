@@ -33,6 +33,7 @@ export interface CreateStudentRequest {
   lastName: string
   email: string
   phone: string
+  classId?: number | null
   className?: string
   status: 'Active' | 'Inactive'
   motherName?: string

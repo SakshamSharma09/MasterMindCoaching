@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "aidesigner": {
-      "type": "http",
-      "url": "https://api.aidesigner.ai/api/v1/mcp"
-    },
     "repowise": {
       "command": "C:/Users/Saksham/AppData/Roaming/Python/Python314/Scripts/repowise.exe",
       "args": [
