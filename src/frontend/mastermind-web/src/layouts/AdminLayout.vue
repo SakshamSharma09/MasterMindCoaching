@@ -24,11 +24,16 @@
       </div>
       
       <div class="flex items-center gap-1">
-        <button class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors relative" type="button" aria-label="Notifications">
+        <button
+          class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors relative"
+          type="button"
+          aria-label="Notifications"
+          @click="toggleNotifications"
+        >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
           </svg>
-          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-accent-500 rounded-full"></span>
+          <span v-if="notificationCount > 0" class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-accent-500 text-white text-[10px] font-bold flex items-center justify-center">{{ notificationCount }}</span>
         </button>
         <button
           class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors"
@@ -43,6 +48,38 @@
         </button>
       </div>
     </header>
+
+    <div v-if="notificationsOpen" class="lg:hidden fixed right-4 top-16 z-50 w-[calc(100vw-2rem)] rounded-2xl border border-surface-200 bg-white shadow-xl overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-surface-100">
+        <div>
+          <p class="text-sm font-semibold text-surface-900">Admin Reminders</p>
+          <p class="text-xs text-surface-500">Birthdays, fees, and follow-ups</p>
+        </div>
+        <button class="text-xs font-semibold text-primary-600 hover:text-primary-700" type="button" @click="loadNotifications">Refresh</button>
+      </div>
+      <div v-if="notificationsLoading" class="px-4 py-5 text-sm text-surface-500">Loading reminders...</div>
+      <div v-else-if="notifications.length === 0" class="px-4 py-5 text-sm text-surface-500">No pending reminders right now.</div>
+      <div v-else class="max-h-96 overflow-y-auto divide-y divide-surface-100">
+        <button
+          v-for="item in notifications"
+          :key="`mobile-${item.type}-${item.studentId || item.leadId || item.dueDate}-${item.title}`"
+          type="button"
+          class="w-full px-4 py-3 text-left hover:bg-surface-50"
+          @click="goToNotification(item)"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-surface-900">{{ item.title }}</p>
+              <p class="mt-1 text-xs text-surface-500">{{ item.message }}</p>
+              <p class="mt-1 text-xs text-surface-400">Due: {{ item.dueDate }}</p>
+            </div>
+            <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" :class="item.priority === 'High' ? 'bg-error-50 text-error-700' : 'bg-warning-50 text-warning-700'">
+              {{ item.priority }}
+            </span>
+          </div>
+        </button>
+      </div>
+    </div>
 
     <!-- Sidebar Overlay (Mobile) -->
     <Transition name="fade">
@@ -204,12 +241,45 @@
           </button>
           
           <!-- Notifications -->
-          <button class="btn-ghost p-2.5 rounded-xl relative">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-            </svg>
-            <span class="absolute top-2 right-2 w-2 h-2 bg-accent-500 rounded-full animate-pulse"></span>
-          </button>
+          <div class="relative">
+            <button class="btn-ghost p-2.5 rounded-xl relative" type="button" aria-label="Notifications" @click="toggleNotifications">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              <span v-if="notificationCount > 0" class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-accent-500 text-white text-[10px] font-bold flex items-center justify-center">{{ notificationCount }}</span>
+            </button>
+            <div v-if="notificationsOpen" class="absolute right-0 mt-3 w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-surface-200 bg-white shadow-xl overflow-hidden">
+              <div class="flex items-center justify-between px-4 py-3 border-b border-surface-100">
+                <div>
+                  <p class="text-sm font-semibold text-surface-900">Admin Reminders</p>
+                  <p class="text-xs text-surface-500">Birthdays, fees, and follow-ups</p>
+                </div>
+                <button class="text-xs font-semibold text-primary-600 hover:text-primary-700" type="button" @click="loadNotifications">Refresh</button>
+              </div>
+              <div v-if="notificationsLoading" class="px-4 py-5 text-sm text-surface-500">Loading reminders...</div>
+              <div v-else-if="notifications.length === 0" class="px-4 py-5 text-sm text-surface-500">No pending reminders right now.</div>
+              <div v-else class="max-h-96 overflow-y-auto divide-y divide-surface-100">
+                <button
+                  v-for="item in notifications"
+                  :key="`${item.type}-${item.studentId || item.leadId || item.dueDate}-${item.title}`"
+                  type="button"
+                  class="w-full px-4 py-3 text-left hover:bg-surface-50"
+                  @click="goToNotification(item)"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-semibold text-surface-900">{{ item.title }}</p>
+                      <p class="mt-1 text-xs text-surface-500">{{ item.message }}</p>
+                      <p class="mt-1 text-xs text-surface-400">Due: {{ item.dueDate }}</p>
+                    </div>
+                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" :class="item.priority === 'High' ? 'bg-error-50 text-error-700' : 'bg-warning-50 text-warning-700'">
+                      {{ item.priority }}
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
           
           <!-- Settings -->
           <button class="btn-ghost p-2.5 rounded-xl" @click="router.push({ name: 'AdminChangePassword' })" title="Change Password">
@@ -254,6 +324,7 @@ import { ref, computed, h, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import SessionSelector from '@/components/admin/SessionSelector.vue'
+import { apiService } from '@/services/apiService'
 
 const router = useRouter()
 const route = useRoute()
@@ -261,6 +332,22 @@ const authStore = useAuthStore()
 
 const sidebarOpen = ref(false)
 const searchQuery = ref('')
+const notificationsOpen = ref(false)
+const notificationsLoading = ref(false)
+const notifications = ref<AdminNotification[]>([])
+
+interface AdminNotification {
+  type: string
+  priority: 'High' | 'Medium' | 'Low'
+  title: string
+  message: string
+  dueDate: string
+  actionUrl?: string
+  studentId?: number
+  leadId?: number
+}
+
+const notificationCount = computed(() => Math.min(notifications.value.length, 99))
 
 // Icon Components
 const DashboardIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
@@ -349,6 +436,33 @@ const handleSearch = () => {
   console.log('Searching for:', searchQuery.value)
 }
 
+const loadNotifications = async () => {
+  notificationsLoading.value = true
+  try {
+    const response = await apiService.get('/admin-notifications')
+    notifications.value = response.data?.items || response.data?.Items || []
+  } catch (error) {
+    console.error('Failed to load admin notifications:', error)
+    notifications.value = []
+  } finally {
+    notificationsLoading.value = false
+  }
+}
+
+const toggleNotifications = async () => {
+  notificationsOpen.value = !notificationsOpen.value
+  if (notificationsOpen.value) {
+    await loadNotifications()
+  }
+}
+
+const goToNotification = (item: AdminNotification) => {
+  notificationsOpen.value = false
+  if (item.actionUrl) {
+    router.push(item.actionUrl)
+  }
+}
+
 const logout = async () => {
   await authStore.logout()
   router.push('/login')
@@ -358,13 +472,16 @@ const logout = async () => {
 onMounted(() => {
   router.afterEach(() => {
     sidebarOpen.value = false
+    notificationsOpen.value = false
   })
+  loadNotifications()
 })
 
 // Handle escape key
 const handleEscape = (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
     sidebarOpen.value = false
+    notificationsOpen.value = false
   }
 }
 

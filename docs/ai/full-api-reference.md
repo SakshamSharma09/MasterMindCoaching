@@ -97,6 +97,8 @@
 | GET | `/api/parent/children/{childId}/performance` | GetChildPerformance |
 | GET | `/api/student-remarks` | GetRemarks |
 | POST | `/api/student-remarks` | CreateRemark |
+| GET | `/api/teacher-portal/classes` | GetMyClasses |
+| GET | `/api/teacher-portal/classes/{classId}/students` | GetClassStudents |
 | GET | `/api/sessions` | GetSessions |
 | GET | `/api/sessions/active` | GetActiveSession |
 | POST | `/api/sessions` | CreateSession |
@@ -135,6 +137,7 @@
 | POST | `/api/adminnotes` | Create |
 | PUT | `/api/adminnotes/{id}` | Update |
 | DELETE | `/api/adminnotes/{id}` | Delete |
+| GET | `/api/admin-notifications` | GetNotifications |
 | GET | `/api/academicplanner` | GetEntries |
 | POST | `/api/academicplanner` | Create |
 | PUT | `/api/academicplanner/{id}` | Update |
@@ -187,4 +190,4 @@ Authorization: Bearer <access_token>
 
 ---
 
-*Auto-generated baseline with manual updates through 2026-05-09 for AdminNotes, TemplateZone, AcademicPlanner, TeacherStats, and StudentRemarks.*
+*Auto-generated baseline with manual updates through 2026-06-14 for AdminNotifications, TeacherPortal, AdminNotes, TemplateZone, AcademicPlanner, TeacherStats, and StudentRemarks.*

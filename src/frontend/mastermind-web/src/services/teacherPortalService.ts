@@ -1,7 +1,4 @@
 import { apiService } from './apiService'
-import { classesService, type Class } from './classesService'
-import { studentsService, type Student } from './studentsService'
-import { teachersService, type Teacher } from './teachersService'
 
 export interface TeacherClassContext {
   id: number
@@ -48,57 +45,29 @@ export interface CreateStudentRemarkPayload {
   isVisibleToParent?: boolean
 }
 
-const normalizeName = (firstName?: string, lastName?: string) =>
-  `${firstName || ''} ${lastName || ''}`.trim()
-
-const normalizeInitials = (firstName?: string, lastName?: string) =>
-  `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase() || 'NA'
-
 class TeacherPortalService {
-  async getTeacherByEmail(email: string): Promise<Teacher | null> {
-    const response = await teachersService.getTeachers(1, 500)
-    const match = response.data.find((teacher: any) =>
-      (teacher.email || '').trim().toLowerCase() === email.trim().toLowerCase()
-    )
-    return match || null
-  }
-
-  async getMyClasses(email: string): Promise<TeacherClassContext[]> {
-    const teacher = await this.getTeacherByEmail(email)
-    if (!teacher) return []
-
-    const rawTeacherClasses = ((teacher as any).teacherClasses || []) as any[]
-    const classIds = rawTeacherClasses
-      .filter(tc => tc.isActive !== false)
-      .map(tc => tc.classId)
-      .filter((id: any) => typeof id === 'number')
-
-    if (classIds.length === 0) return []
-
-    const allClasses = await classesService.getClasses()
-    const classMap = new Map<number, Class>(allClasses.map(c => [c.id, c]))
-
-    return [...new Set(classIds)]
-      .map(classId => classMap.get(classId))
-      .filter((c): c is Class => !!c)
-      .map(c => ({
-        id: c.id,
-        name: c.name,
-        board: c.board,
-        medium: c.medium
-      }))
+  async getMyClasses(): Promise<TeacherClassContext[]> {
+    const response = await apiService.get('/teacher-portal/classes')
+    const records = response.data || []
+    return records.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      board: item.board,
+      medium: item.medium
+    }))
   }
 
   async getClassStudents(classId: number): Promise<TeacherStudentItem[]> {
-    const studentsResponse = await studentsService.getStudents(1, 200, classId)
-    return (studentsResponse.data || []).map((student: Student) => ({
+    const response = await apiService.get(`/teacher-portal/classes/${classId}/students`)
+    const records = response.data || []
+    return records.map((student: any) => ({
       id: student.id,
-      name: normalizeName(student.firstName, student.lastName),
-      initials: normalizeInitials(student.firstName, student.lastName),
-      rollNo: student.admissionNumber || `STD-${student.id}`,
-      classId,
-      attendance: '--',
-      averageGrade: 'N/A'
+      name: student.name,
+      initials: student.initials,
+      rollNo: student.rollNo,
+      classId: student.classId,
+      attendance: student.attendance || '--',
+      averageGrade: student.averageGrade || 'N/A'
     }))
   }
 

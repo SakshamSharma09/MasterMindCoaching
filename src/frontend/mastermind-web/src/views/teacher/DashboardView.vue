@@ -161,7 +161,6 @@ import { ref, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
 import { API_ENDPOINTS } from '@/config/api'
 import { teacherPortalService } from '@/services/teacherPortalService'
-import { useAuthStore } from '@/stores/auth'
 
 // Type definitions
 interface TeacherStats {
@@ -196,7 +195,6 @@ const stats = ref<TeacherStats>({
 
 const todaysSchedule = ref<ScheduleItem[]>([])
 const recentActivities = ref<ActivityItem[]>([])
-const authStore = useAuthStore()
 
 // Load teacher dashboard data
 const loadTeacherDashboardData = async () => {
@@ -205,8 +203,7 @@ const loadTeacherDashboardData = async () => {
     const statsData = await apiService.get<TeacherStats>(API_ENDPOINTS.DASHBOARD.TEACHER_STATS)
     stats.value = statsData
 
-    const teacherEmail = authStore.user?.email || ''
-    const classes = teacherEmail ? await teacherPortalService.getMyClasses(teacherEmail) : []
+    const classes = await teacherPortalService.getMyClasses()
     const remarks = classes.length > 0
       ? await teacherPortalService.getRemarks(classes[0].id)
       : []

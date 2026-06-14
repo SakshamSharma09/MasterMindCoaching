@@ -10,7 +10,7 @@ namespace MasterMind.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
-[Authorize]
+[Authorize(Roles = "Admin")]
 public class StudentsController : ControllerBase
 {
     private readonly MasterMindDbContext _context;

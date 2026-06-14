@@ -154,7 +154,7 @@ const loadTeacherClasses = async () => {
   error.value = ''
 
   try {
-    classes.value = await teacherPortalService.getMyClasses(email)
+    classes.value = await teacherPortalService.getMyClasses()
     selectedClass.value = classes.value.length > 0 ? classes.value[0].id : null
     await loadStudents()
   } catch (err: any) {

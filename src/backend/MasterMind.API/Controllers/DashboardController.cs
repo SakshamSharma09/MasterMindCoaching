@@ -28,7 +28,7 @@ public class DashboardController : ControllerBase
     /// <param name="sessionId">Optional session ID to filter stats</param>
     /// <returns>Dashboard statistics</returns>
     [HttpGet("stats")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<DashboardStats>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<DashboardStats>>> GetStats([FromQuery] int? sessionId = null)
     {
@@ -86,6 +86,7 @@ public class DashboardController : ControllerBase
     /// </summary>
     /// <returns>Dashboard statistics</returns>
     [HttpGet("admin-stats")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<DashboardStats>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<DashboardStats>>> GetAdminStats([FromQuery] int? sessionId = null)
     {
@@ -98,7 +99,7 @@ public class DashboardController : ControllerBase
     /// </summary>
     /// <returns>Teacher dashboard statistics</returns>
     [HttpGet("teacher-stats")]
-    [Authorize]
+    [Authorize(Roles = "Teacher,Admin")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<object>>> GetTeacherStats()
     {
@@ -190,7 +191,7 @@ public class DashboardController : ControllerBase
     /// </summary>
     /// <returns>Parent dashboard statistics</returns>
     [HttpGet("parent-stats")]
-    [Authorize]
+    [Authorize(Roles = "Parent,Admin")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<object>>> GetParentStats()
     {
@@ -258,6 +259,7 @@ public class DashboardController : ControllerBase
     /// <param name="sessionId">Optional session ID to filter students</param>
     /// <returns>List of recent students</returns>
     [HttpGet("recent-students")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<Student>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<Student>>>> GetRecentStudents([FromQuery] int? sessionId = null)
     {

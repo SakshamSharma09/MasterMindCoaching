@@ -240,7 +240,7 @@ const loadTeacherContext = async () => {
   loading.value = true
   error.value = ''
   try {
-    classes.value = await teacherPortalService.getMyClasses(email)
+    classes.value = await teacherPortalService.getMyClasses()
     const classFromQuery = Number(route.query.classId)
     if (classFromQuery && classes.value.some(c => c.id === classFromQuery)) {
       selectedClass.value = classFromQuery

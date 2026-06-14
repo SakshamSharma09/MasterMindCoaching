@@ -314,6 +314,22 @@
                                                              }
                                                          ]
                                           },
+                      "teacherportal":  {
+                                             "requiresAuth":  true,
+                                             "controller":  "src/backend/MasterMind.API/Controllers/TeacherPortalController.cs",
+                                             "routes":  [
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/teacher-portal/classes",
+                                                                "action":  "GetMyClasses"
+                                                            },
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/teacher-portal/classes/{classId}/students",
+                                                                "action":  "GetClassStudents"
+                                                            }
+                                                        ]
+                                         },
                       "fees":  {
                                    "requiresAuth":  true,
                                    "controller":  "src/backend/MasterMind.API/Controllers/FeesController.cs",
@@ -572,6 +588,17 @@
                                                         }
                                                     ]
                                      },
+                      "adminnotifications":  {
+                                                 "requiresAuth":  true,
+                                                 "controller":  "src/backend/MasterMind.API/Controllers/AdminNotificationsController.cs",
+                                                 "routes":  [
+                                                                {
+                                                                    "method":  "GET",
+                                                                    "path":  "/api/admin-notifications",
+                                                                    "action":  "GetNotifications"
+                                                                }
+                                                            ]
+                                             },
                       "academicplanner":  {
                                               "requiresAuth":  true,
                                               "controller":  "src/backend/MasterMind.API/Controllers/AcademicPlannerController.cs",

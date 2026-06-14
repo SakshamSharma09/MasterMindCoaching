@@ -9,7 +9,7 @@ namespace MasterMind.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Admin")]
 public class TemplateZoneController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
