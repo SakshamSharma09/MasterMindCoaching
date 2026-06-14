@@ -13,7 +13,7 @@
           <span class="hidden sm:inline">{{ currentDate }}</span>
           <span class="sm:hidden">{{ shortDate }}</span>
         </div>
-        <button class="btn-premium px-4 py-2.5">
+        <button class="btn-premium px-4 py-2.5" type="button" @click="router.push('/admin/students')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
           </svg>
@@ -34,7 +34,7 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
               </svg>
-              <span class="text-xs font-semibold">+12%</span>
+              <span class="text-xs font-semibold">Current session</span>
             </div>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow-primary group-hover:scale-110 transition-transform duration-300">
@@ -76,7 +76,7 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
               </svg>
-              <span class="text-xs font-semibold">-3%</span>
+              <span class="text-xs font-semibold">Today</span>
             </div>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-warning-500 to-warning-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -92,12 +92,12 @@
         <div class="flex items-start justify-between">
           <div>
             <p class="text-xs sm:text-sm font-medium text-surface-500 uppercase tracking-wider">Pending</p>
-            <p class="mt-2 text-2xl sm:text-3xl font-bold text-surface-900">₹{{ formatCurrency(stats.pendingFees) }}</p>
+            <p class="mt-2 text-2xl sm:text-3xl font-bold text-surface-900">Rs {{ formatCurrency(stats.pendingFees) }}</p>
             <div class="mt-2 flex items-center gap-1 text-error-600">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              <span class="text-xs font-semibold">5 overdue</span>
+              <span class="text-xs font-semibold">Review dues</span>
             </div>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center shadow-glow-accent group-hover:scale-110 transition-transform duration-300">
@@ -162,7 +162,7 @@
               </svg>
             </div>
             <p class="text-surface-500">No recent students</p>
-            <button class="mt-4 btn-outline text-sm">Add First Student</button>
+            <button class="mt-4 btn-outline text-sm" type="button" @click="router.push('/admin/students')">Add First Student</button>
           </div>
         </div>
       </div>
@@ -314,6 +314,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
@@ -322,6 +323,7 @@ import { format } from 'date-fns'
 
 const authStore = useAuthStore()
 const sessionStore = useSessionStore()
+const router = useRouter()
 
 interface DashboardStats {
   totalStudents: number

@@ -53,7 +53,7 @@
       <div class="flex items-center justify-between px-4 py-3 border-b border-surface-100">
         <div>
           <p class="text-sm font-semibold text-surface-900">Admin Reminders</p>
-          <p class="text-xs text-surface-500">Birthdays, fees, and follow-ups</p>
+          <p class="text-xs text-surface-500">{{ notificationSummary }}</p>
         </div>
         <button class="text-xs font-semibold text-primary-600 hover:text-primary-700" type="button" @click="loadNotifications">Refresh</button>
       </div>
@@ -64,16 +64,19 @@
           v-for="item in notifications"
           :key="`mobile-${item.type}-${item.studentId || item.leadId || item.dueDate}-${item.title}`"
           type="button"
-          class="w-full px-4 py-3 text-left hover:bg-surface-50"
+          class="w-full px-4 py-3 text-left hover:bg-surface-50 focus:outline-none focus:bg-surface-50"
           @click="goToNotification(item)"
         >
           <div class="flex items-start justify-between gap-3">
-            <div>
+            <div class="flex min-w-0 gap-3">
+              <span class="mt-1 h-8 w-1.5 shrink-0 rounded-full" :class="notificationTone(item.type)"></span>
+              <div class="min-w-0">
               <p class="text-sm font-semibold text-surface-900">{{ item.title }}</p>
               <p class="mt-1 text-xs text-surface-500">{{ item.message }}</p>
               <p class="mt-1 text-xs text-surface-400">Due: {{ item.dueDate }}</p>
+              </div>
             </div>
-            <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" :class="item.priority === 'High' ? 'bg-error-50 text-error-700' : 'bg-warning-50 text-warning-700'">
+            <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" :class="notificationPriorityClass(item.priority)">
               {{ item.priority }}
             </span>
           </div>
@@ -252,7 +255,7 @@
               <div class="flex items-center justify-between px-4 py-3 border-b border-surface-100">
                 <div>
                   <p class="text-sm font-semibold text-surface-900">Admin Reminders</p>
-                  <p class="text-xs text-surface-500">Birthdays, fees, and follow-ups</p>
+                  <p class="text-xs text-surface-500">{{ notificationSummary }}</p>
                 </div>
                 <button class="text-xs font-semibold text-primary-600 hover:text-primary-700" type="button" @click="loadNotifications">Refresh</button>
               </div>
@@ -263,16 +266,19 @@
                   v-for="item in notifications"
                   :key="`${item.type}-${item.studentId || item.leadId || item.dueDate}-${item.title}`"
                   type="button"
-                  class="w-full px-4 py-3 text-left hover:bg-surface-50"
+                  class="w-full px-4 py-3 text-left hover:bg-surface-50 focus:outline-none focus:bg-surface-50"
                   @click="goToNotification(item)"
                 >
                   <div class="flex items-start justify-between gap-3">
-                    <div>
-                      <p class="text-sm font-semibold text-surface-900">{{ item.title }}</p>
-                      <p class="mt-1 text-xs text-surface-500">{{ item.message }}</p>
-                      <p class="mt-1 text-xs text-surface-400">Due: {{ item.dueDate }}</p>
+                    <div class="flex min-w-0 gap-3">
+                      <span class="mt-1 h-8 w-1.5 shrink-0 rounded-full" :class="notificationTone(item.type)"></span>
+                      <div class="min-w-0">
+                        <p class="text-sm font-semibold text-surface-900">{{ item.title }}</p>
+                        <p class="mt-1 text-xs text-surface-500">{{ item.message }}</p>
+                        <p class="mt-1 text-xs text-surface-400">Due: {{ item.dueDate }}</p>
+                      </div>
                     </div>
-                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" :class="item.priority === 'High' ? 'bg-error-50 text-error-700' : 'bg-warning-50 text-warning-700'">
+                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" :class="notificationPriorityClass(item.priority)">
                       {{ item.priority }}
                     </span>
                   </div>
@@ -348,6 +354,35 @@ interface AdminNotification {
 }
 
 const notificationCount = computed(() => Math.min(notifications.value.length, 99))
+const notificationSummary = computed(() => {
+  if (notificationsLoading.value) return 'Checking birthdays, fees, and follow-ups'
+  if (notifications.value.length === 0) return 'Everything is clear for now'
+
+  const counts = notifications.value.reduce<Record<string, number>>((summary, item) => {
+    const key = item.type || 'Reminder'
+    summary[key] = (summary[key] || 0) + 1
+    return summary
+  }, {})
+
+  return Object.entries(counts)
+    .slice(0, 3)
+    .map(([type, count]) => `${count} ${type}`)
+    .join(' | ')
+})
+
+const notificationTone = (type: string) => {
+  const normalized = type.toLowerCase()
+  if (normalized.includes('birthday')) return 'bg-gradient-to-b from-rose-400 to-amber-400'
+  if (normalized.includes('fee')) return 'bg-gradient-to-b from-amber-400 to-emerald-500'
+  if (normalized.includes('lead')) return 'bg-gradient-to-b from-sky-400 to-blue-600'
+  return 'bg-gradient-to-b from-indigo-400 to-violet-500'
+}
+
+const notificationPriorityClass = (priority: AdminNotification['priority']) => {
+  if (priority === 'High') return 'bg-error-50 text-error-700 ring-1 ring-error-100'
+  if (priority === 'Medium') return 'bg-warning-50 text-warning-700 ring-1 ring-warning-100'
+  return 'bg-success-50 text-success-700 ring-1 ring-success-100'
+}
 
 // Icon Components
 const DashboardIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
@@ -525,11 +560,10 @@ onUnmounted(() => {
 /* Premium Background Mesh */
 .bg-premium-mesh {
   background: 
-    radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, rgba(168, 85, 247, 0.06) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, rgba(244, 63, 94, 0.04) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, rgba(16, 185, 129, 0.04) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(99, 102, 241, 0.06) 0px, transparent 50%),
-    linear-gradient(180deg, #fafafa 0%, #f4f4f5 100%);
+    linear-gradient(120deg, rgba(37, 99, 235, 0.08), rgba(16, 185, 129, 0.06) 34%, rgba(244, 63, 94, 0.05) 68%, rgba(245, 158, 11, 0.06)),
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.025) 1px, transparent 1px),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background-size: auto, 36px 36px, 36px 36px, auto;
 }
 </style>
