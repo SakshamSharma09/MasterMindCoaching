@@ -607,7 +607,11 @@ public class FinanceController : ControllerBase
                     sf.DueDate,
                     Status = sf.Status.ToString(),
                     Description = sf.Remarks,
-                    DaysOverdue = today.DayNumber - sf.DueDate.DayNumber
+                    DaysOverdue = today.DayNumber - sf.DueDate.DayNumber,
+                    ParentName = sf.Student?.ParentName ?? string.Empty,
+                    ParentContact = sf.Student?.ParentMobile ?? string.Empty,
+                    ParentMobile = sf.Student?.ParentMobile ?? string.Empty,
+                    ParentEmail = sf.Student?.ParentEmail ?? string.Empty
                 };
             }).ToList();
 

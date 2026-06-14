@@ -1,10 +1,10 @@
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <h2 class="text-lg font-semibold text-gray-900">Overdue Fees</h2>
-        <p class="mt-1 text-sm text-gray-500">Students with overdue fee payments. Follow up for collection.</p>
+        <h2 class="text-xl font-semibold text-gray-900">Overdue Fees</h2>
+        <p class="mt-1 text-sm text-gray-500">Review unpaid dues, open WhatsApp reminders, and close payments after collection.</p>
       </div>
       <button
         @click="sendAllReminders"
@@ -14,7 +14,7 @@
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-        Send All Reminders
+        Log All Reminders
       </button>
     </div>
 
@@ -30,8 +30,8 @@
               <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
               <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Due Date</th>
               <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Days Overdue</th>
-              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
-              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Parent Contact</th>
+              <th class="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white">
@@ -46,9 +46,9 @@
                   {{ overdue.daysOverdue }} days
                 </span>
               </td>
-              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ overdue.parentContact }}</td>
-              <td class="whitespace-nowrap px-3 py-4 text-sm">
-                <button @click="sendReminder(overdue)" class="text-orange-600 hover:text-orange-900 mr-3 font-medium">Remind</button>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ overdue.parentContact || 'Not available' }}</td>
+              <td class="whitespace-nowrap px-3 py-4 text-right text-sm">
+                <button @click="sendReminder(overdue)" class="text-orange-600 hover:text-orange-900 mr-3 font-medium">WhatsApp</button>
                 <button @click="markAsPaid(overdue.id)" class="text-green-600 hover:text-green-900 font-medium">Mark Paid</button>
               </td>
             </tr>
@@ -96,6 +96,34 @@ const calculateDaysOverdue = (dueDate: string): number => {
   return Math.max(0, Math.ceil((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)))
 }
 
+const normalizePhone = (phone?: string): string => {
+  const digits = (phone || '').replace(/\D/g, '')
+  if (!digits) return ''
+  return digits.length === 10 ? `91${digits}` : digits
+}
+
+const buildReminderMessage = (overdue: OverdueFee): string => {
+  return [
+    'Namaste, this is a fee reminder from The Master Mind Coaching Classes.',
+    `Student: ${overdue.studentName}`,
+    `Class: ${overdue.className || 'Not Assigned'}`,
+    `Pending amount: Rs. ${formatCurrency(overdue.balanceAmount || overdue.amount)}`,
+    `Due date: ${formatDate(overdue.dueDate)}`,
+    'Please complete the payment at your earliest convenience.'
+  ].join('\n')
+}
+
+const openWhatsAppReminder = (overdue: OverdueFee) => {
+  const phone = normalizePhone(overdue.parentContact || overdue.parentMobile)
+  if (!phone) {
+    toast.error('WhatsApp number missing', 'Add the parent mobile number in the student profile first.')
+    return
+  }
+
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(buildReminderMessage(overdue))}`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 const loadOverdueFees = async () => {
   loading.value = true
   try {
@@ -103,7 +131,7 @@ const loadOverdueFees = async () => {
     overdueFees.value = overdueData.map(fee => ({
       ...fee,
       daysOverdue: calculateDaysOverdue(fee.dueDate),
-      parentContact: '+91 9876543210'
+      parentContact: fee.parentContact || fee.parentMobile || ''
     }))
   } catch (error) {
     console.error('Error loading overdue fees:', error)
@@ -118,7 +146,7 @@ const sendAllReminders = async () => {
   try {
     const feeIds = overdueFees.value.map(f => f.id)
     await financeService.sendReminders(feeIds)
-    toast.success('Reminders sent', 'All overdue students have been notified.')
+    toast.success('Reminders logged', 'Use each row WhatsApp action to send the parent-ready message.')
   } catch (error) {
     console.error('Error sending reminders:', error)
     toast.error('Failed to send reminders', 'Please try again.')
@@ -130,7 +158,8 @@ const sendAllReminders = async () => {
 const sendReminder = async (overdue: OverdueFee) => {
   try {
     await financeService.sendReminders([overdue.id])
-    toast.success('Reminder sent', `Notified ${overdue.studentName}'s parents.`)
+    openWhatsAppReminder(overdue)
+    toast.success('Reminder ready', `Opened WhatsApp reminder for ${overdue.studentName}.`)
   } catch (error) {
     console.error('Error sending reminder:', error)
     toast.error('Failed to send reminder', 'Please try again.')

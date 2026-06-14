@@ -12,6 +12,7 @@
           <option value="1">Birthday</option>
           <option value="2">Fee Reminder</option>
           <option value="3">Fee Receipt</option>
+          <option value="4">Welcome</option>
         </select>
         <input v-model="monthFilter" type="month" class="rounded-lg border-gray-300 text-sm" />
         <input v-model.number="birthdayDaysAhead" type="number" min="0" max="60" class="rounded-lg border-gray-300 text-sm" placeholder="Birthday days ahead" />
@@ -41,6 +42,22 @@
       </div>
 
       <div class="space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="px-5 py-3 border-b font-medium">Welcome Queue</div>
+          <div class="max-h-64 overflow-auto divide-y">
+            <div v-for="item in welcomeStudents" :key="item.id" class="p-3 text-sm">
+              <p class="font-medium">{{ item.studentName }} ({{ item.className }})</p>
+              <p class="text-gray-500">Joined: {{ item.joiningDate }} • Login: {{ item.loginEmail || 'Add email in student profile' }}</p>
+              <p class="text-gray-500">Parent: {{ item.parentName || 'N/A' }} • {{ item.parentMobile || 'No WhatsApp number' }}</p>
+              <div class="mt-2 flex flex-wrap gap-3">
+                <button @click="downloadWelcomeCard(item)" class="text-indigo-600 text-xs font-medium">Download Welcome Image</button>
+                <a v-if="getWelcomeWhatsAppLink(item)" :href="getWelcomeWhatsAppLink(item)" target="_blank" rel="noopener" class="text-green-600 text-xs font-medium">Open WhatsApp</a>
+              </div>
+            </div>
+            <div v-if="welcomeStudents.length === 0" class="p-3 text-sm text-gray-500">No active students found for welcome cards.</div>
+          </div>
+        </div>
+
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div class="px-5 py-3 border-b font-medium">Birthday Queue</div>
           <div class="max-h-56 overflow-auto divide-y">
@@ -96,6 +113,7 @@
             <option :value="1">Birthday Wish</option>
             <option :value="2">Fee Reminder</option>
             <option :value="3">Fee Receipt</option>
+            <option :value="4">Welcome</option>
           </select>
           <input v-model="form.frequency" placeholder="Frequency (e.g. Monthly)" class="rounded-lg border-gray-300 text-sm" />
           <input v-model.number="form.autoReminderDaysBefore" type="number" min="0" max="30" class="rounded-lg border-gray-300 text-sm" placeholder="Auto reminder days before" />
@@ -137,11 +155,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { templateZoneService, type MessageTemplate, type BirthdayReminder, type FeeReminder, type FeeReceiptLog, type TemplatePreviewResponse } from '@/services/templateZoneService'
+import { studentsService } from '@/services/studentsService'
 
 const templates = ref<MessageTemplate[]>([])
 const birthdayReminders = ref<BirthdayReminder[]>([])
 const feeReminders = ref<FeeReminder[]>([])
 const receiptLogs = ref<FeeReceiptLog[]>([])
+const welcomeStudents = ref<WelcomeStudent[]>([])
 
 const selectedType = ref('')
 const monthFilter = ref(new Date().toISOString().slice(0, 7))
@@ -162,7 +182,38 @@ const filteredTemplates = computed(() =>
 const templateTypeName = (type: number) => {
   if (type === 1) return 'Birthday Wish'
   if (type === 2) return 'Fee Reminder'
-  return 'Fee Receipt'
+  if (type === 3) return 'Fee Receipt'
+  return 'Welcome'
+}
+
+interface WelcomeStudent {
+  id: number
+  studentName: string
+  className: string
+  joiningDate: string
+  loginEmail: string
+  parentName: string
+  parentMobile: string
+  profileImageUrl?: string
+}
+
+const loadWelcomeStudents = async () => {
+  const result = await studentsService.getStudents(1, 200)
+  welcomeStudents.value = result.data.map((student: any) => {
+    const activeClass = student.studentClasses?.find((studentClass: any) => studentClass.isActive)
+      || student.studentClasses?.[0]
+
+    return {
+      id: student.id,
+      studentName: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim() || `Student ${student.id}`,
+      className: student.className || activeClass?.class?.name || 'Not Assigned',
+      joiningDate: (student.admissionDate || student.createdAt || new Date().toISOString()).slice(0, 10),
+      loginEmail: student.studentEmail || student.email || '',
+      parentName: student.parentName || '',
+      parentMobile: student.parentMobile || student.studentMobile || '',
+      profileImageUrl: student.profileImageUrl || student.photo || ''
+    }
+  })
 }
 
 const refreshData = async () => {
@@ -170,6 +221,7 @@ const refreshData = async () => {
   birthdayReminders.value = await templateZoneService.getBirthdayReminders(birthdayDaysAhead.value)
   feeReminders.value = await templateZoneService.getFeeReminders(monthFilter.value)
   receiptLogs.value = await templateZoneService.getFeeReceiptLogs(50)
+  await loadWelcomeStudents()
 }
 
 const openNewTemplate = () => {
@@ -235,6 +287,12 @@ const runPreview = async (template: MessageTemplate) => {
 
 const sanitizeMobile = (mobile?: string) => (mobile || '').replace(/[^0-9]/g, '')
 
+const normalizeWhatsAppMobile = (mobile?: string) => {
+  const number = sanitizeMobile(mobile)
+  if (!number) return ''
+  return number.length === 10 ? `91${number}` : number
+}
+
 const getWhatsAppLink = (mobile?: string, studentName?: string, type?: 'birthday' | 'feeReminder' | 'receipt', amount?: number) => {
   const number = sanitizeMobile(mobile)
   if (!number) return ''
@@ -243,6 +301,152 @@ const getWhatsAppLink = (mobile?: string, studentName?: string, type?: 'birthday
   if (type === 'feeReminder') text = `Fee reminder for ${studentName || 'student'}: pending amount is INR ${amount ?? 0}.`
   if (type === 'receipt') text = `Fee receipt confirmation for ${studentName || 'student'}: received INR ${amount ?? 0}.`
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`
+}
+
+const getWelcomeWhatsAppLink = (student: WelcomeStudent) => {
+  const number = normalizeWhatsAppMobile(student.parentMobile)
+  if (!number) return ''
+  const text = [
+    `Welcome to The Master Mind Coaching Classes, ${student.studentName}!`,
+    `Class: ${student.className}`,
+    `Joining date: ${student.joiningDate}`,
+    `Login email: ${student.loginEmail || 'Please contact admin to update login email.'}`,
+    `Website/App: https://victorious-glacier-0e6507000.6.azurestaticapps.net`,
+    'Please attach the downloaded welcome image before sending this message.'
+  ].join('\n')
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`
+}
+
+const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) => {
+  ctx.beginPath()
+  ctx.moveTo(x + radius, y)
+  ctx.arcTo(x + width, y, x + width, y + height, radius)
+  ctx.arcTo(x + width, y + height, x, y + height, radius)
+  ctx.arcTo(x, y + height, x, y, radius)
+  ctx.arcTo(x, y, x + width, y, radius)
+  ctx.closePath()
+}
+
+const drawCenteredText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+  const words = text.split(' ')
+  let line = ''
+  const lines: string[] = []
+  words.forEach(word => {
+    const test = line ? `${line} ${word}` : word
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line)
+      line = word
+    } else {
+      line = test
+    }
+  })
+  if (line) lines.push(line)
+  lines.forEach((row, index) => ctx.fillText(row, x, y + index * lineHeight))
+}
+
+const loadImage = (src?: string): Promise<HTMLImageElement | null> => {
+  return new Promise(resolve => {
+    if (!src) {
+      resolve(null)
+      return
+    }
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => resolve(image)
+    image.onerror = () => resolve(null)
+    image.src = src
+  })
+}
+
+const downloadWelcomeCard = async (student: WelcomeStudent) => {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1080
+  canvas.height = 1600
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  ctx.fillStyle = '#fffdf8'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillStyle = '#071a3d'
+  ctx.fillRect(840, 0, 240, 1600)
+  ctx.fillStyle = '#d59b2d'
+  ctx.fillRect(1018, 0, 24, 1600)
+
+  ctx.fillStyle = '#071a3d'
+  ctx.font = '700 64px Arial'
+  ctx.textAlign = 'center'
+  ctx.fillText('The Master Mind', 540, 115)
+  ctx.fillStyle = '#b7831c'
+  ctx.font = 'italic 48px Georgia'
+  ctx.fillText('Coaching Classes', 540, 175)
+  ctx.fillStyle = '#071a3d'
+  ctx.font = '700 24px Arial'
+  ctx.fillText('A DREAM INSTITUTE FOR NURSERY TO XII', 540, 235)
+
+  ctx.font = 'italic 88px Georgia'
+  ctx.fillText('Welcome', 330, 410)
+  ctx.fillStyle = '#d59b2d'
+  drawRoundedRect(ctx, 90, 450, 520, 78, 18)
+  ctx.fill()
+  ctx.fillStyle = '#071a3d'
+  ctx.font = '700 30px Arial'
+  ctx.fillText('TO OUR LEARNING FAMILY', 350, 500)
+
+  ctx.fillStyle = '#071a3d'
+  ctx.font = '32px Arial'
+  drawCenteredText(ctx, 'We are delighted to have you join The Master Mind Coaching Classes. Your journey toward knowledge, growth, and success begins here.', 360, 630, 560, 44)
+
+  const photo = await loadImage(student.profileImageUrl)
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(805, 565, 190, 0, Math.PI * 2)
+  ctx.clip()
+  if (photo) {
+    ctx.drawImage(photo, 615, 375, 380, 380)
+  } else {
+    ctx.fillStyle = '#e9eef8'
+    ctx.fillRect(615, 375, 380, 380)
+    ctx.fillStyle = '#071a3d'
+    ctx.font = '700 86px Arial'
+    const initials = student.studentName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()
+    ctx.fillText(initials, 805, 595)
+  }
+  ctx.restore()
+  ctx.strokeStyle = '#d59b2d'
+  ctx.lineWidth = 18
+  ctx.beginPath()
+  ctx.arc(805, 565, 202, 0, Math.PI * 2)
+  ctx.stroke()
+
+  const fields = [
+    ['STUDENT NAME', student.studentName],
+    ['CLASS', student.className],
+    ['JOINING DATE', student.joiningDate]
+  ]
+  fields.forEach(([label, value], index) => {
+    const x = 90 + index * 320
+    ctx.strokeStyle = '#071a3d'
+    ctx.lineWidth = 3
+    drawRoundedRect(ctx, x, 1020, 275, 130, 22)
+    ctx.stroke()
+    ctx.fillStyle = '#071a3d'
+    ctx.font = '700 24px Arial'
+    ctx.fillText(label, x + 137, 1000)
+    ctx.font = '700 34px Arial'
+    drawCenteredText(ctx, value, x + 137, 1080, 230, 38)
+  })
+
+  ctx.fillStyle = '#071a3d'
+  ctx.font = 'italic 42px Georgia'
+  ctx.fillText('We wish you all the best for a bright and successful future!', 540, 1250)
+  ctx.font = '24px Arial'
+  ctx.fillText(`Login email: ${student.loginEmail || 'Contact admin to update email'}`, 540, 1330)
+  ctx.fillText('Website/App: victorious-glacier-0e6507000.6.azurestaticapps.net', 540, 1370)
+
+  const link = document.createElement('a')
+  link.download = `welcome-${student.studentName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`
+  link.href = canvas.toDataURL('image/png')
+  link.click()
 }
 
 onMounted(refreshData)

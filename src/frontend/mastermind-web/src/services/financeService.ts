@@ -37,6 +37,11 @@ export interface Fee {
   dueDate: string
   status: 'Paid' | 'Pending' | 'Overdue'
   description?: string
+  parentContact?: string
+  parentMobile?: string
+  parentName?: string
+  balanceAmount?: number
+  daysOverdue?: number
 }
 
 export interface Expense {
@@ -359,7 +364,7 @@ export const financeService = {
       return true
     }
 
-    const response = await apiService.post('/finance/fees/reminders', { feeIds })
+    const response = await apiService.post('/fees/reminders', { feeIds })
     return response.data
   },
 
@@ -381,7 +386,7 @@ export const financeService = {
       }
     }
 
-    const response = await apiService.post(`/finance/fees/${feeId}/mark-paid`)
+    const response = await apiService.post(`/fees/${feeId}/mark-paid`)
     return response.data
   },
 
@@ -547,7 +552,7 @@ export const financeService = {
       }
     }
 
-    const response = await apiService.post('/finance/fees/setup', data)
+    const response = await apiService.post('/feecollection/setup-student-fee', data)
     return response.data
   },
 
@@ -579,7 +584,7 @@ export const financeService = {
       }
     }
 
-    const response = await apiService.post('/finance/payments/collect', data)
+    const response = await apiService.post('/feecollection/collect-payment', data)
     return response.data
   },
 
@@ -604,18 +609,18 @@ export const financeService = {
       }
     }
 
-    const response = await apiService.get(`/finance/payments/receipt/${receiptId}`)
+    const response = await apiService.get(`/feecollection/receipt/${receiptId}`)
     return response.data
   },
 
   // Send receipt via email
-  async sendReceiptEmail(receiptId: number, email: string): Promise<boolean> {
+  async sendReceiptEmail(receiptId: number, email?: string): Promise<boolean> {
     if (USE_MOCK_API) {
       await new Promise(resolve => setTimeout(resolve, 1000))
       return true
     }
 
-    const response = await apiService.post(`/finance/payments/receipt/${receiptId}/send-email`, { email })
+    const response = await apiService.post(`/feecollection/receipt/${receiptId}/send-email`, email ? { email } : {})
     return response.data
   },
 
@@ -643,7 +648,7 @@ export const financeService = {
       }
     }
 
-    const response = await apiService.get(`/finance/students/${studentId}/fees`)
+    const response = await apiService.get(`/feecollection/student/${studentId}/fee-details`)
     return response.data
   },
 

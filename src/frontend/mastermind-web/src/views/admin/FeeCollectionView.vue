@@ -267,6 +267,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { financeService, type Student, type StudentFeeDetails, type FeeReceipt, type CollectPaymentRequest, type PaymentFeeItem } from '@/services/financeService'
+import { studentsService } from '@/services/studentsService'
 import FeeSetupForm from '@/components/FeeSetupForm.vue'
 import ReceiptViewer from '@/components/ReceiptViewer.vue'
 import { useToast } from '@/composables/useToast'
@@ -305,15 +306,26 @@ const selectedFeesTotalBalance = computed(() => {
 // Methods
 const loadStudents = async () => {
   try {
-    // Mock students data - in real app, this would come from an API
-    students.value = [
-      { id: 1, name: 'John Doe', class: 'Class 10', email: 'john@example.com', mobile: '9876543210', parentName: 'Parent Name' },
-      { id: 2, name: 'Jane Smith', class: 'Class 9', email: 'jane@example.com', mobile: '9876543211', parentName: 'Parent Name' },
-      { id: 3, name: 'Bob Johnson', class: 'Class 11', email: 'bob@example.com', mobile: '9876543212', parentName: 'Parent Name' }
-    ]
+    const result = await studentsService.getStudents(1, 500)
+    students.value = result.data.map((student: any) => {
+      const activeClass = student.studentClasses?.find((studentClass: any) => studentClass.isActive)
+        || student.studentClasses?.[0]
+
+      return {
+        id: student.id,
+        name: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim() || `Student ${student.id}`,
+        class: student.className || activeClass?.class?.name || 'Not Assigned',
+        email: student.studentEmail || student.email || '',
+        mobile: student.parentMobile || student.studentMobile || '',
+        parentName: student.parentName || 'N/A'
+      }
+    })
     filteredStudents.value = students.value
   } catch (error) {
     console.error('Error loading students:', error)
+    students.value = []
+    filteredStudents.value = []
+    toast.error('Students unavailable', 'Could not load real student records for fee collection.')
   }
 }
 

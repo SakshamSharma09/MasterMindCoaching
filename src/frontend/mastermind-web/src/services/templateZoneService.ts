@@ -2,7 +2,7 @@ import { apiService } from './apiService'
 import type { ApiEnvelope } from './apiResponse'
 import { unwrapData } from './apiResponse'
 
-export type TemplateType = 'BirthdayWish' | 'FeeReminder' | 'FeeReceipt'
+export type TemplateType = 'BirthdayWish' | 'FeeReminder' | 'FeeReceipt' | 'Welcome'
 
 export interface MessageTemplate {
   id: number

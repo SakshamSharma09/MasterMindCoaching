@@ -16,5 +16,6 @@ public enum TemplateType
 {
     BirthdayWish = 1,
     FeeReminder = 2,
-    FeeReceipt = 3
+    FeeReceipt = 3,
+    Welcome = 4
 }
