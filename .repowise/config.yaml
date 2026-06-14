@@ -1,3 +1,4 @@
 enable_onboarding: false
+embedder: mock
 editor_files:
   agents_md: false
