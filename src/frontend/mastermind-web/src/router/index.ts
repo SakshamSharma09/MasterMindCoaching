@@ -21,6 +21,12 @@ const router = createRouter({
       component: () => import('@/views/auth/OtpVerifyView.vue'),
       meta: { requiresAuth: false }
     },
+    {
+      path: '/change-password',
+      name: 'ChangePassword',
+      component: () => import('@/views/admin/ChangePasswordView.vue'),
+      meta: { requiresAuth: true, roles: ['Admin', 'Teacher', 'Parent'] }
+    },
 
     // Admin routes
     {

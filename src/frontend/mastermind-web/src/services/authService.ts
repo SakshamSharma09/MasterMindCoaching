@@ -68,11 +68,15 @@ export const authService = {
     return response
   },
 
-  // Admin password login
-  async loginWithPassword(email: string, password: string): Promise<AuthResponse> {
+  // Password login for admin email or provisioned parent/teacher mobile
+  async loginWithPassword(identifier: string, password: string): Promise<AuthResponse> {
+    const trimmedIdentifier = identifier.trim()
+    const payload = trimmedIdentifier.includes('@')
+      ? { email: trimmedIdentifier, identifier: trimmedIdentifier, password }
+      : { mobile: trimmedIdentifier, identifier: trimmedIdentifier, password }
+
     const response = await apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
-      email,
-      password
+      ...payload
     })
     return response
   },

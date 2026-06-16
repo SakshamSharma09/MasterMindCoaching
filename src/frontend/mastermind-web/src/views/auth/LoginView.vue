@@ -1,204 +1,153 @@
 <template>
-  <div
-    class="min-h-screen flex items-center justify-center p-4
-           bg-gradient-to-br from-indigo-700 via-purple-700 to-pink-600
-           relative overflow-hidden"
-  >
-    <!-- Animated Background Elements -->
-    <div class="absolute inset-0">
-      <!-- Floating orbs -->
-      <div class="absolute top-20 left-20 w-72 h-72 bg-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
-      <div class="absolute top-40 right-32 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      <div class="absolute bottom-32 left-1/2 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
-      
-      <!-- Animated particles -->
-      <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-white/40 rounded-full animate-ping delay-300"></div>
-      <div class="absolute top-3/4 right-1/3 w-1 h-1 bg-white/60 rounded-full animate-ping delay-700"></div>
-      <div class="absolute bottom-1/4 left-1/3 w-1.5 h-1.5 bg-white/50 rounded-full animate-ping delay-1100"></div>
-      
-      <!-- Gradient mesh -->
-      <div class="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent"></div>
-    </div>
-
-    <div class="relative w-full max-w-md animate-slide-in-bottom">
-      <!-- Main Card with Enhanced Glass Effect -->
-      <div
-        class="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden
-               border border-white/30
-               transform transition-all duration-500 hover:scale-[1.02]
-               relative animate-glow-pulse"
-      >
-        <!-- Subtle glow effect -->
-        <div class="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 rounded-3xl"></div>
-        
-        <!-- Header with Enhanced Design -->
-        <div
-          class="px-8 pt-10 pb-8 text-center
-                 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600
-                 relative overflow-hidden"
-        >
-          <!-- Animated background pattern -->
-          <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-0 left-0 w-full h-full bg-white/20"></div>
-          </div>
-          
-          <div
-            class="relative mx-auto w-20 h-20 bg-white rounded-3xl
-                   flex items-center justify-center shadow-2xl mb-5
-                   transition-all duration-300 hover:scale-110 hover:rotate-6
-                   border-2 border-white/50"
-          >
-            <i class="fas fa-graduation-cap text-4xl bg-gradient-to-br from-indigo-600 to-purple-600 bg-clip-text text-transparent"></i>
+  <main class="min-h-screen bg-[#f7f9fc] text-slate-950">
+    <div class="mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
+      <section class="hidden flex-col justify-between overflow-hidden bg-[#061a33] p-10 text-white lg:flex">
+        <div>
+          <div class="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3">
+            <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f3b33d] text-[#061a33]">
+              <i class="fas fa-book-open text-xl"></i>
+            </span>
+            <div>
+              <p class="text-sm font-semibold uppercase tracking-[0.22em] text-[#f3d58a]">MasterMind</p>
+              <p class="text-sm text-white/75">Coaching Classes</p>
+            </div>
           </div>
 
-          <h1 class="text-3xl font-bold text-white tracking-wide mb-2">
-            MasterMind
-          </h1>
-          <p class="text-indigo-100 text-sm mb-4">
-            Coaching Management System
-          </p>
-          
+          <div class="mt-16 max-w-xl">
+            <p class="text-sm font-semibold uppercase tracking-[0.28em] text-[#77d6c9]">Student access desk</p>
+            <h1 class="mt-5 text-5xl font-black leading-tight">
+              One secure doorway for admins, teachers, and parents.
+            </h1>
+            <p class="mt-5 text-lg leading-8 text-white/72">
+              Admins use password login. Teachers and parents can verify by email OTP first, then use their registered mobile number and password.
+            </p>
+          </div>
         </div>
 
-        <!-- Form Section -->
-        <div class="px-8 py-8 relative">
-          <form @submit.prevent="handleSubmit" class="space-y-6">
-            <!-- Enhanced Input Field -->
-            <div class="space-y-2">
-              <label
-                for="identifier"
-                class="block text-sm font-semibold text-gray-700 flex items-center gap-2"
-              >
-                <i class="fas fa-user-circle text-indigo-500"></i>
-                Email Address
-              </label>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="rounded-2xl border border-white/10 bg-white/8 p-4">
+            <p class="text-2xl font-black text-[#f3b33d]">01</p>
+            <p class="mt-2 text-sm text-white/70">Email OTP verifies the real account owner.</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/8 p-4">
+            <p class="text-2xl font-black text-[#77d6c9]">02</p>
+            <p class="mt-2 text-sm text-white/70">Mobile password login keeps daily access quick.</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/8 p-4">
+            <p class="text-2xl font-black text-white">03</p>
+            <p class="mt-2 text-sm text-white/70">Role-based dashboards open automatically.</p>
+          </div>
+        </div>
+      </section>
 
-              <div class="relative group">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <i class="fas fa-envelope text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+      <section class="flex items-center justify-center px-4 py-8 sm:px-6 lg:px-10">
+        <div class="w-full max-w-md">
+          <div class="mb-6 flex items-center gap-3 lg:hidden">
+            <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#6049e8] text-white shadow-lg shadow-indigo-200">
+              <i class="fas fa-book-open text-xl"></i>
+            </span>
+            <div>
+              <p class="text-xl font-black text-slate-950">MasterMind</p>
+              <p class="text-sm text-slate-500">Coaching Classes</p>
+            </div>
+          </div>
+
+          <div class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-200/70 sm:p-7">
+            <div class="mb-6">
+              <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#6049e8]">Secure login</p>
+              <h2 class="mt-2 text-3xl font-black text-slate-950">Welcome back</h2>
+              <p class="mt-2 text-sm leading-6 text-slate-500">
+                Choose the access method assigned to your role.
+              </p>
+            </div>
+
+            <div class="mb-6 grid grid-cols-1 gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-3">
+              <button
+                v-for="option in loginOptions"
+                :key="option.value"
+                type="button"
+                class="rounded-xl px-3 py-3 text-sm font-bold transition"
+                :class="loginMode === option.value ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+                @click="selectMode(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+
+            <form class="space-y-5" @submit.prevent="handleSubmit">
+              <div>
+                <label for="identifier" class="mb-2 block text-sm font-bold text-slate-700">{{ identifierLabel }}</label>
+                <div class="relative">
+                  <i :class="identifierIcon" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                  <input
+                    id="identifier"
+                    v-model="form.identifier"
+                    :type="loginMode === 'mobile-password' ? 'tel' : 'email'"
+                    :inputmode="loginMode === 'mobile-password' ? 'tel' : 'email'"
+                    required
+                    :disabled="isLoading"
+                    :placeholder="identifierPlaceholder"
+                    autocomplete="username"
+                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 py-4 pl-12 pr-4 text-base font-semibold text-slate-950 outline-none transition focus:border-[#6049e8] focus:bg-white focus:ring-4 focus:ring-[#6049e8]/10"
+                  />
                 </div>
-
-                <input
-                  id="identifier"
-                  v-model="form.identifier"
-                  type="text"
-                  required
-                  :disabled="isLoading"
-                  placeholder="you@example.com"
-                  class="w-full pl-12 pr-4 py-4 rounded-2xl
-                         border border-gray-200
-                         focus:ring-2 focus:ring-indigo-500/50
-                         focus:border-indigo-500
-                         transition-all duration-300
-                         disabled:bg-gray-50
-                         bg-gray-50/50
-                         hover:bg-white
-                         focus:bg-white
-                         shadow-sm hover:shadow-md
-                         focus:shadow-lg"
-                />
-                
-                <!-- Animated input border -->
-                <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 
-                            group-focus-within:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
               </div>
-            </div>
 
-            <div v-if="isAdminEmail" class="space-y-2">
-              <label
-                for="password"
-                class="block text-sm font-semibold text-gray-700 flex items-center gap-2"
-              >
-                <i class="fas fa-lock text-indigo-500"></i>
-                Password
-              </label>
-              <div class="relative group">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <i class="fas fa-key text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+              <div v-if="requiresPassword">
+                <label for="password" class="mb-2 block text-sm font-bold text-slate-700">Password</label>
+                <div class="relative">
+                  <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                  <input
+                    id="password"
+                    v-model="form.password"
+                    type="password"
+                    required
+                    minlength="6"
+                    :disabled="isLoading"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 py-4 pl-12 pr-4 text-base font-semibold text-slate-950 outline-none transition focus:border-[#6049e8] focus:bg-white focus:ring-4 focus:ring-[#6049e8]/10"
+                  />
                 </div>
-                <input
-                  id="password"
-                  v-model="form.password"
-                  type="password"
-                  required
-                  :disabled="isLoading"
-                  placeholder="Enter admin password"
-                  class="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-300 disabled:bg-gray-50 bg-gray-50/50 hover:bg-white focus:bg-white shadow-sm hover:shadow-md focus:shadow-lg"
-                />
               </div>
-            </div>
 
-            <!-- Enhanced Error Message -->
-            <div
-              v-if="error"
-              class="flex items-start gap-3 p-4
-                     rounded-2xl bg-red-50/80 border border-red-200/50
-                     backdrop-blur-sm animate-shake"
-            >
-              <div class="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <i class="fas fa-exclamation text-red-600 text-xs"></i>
+              <div class="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4 text-sm leading-6 text-slate-600">
+                <p class="font-bold text-slate-800">{{ helperTitle }}</p>
+                <p class="mt-1">{{ helperText }}</p>
               </div>
-              <p class="text-sm text-red-700 font-medium">{{ error }}</p>
-            </div>
 
-            <!-- Enhanced Submit Button -->
-            <button
-              type="submit"
-              :disabled="isLoading || !form.identifier.trim() || (isAdminEmail && !form.password.trim())"
-              class="w-full py-4 rounded-2xl font-bold text-white text-base
-                     bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600
-                     hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700
-                     focus:ring-4 focus:ring-indigo-500/25
-                     transition-all duration-300 disabled:opacity-50
-                     flex items-center justify-center gap-3
-                     shadow-lg hover:shadow-xl
-                     transform hover:scale-[1.02]
-                     relative overflow-hidden group"
-            >
-              <!-- Button shimmer effect -->
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                          -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-              
-              <svg
-                v-if="isLoading"
-                class="w-5 h-5 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
+              <p v-if="error" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {{ error }}
+              </p>
+
+              <button
+                type="submit"
+                :disabled="isSubmitDisabled"
+                class="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#6049e8] px-5 py-4 text-base font-black text-white shadow-lg shadow-indigo-200 transition hover:bg-[#503bd1] focus:outline-none focus:ring-4 focus:ring-[#6049e8]/25 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4
-                     0 00-4 4H4z"
-                />
-              </svg>
+                <svg v-if="isLoading" class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <i v-else :class="submitIcon"></i>
+                <span>{{ buttonText }}</span>
+              </button>
+            </form>
 
-              <i v-else class="fas fa-paper-plane"></i>
-              <span>{{ buttonText }}</span>
-            </button>
-          </form>
-
-        </div>
-
-        <!-- Enhanced Footer -->
-        <div class="pb-6 text-center">
-          <div class="flex items-center justify-center gap-2 text-xs text-gray-500">
-            <i class="fas fa-lock text-green-500"></i>
-            <span>Secure login powered by OTP verification</span>
+            <div class="mt-6 border-t border-slate-100 pt-5 text-sm leading-6 text-slate-500">
+              <p>
+                First time parent or teacher?
+                <button type="button" class="font-bold text-[#6049e8]" @click="selectMode('email-otp')">
+                  Verify with email OTP
+                </button>
+                and then set your password inside the app.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-
+      </section>
     </div>
-  </div>
+  </main>
 </template>
 
 <script setup lang="ts">
@@ -206,27 +155,74 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+type LoginMode = 'admin-password' | 'email-otp' | 'mobile-password'
+
 const router = useRouter()
 const authStore = useAuthStore()
+
+const loginOptions: Array<{ label: string; value: LoginMode }> = [
+  { label: 'Admin', value: 'admin-password' },
+  { label: 'Email OTP', value: 'email-otp' },
+  { label: 'Mobile Password', value: 'mobile-password' }
+]
 
 const form = reactive({
   identifier: '',
   password: ''
 })
 
+const loginMode = ref<LoginMode>('admin-password')
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
-// Computed property to determine button text
+const requiresPassword = computed(() => loginMode.value !== 'email-otp')
+const identifierLabel = computed(() => loginMode.value === 'mobile-password' ? 'Registered mobile number' : 'Email address')
+const identifierPlaceholder = computed(() => {
+  if (loginMode.value === 'admin-password') return 'themastermindcoachingclasses@gmail.com'
+  if (loginMode.value === 'mobile-password') return '9876543210'
+  return 'parent-or-teacher@example.com'
+})
+const identifierIcon = computed(() => loginMode.value === 'mobile-password' ? 'fas fa-mobile-alt' : 'fas fa-envelope')
+const submitIcon = computed(() => loginMode.value === 'email-otp' ? 'fas fa-paper-plane' : 'fas fa-arrow-right')
 const buttonText = computed(() => {
-  if (isLoading.value) return 'Authenticating…'
-  
-  return isAdminEmail.value ? 'Login with Password' : 'Send OTP'
+  if (isLoading.value) return 'Checking...'
+  return loginMode.value === 'email-otp' ? 'Send email OTP' : 'Login securely'
+})
+const helperTitle = computed(() => {
+  if (loginMode.value === 'admin-password') return 'Admin access'
+  if (loginMode.value === 'mobile-password') return 'Parent and teacher quick login'
+  return 'First-time or password reset access'
+})
+const helperText = computed(() => {
+  if (loginMode.value === 'admin-password') return 'Use the official institute email and your current admin password.'
+  if (loginMode.value === 'mobile-password') return 'Use the mobile number saved by admin. If you have not set a password yet, login once with email OTP.'
+  return 'We send OTP only to the email saved by admin for the teacher or parent account.'
 })
 
-const isAdminEmail = computed(() =>
-  form.identifier.trim().toLowerCase() === 'themastermindcoachingclasses@gmail.com'
+const isSubmitDisabled = computed(() =>
+  isLoading.value ||
+  !form.identifier.trim() ||
+  (requiresPassword.value && !form.password.trim())
 )
+
+const selectMode = (mode: LoginMode) => {
+  loginMode.value = mode
+  error.value = null
+  form.password = ''
+  if (mode === 'admin-password') {
+    form.identifier = 'themastermindcoachingclasses@gmail.com'
+  } else {
+    form.identifier = ''
+  }
+}
+
+const redirectByRole = () => {
+  const role = authStore.userRole
+  if (role === 'Admin') router.push({ name: 'AdminDashboard' })
+  else if (role === 'Teacher') router.push({ name: 'TeacherDashboard' })
+  else if (role === 'Parent') router.push({ name: 'ParentDashboard' })
+  else router.push({ name: 'Login' })
+}
 
 const handleSubmit = async () => {
   if (!form.identifier.trim()) return
@@ -235,33 +231,34 @@ const handleSubmit = async () => {
   error.value = null
 
   try {
-    if (isAdminEmail.value) {
-      await authStore.loginWithPassword(form.identifier.trim(), form.password)
-      const role = authStore.userRole
-      if (role === 'Admin') {
-        router.push({ name: 'AdminDashboard' })
-      }
-    } else {
-      // OTP flow for non-admin users is email-only
-      const isEmail = form.identifier.includes('@')
-      if (!isEmail) {
-        throw new Error('Please enter a valid email address.')
+    if (loginMode.value === 'email-otp') {
+      if (!form.identifier.includes('@')) {
+        throw new Error('Please enter the email address saved by admin.')
       }
 
-      await authStore.requestOtp(form.identifier, 'email')
-
+      await authStore.requestOtp(form.identifier.trim(), 'email')
       router.push({
         name: 'OtpVerify',
-        query: { identifier: form.identifier, type: 'email' }
+        query: { identifier: form.identifier.trim(), type: 'email' }
       })
+      return
     }
+
+    if (loginMode.value === 'admin-password' && form.identifier.trim().toLowerCase() !== 'themastermindcoachingclasses@gmail.com') {
+      throw new Error('Admin login is only available for the official institute email.')
+    }
+
+    await authStore.loginWithPassword(form.identifier.trim(), form.password)
+    redirectByRole()
   } catch (err: any) {
     error.value =
       err.response?.data?.message ||
       err.message ||
-      'Failed to authenticate. Please try again.'
+      'Failed to authenticate. Please check the details and try again.'
   } finally {
     isLoading.value = false
   }
 }
+
+selectMode('admin-password')
 </script>

@@ -3,7 +3,7 @@
     <div class="card-premium">
       <div class="mb-6">
         <h1 class="text-2xl font-bold text-surface-900">Change Password</h1>
-        <p class="text-surface-500 mt-1">Update your admin account password.</p>
+        <p class="text-surface-500 mt-1">Update the password for your account.</p>
       </div>
 
       <form class="space-y-4" @submit.prevent="submit">

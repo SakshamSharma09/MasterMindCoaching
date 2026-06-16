@@ -132,6 +132,10 @@ const ChatAltIcon = () => h('svg', { class: 'h-5 w-5', fill: 'none', stroke: 'cu
   h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' })
 ])
 
+const KeyIcon = () => h('svg', { class: 'h-5 w-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586l6.257-6.257A6 6 0 1121 9z' })
+])
+
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -141,7 +145,8 @@ const navigation = [
   { name: 'Dashboard', href: '/teacher', icon: HomeIcon },
   { name: 'Students', href: '/teacher/students', icon: UsersIcon },
   { name: 'Attendance', href: '/teacher/attendance', icon: ClipboardListIcon },
-  { name: 'Remarks', href: '/teacher/remarks', icon: ChatAltIcon }
+  { name: 'Remarks', href: '/teacher/remarks', icon: ChatAltIcon },
+  { name: 'Change Password', href: '/change-password', icon: KeyIcon }
 ]
 
 const userInitials = computed(() => {

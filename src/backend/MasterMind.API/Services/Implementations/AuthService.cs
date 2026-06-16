@@ -428,32 +428,51 @@ public class AuthService : IAuthService
     {
         try
         {
-            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+            var identifier = (request.Identifier ?? request.Email ?? request.Mobile ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(identifier))
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Email or mobile number is required",
+                    ErrorCode = "VALIDATION_ERROR"
+                };
+            }
+
+            var isEmailLogin = identifier.Contains('@');
+            var normalizedEmail = isEmailLogin ? identifier.ToLowerInvariant() : string.Empty;
+            var normalizedMobile = isEmailLogin ? string.Empty : NormalizeMobile(identifier);
             var inputPassword = request.Password ?? string.Empty;
 
-            if (normalizedEmail == BootstrapAdminEmail)
+            if (isEmailLogin && normalizedEmail == BootstrapAdminEmail)
             {
                 await EnsureBootstrapAdminUserAsync();
             }
 
-            var users = await _context.Users
+            var userQuery = _context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
-                .Where(u => !u.IsDeleted && u.Email != null && u.Email.ToLower() == normalizedEmail)
-                .ToListAsync();
+                .Where(u => !u.IsDeleted);
+
+            var users = isEmailLogin
+                ? await userQuery
+                    .Where(u => u.Email != null && u.Email.ToLower() == normalizedEmail)
+                    .ToListAsync()
+                : (await userQuery.ToListAsync())
+                    .Where(u => !string.IsNullOrWhiteSpace(u.Mobile) && NormalizeMobile(u.Mobile) == normalizedMobile)
+                    .ToList();
 
             if (!users.Any())
             {
                 return new AuthResponseDto
                 {
                     Success = false,
-                    Message = "Invalid email or password",
+                    Message = "Invalid login details",
                     ErrorCode = "INVALID_CREDENTIALS"
                 };
             }
 
-            // Handle legacy duplicate admin rows safely by authenticating the first matching hash.
-            // This prevents fallback to an old duplicate password hash.
+            // Handle legacy duplicate rows safely by authenticating the newest matching hash.
             var user = users
                 .OrderByDescending(u => u.UpdatedAt ?? u.CreatedAt)
                 .ThenByDescending(u => u.Id)
@@ -466,7 +485,7 @@ public class AuthService : IAuthService
                 return new AuthResponseDto
                 {
                     Success = false,
-                    Message = "Invalid email or password",
+                    Message = "Invalid login details",
                     ErrorCode = "INVALID_CREDENTIALS"
                 };
             }
@@ -481,15 +500,15 @@ public class AuthService : IAuthService
                 };
             }
 
-            // Check user is Admin
-            var isAdmin = user.UserRoles.Any(ur => ur.Role.Name == "Admin");
-            if (!isAdmin)
+            var allowedPasswordRole = user.UserRoles.Any(ur =>
+                ur.Role.Name == "Admin" || ur.Role.Name == "Teacher" || ur.Role.Name == "Parent");
+            if (!allowedPasswordRole)
             {
                 return new AuthResponseDto
                 {
                     Success = false,
-                    Message = "Password login is only available for admin users. Please use OTP login.",
-                    ErrorCode = "NOT_ADMIN"
+                    Message = "Password login is not enabled for this account.",
+                    ErrorCode = "PASSWORD_LOGIN_NOT_ALLOWED"
                 };
             }
 
@@ -504,7 +523,7 @@ public class AuthService : IAuthService
 
             var userDto = await _userService.ToUserDtoAsync(user);
 
-            _logger.LogInformation("Admin {UserId} authenticated via password", user.Id);
+            _logger.LogInformation("User {UserId} authenticated via password", user.Id);
 
             return new AuthResponseDto
             {
@@ -518,7 +537,7 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during password login for {Email}", request.Email);
+            _logger.LogError(ex, "Error during password login for {Identifier}", request.Identifier ?? request.Email ?? request.Mobile);
             return new AuthResponseDto
             {
                 Success = false,
@@ -701,12 +720,6 @@ public class AuthService : IAuthService
                 return new AuthResponseDto { Success = false, Message = "User not found", ErrorCode = "USER_NOT_FOUND" };
             }
 
-            var isAdmin = user.UserRoles.Any(ur => ur.Role.Name == "Admin");
-            if (!isAdmin)
-            {
-                return new AuthResponseDto { Success = false, Message = "Only admin users can set a password", ErrorCode = "NOT_ADMIN" };
-            }
-
             var now = DateTime.UtcNow;
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
             var updatedUsers = 0;
@@ -737,14 +750,14 @@ public class AuthService : IAuthService
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Password set for admin user {UserId}", userId);
+            _logger.LogInformation("Password set for user {UserId}", userId);
 
             return new AuthResponseDto
             {
                 Success = true,
                 Message = updatedUsers > 1
                     ? $"Password updated successfully ({updatedUsers} admin records synced)."
-                    : "Password set successfully"
+                    : "Password updated successfully"
             };
         }
         catch (Exception ex)

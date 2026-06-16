@@ -155,10 +155,10 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Set password for admin user (requires authentication)
+    /// Set password for the current authenticated user
     /// </summary>
     [HttpPost("set-password")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponseDto>> SetPassword([FromBody] SetPasswordDto request)
