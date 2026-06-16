@@ -5,7 +5,7 @@
          :class="{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }">
       <div class="flex flex-col h-full">
         <!-- Logo -->
-        <div class="flex items-center justify-center h-16 px-4 bg-green-600">
+        <div class="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-[#0a1d39] via-[#194f86] to-[#19a68c]">
           <div class="flex items-center space-x-2">
             <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
@@ -23,8 +23,8 @@
             class="flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200"
             :class="[
               $route.name === item.name
-                ? 'bg-green-100 text-green-700 border-r-2 border-green-700'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                ? 'bg-amber-50 text-[#0a1d39] border-r-2 border-[#d9a12d] shadow-sm'
+                : 'text-gray-600 hover:bg-emerald-50 hover:text-[#0a1d39]'
             ]"
           >
             <component :is="item.icon" class="mr-3 h-5 w-5" />
@@ -36,7 +36,7 @@
         <div class="border-t border-gray-200 p-4">
           <div class="flex items-center space-x-3">
             <div class="flex-shrink-0">
-              <div class="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center">
+              <div class="h-8 w-8 rounded-full bg-gradient-to-br from-[#0a1d39] to-[#19a68c] flex items-center justify-center">
                 <span class="text-white text-sm font-medium">
                   {{ userInitials }}
                 </span>
@@ -71,7 +71,7 @@
         <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
           <button
             @click="sidebarOpen = !sidebarOpen"
-            class="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500"
+            class="lg:hidden p-2 rounded-md text-gray-500 hover:text-[#0a1d39] hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#19a68c]"
           >
             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>

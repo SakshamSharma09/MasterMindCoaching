@@ -1,16 +1,13 @@
 <template>
-  <div id="app" class="app-safe-area min-h-[100dvh] bg-gradient-to-br from-mastermind-50 via-white to-primary-50 relative overflow-hidden">
-    <!-- Background decorative elements - positioned to avoid content overlap -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-mastermind-200/20 to-primary-200/20 rounded-full blur-3xl animate-float-soft opacity-50"></div>
-      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-primary-200/20 to-mastermind-200/20 rounded-full blur-3xl animate-float-soft opacity-50" style="animation-delay: 3s;"></div>
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-accent-100/10 to-mastermind-100/10 rounded-full blur-3xl animate-pulse opacity-30"></div>
-    </div>
+  <div id="app" class="app-safe-area min-h-[100dvh] mentor-app-shell relative overflow-hidden">
+    <div class="mentor-paper-plane pointer-events-none absolute inset-0 -z-10"></div>
     
     <!-- Main content -->
     <div class="relative z-10">
       <RouterView />
     </div>
+
+    <MindGuide />
 
     <!-- Global Toast Notifications -->
     <ToastContainer />
@@ -19,6 +16,7 @@
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import MindGuide from '@/components/common/MindGuide.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -29,9 +27,21 @@ authStore.initializeAuth()
 </script>
 
 <style scoped>
-/* App-specific styles */
-#app {
+.mentor-app-shell {
+  background:
+    linear-gradient(120deg, rgba(245, 192, 78, 0.08), rgba(119, 214, 201, 0.12) 38%, rgba(96, 73, 232, 0.08)),
+    #f7f9fc;
   background-attachment: fixed;
+}
+
+.mentor-paper-plane {
+  background:
+    linear-gradient(rgba(12, 31, 59, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(12, 31, 59, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 18% 14%, rgba(245, 192, 78, 0.14), transparent 28%),
+    radial-gradient(circle at 85% 22%, rgba(119, 214, 201, 0.16), transparent 30%);
+  background-size: 34px 34px, 34px 34px, auto, auto;
+  mask-image: linear-gradient(180deg, black 0%, black 82%, transparent 100%);
 }
 
 /* Custom shimmer effect for premium feel */
