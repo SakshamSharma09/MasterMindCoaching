@@ -11,6 +11,9 @@ Use this as the single entry point for Android Play Store release work.
 
 - Capacitor Android project is configured in `src/frontend/mastermind-web/android`.
 - App identifier: `com.mastermind.coaching`.
+- App name: `MasterMind Coaching`.
+- Branded launcher icon is integrated into the Android project.
+- Play Console high-resolution icon is available at `docs/playstore/assets/mastermind-play-icon-512.png`.
 - Target/compile SDK: 35.
 - Release build hardening:
   - release minification and resource shrinking enabled
@@ -24,7 +27,7 @@ Use this as the single entry point for Android Play Store release work.
 
 1. Play Console app setup completion (after account verification).
 2. Final brand assets:
-   - 512x512 Play icon
+   - 512x512 Play icon: `docs/playstore/assets/mastermind-play-icon-512.png`
    - feature graphic (1024x500)
    - screenshots (phone; optional tablet)
 3. Privacy policy URL (public).
@@ -51,6 +54,15 @@ npm run build:aab
 Generated file:
 
 - `android/app/build/outputs/bundle/release/app-release.aab`
+
+## Internal Testing Notes
+
+After an internal release is marked available, testers usually need the internal testing opt-in link from Play Console. Adding emails to the tester list controls who can join the test, but sharing the opt-in link is the reliable way to get them into the release. Ask testers to open the link with the same Google account that was added to the tester list, accept the invitation, then install from Google Play.
+
+Every uploaded AAB must use a new Android `versionCode`. The current project version is:
+
+- `versionCode`: `3`
+- `versionName`: `1.0.2`
 
 If you prefer Android Studio:
 
