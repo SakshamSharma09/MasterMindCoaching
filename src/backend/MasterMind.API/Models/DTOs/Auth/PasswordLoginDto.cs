@@ -5,7 +5,7 @@ namespace MasterMind.API.Models.DTOs.Auth;
 public class PasswordLoginDto
 {
     [EmailAddress]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     public string? Mobile { get; set; }
 

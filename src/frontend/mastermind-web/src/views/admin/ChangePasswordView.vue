@@ -46,7 +46,12 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import authService from '@/services/authService'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const form = reactive({
   password: '',
@@ -68,9 +73,19 @@ const submit = async () => {
   isLoading.value = true
   try {
     const res: any = await authService.setPassword(form.password, form.confirmPassword)
-    success.value = res?.message || 'Password updated successfully.'
+    const shouldReturnToLogin = authStore.userRole !== 'Admin'
+    success.value = shouldReturnToLogin
+      ? 'Password saved. Redirecting you to login...'
+      : (res?.message || 'Password updated successfully.')
     form.password = ''
     form.confirmPassword = ''
+
+    if (shouldReturnToLogin) {
+      window.setTimeout(async () => {
+        await authStore.logout()
+        router.push({ name: 'Login' })
+      }, 900)
+    }
   } catch (e: any) {
     error.value = e?.response?.data?.message || 'Failed to update password.'
   } finally {

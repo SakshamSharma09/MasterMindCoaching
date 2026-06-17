@@ -5,27 +5,12 @@
       <p class="mind-guide__text">{{ guideMessage }}</p>
     </div>
 
-    <div class="mind-guide__stage" aria-hidden="true">
-      <div class="mind-guide__halo"></div>
-      <div class="mind-guide__figure">
-        <div class="mind-guide__brain">
-          <span class="mind-guide__fold fold-one"></span>
-          <span class="mind-guide__fold fold-two"></span>
-          <span class="mind-guide__fold fold-three"></span>
-          <span class="mind-guide__spark spark-one"></span>
-          <span class="mind-guide__spark spark-two"></span>
-        </div>
-        <div class="mind-guide__face">
-          <span class="mind-guide__eye eye-left"></span>
-          <span class="mind-guide__eye eye-right"></span>
-          <span class="mind-guide__smile"></span>
-        </div>
-        <div class="mind-guide__book">
-          <span></span>
-          <span></span>
-        </div>
-      </div>
-      <div class="mind-guide__shadow"></div>
+    <div class="mind-guide__orb" aria-hidden="true">
+      <span class="mind-guide__ring ring-one"></span>
+      <span class="mind-guide__ring ring-two"></span>
+      <img class="mind-guide__image" :src="mindGuideImage" alt="" />
+      <span class="mind-guide__spark spark-one"></span>
+      <span class="mind-guide__spark spark-two"></span>
     </div>
   </aside>
 </template>
@@ -33,6 +18,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import mindGuideImage from '@/assets/images/mind-guide.avif'
 
 const route = useRoute()
 
@@ -67,22 +53,21 @@ const guideMessage = computed(() => {
   z-index: 35;
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
+  gap: 0.8rem;
   pointer-events: none;
-  filter: drop-shadow(0 24px 40px rgba(10, 29, 57, 0.22));
 }
 
 .mind-guide__bubble {
-  width: min(280px, 32vw);
+  width: min(286px, 32vw);
   padding: 0.9rem 1rem;
-  border: 1px solid rgba(223, 183, 88, 0.5);
-  border-radius: 1.1rem 1.1rem 0.35rem 1.1rem;
+  border: 1px solid rgba(217, 161, 45, 0.46);
+  border-radius: 1.15rem 1.15rem 0.35rem 1.15rem;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(245, 250, 255, 0.9)),
-    linear-gradient(90deg, rgba(223, 183, 88, 0.18) 1px, transparent 1px);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(246, 251, 255, 0.9)),
+    linear-gradient(90deg, rgba(217, 161, 45, 0.14) 1px, transparent 1px);
   background-size: auto, 18px 18px;
   box-shadow: 0 18px 45px -30px rgba(10, 29, 57, 0.5);
-  transform: translateY(-0.35rem);
+  transform: translateY(-0.45rem);
 }
 
 .mind-guide__eyebrow {
@@ -102,11 +87,70 @@ const guideMessage = computed(() => {
   line-height: 1.45;
 }
 
-.mind-guide__stage {
+.mind-guide__orb {
   position: relative;
-  width: 112px;
-  height: 134px;
-  perspective: 520px;
+  width: 128px;
+  height: 128px;
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.62) 32%, transparent 62%),
+    linear-gradient(135deg, rgba(10, 29, 57, 0.92), rgba(25, 166, 140, 0.86));
+  box-shadow:
+    0 28px 50px -28px rgba(10, 29, 57, 0.58),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transform-style: preserve-3d;
+  animation: guideFloat 5.6s ease-in-out infinite;
+}
+
+.mind-guide__image {
+  position: absolute;
+  inset: 12px;
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  border-radius: 1.45rem;
+  object-fit: cover;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+  transform: translateZ(18px);
+}
+
+.mind-guide__ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 2.25rem;
+  border: 1px solid rgba(217, 161, 45, 0.45);
+}
+
+.ring-one {
+  animation: ringPulse 3.8s ease-in-out infinite;
+}
+
+.ring-two {
+  inset: 8px;
+  border-color: rgba(119, 214, 201, 0.36);
+  animation: ringPulse 3.8s ease-in-out 1.2s infinite;
+}
+
+.mind-guide__spark {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #f5c04e;
+  box-shadow: 0 0 22px rgba(245, 192, 78, 0.9);
+}
+
+.spark-one {
+  right: -2px;
+  top: 16px;
+  animation: sparkPulse 2.6s ease-in-out infinite;
+}
+
+.spark-two {
+  left: 6px;
+  bottom: 18px;
+  background: #77d6c9;
+  box-shadow: 0 0 22px rgba(119, 214, 201, 0.9);
+  animation: sparkPulse 2.6s ease-in-out 1.1s infinite;
 }
 
 .mind-guide--auth {
@@ -117,174 +161,14 @@ const guideMessage = computed(() => {
   display: none;
 }
 
-.mind-guide__halo {
-  position: absolute;
-  inset: 3px 8px auto;
-  height: 88px;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(254, 211, 110, 0.55), rgba(119, 214, 201, 0.18) 52%, transparent 68%);
-  animation: guideGlow 3.8s ease-in-out infinite;
-}
-
-.mind-guide__figure {
-  position: absolute;
-  inset: 8px 9px 12px;
-  transform-style: preserve-3d;
-  animation: guideFloat 5.5s ease-in-out infinite;
-}
-
-.mind-guide__brain {
-  position: absolute;
-  left: 18px;
-  top: 3px;
-  width: 62px;
-  height: 50px;
-  border: 3px solid #0b2141;
-  border-radius: 48% 52% 44% 50%;
-  background: linear-gradient(145deg, #fff8e6, #f0bf46 55%, #b9821f);
-  box-shadow: inset -8px -10px 18px rgba(11, 33, 65, 0.16), inset 8px 8px 14px rgba(255, 255, 255, 0.8);
-  transform: rotateX(13deg) rotateY(-16deg);
-}
-
-.mind-guide__fold {
-  position: absolute;
-  border: 2px solid rgba(11, 33, 65, 0.62);
-  border-left: 0;
-  border-bottom: 0;
-  border-radius: 999px;
-}
-
-.fold-one {
-  left: 12px;
-  top: 13px;
-  width: 19px;
-  height: 16px;
-}
-
-.fold-two {
-  left: 27px;
-  top: 10px;
-  width: 20px;
-  height: 21px;
-  transform: rotate(92deg);
-}
-
-.fold-three {
-  left: 18px;
-  top: 27px;
-  width: 27px;
-  height: 13px;
-  transform: rotate(170deg);
-}
-
-.mind-guide__spark {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #77d6c9;
-  box-shadow: 0 0 18px rgba(119, 214, 201, 0.9);
-}
-
-.spark-one {
-  right: -8px;
-  top: 2px;
-  animation: sparkPulse 2.6s ease-in-out infinite;
-}
-
-.spark-two {
-  left: -11px;
-  bottom: 6px;
-  background: #f5c04e;
-  animation: sparkPulse 2.6s ease-in-out 1.1s infinite;
-}
-
-.mind-guide__face {
-  position: absolute;
-  left: 23px;
-  top: 43px;
-  width: 54px;
-  height: 54px;
-  border: 3px solid #0b2141;
-  border-radius: 42% 42% 48% 48%;
-  background: linear-gradient(145deg, #ffffff, #deefff);
-  box-shadow: inset -8px -8px 16px rgba(15, 54, 96, 0.12);
-  transform: translateZ(20px);
-}
-
-.mind-guide__eye {
-  position: absolute;
-  top: 20px;
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: #0b2141;
-}
-
-.eye-left { left: 15px; }
-.eye-right { right: 15px; }
-
-.mind-guide__smile {
-  position: absolute;
-  left: 18px;
-  top: 31px;
-  width: 18px;
-  height: 8px;
-  border-bottom: 3px solid #0b2141;
-  border-radius: 0 0 999px 999px;
-}
-
-.mind-guide__book {
-  position: absolute;
-  left: 16px;
-  bottom: 7px;
-  display: flex;
-  width: 68px;
-  height: 34px;
-  transform: rotateX(58deg) rotateZ(-2deg);
-  transform-origin: center;
-}
-
-.mind-guide__book span {
-  flex: 1;
-  border: 3px solid #0b2141;
-  background: linear-gradient(145deg, #ffffff, #d9fff7);
-}
-
-.mind-guide__book span:first-child {
-  border-radius: 10px 3px 3px 10px;
-}
-
-.mind-guide__book span:last-child {
-  border-left: 0;
-  border-radius: 3px 10px 10px 3px;
-}
-
-.mind-guide__shadow {
-  position: absolute;
-  left: 23px;
-  right: 18px;
-  bottom: 1px;
-  height: 16px;
-  border-radius: 999px;
-  background: rgba(10, 29, 57, 0.24);
-  filter: blur(5px);
-  animation: guideShadow 5.5s ease-in-out infinite;
-}
-
 @keyframes guideFloat {
-  0%, 100% { transform: translateY(0) rotateY(-8deg) rotateX(2deg); }
-  50% { transform: translateY(-9px) rotateY(9deg) rotateX(-2deg); }
+  0%, 100% { transform: translateY(0) rotateY(-7deg) rotateX(2deg); }
+  50% { transform: translateY(-9px) rotateY(7deg) rotateX(-2deg); }
 }
 
-@keyframes guideShadow {
-  0%, 100% { transform: scaleX(0.94); opacity: 0.22; }
-  50% { transform: scaleX(0.72); opacity: 0.14; }
-}
-
-@keyframes guideGlow {
-  0%, 100% { transform: scale(0.94); opacity: 0.65; }
-  50% { transform: scale(1.08); opacity: 0.95; }
+@keyframes ringPulse {
+  0%, 100% { transform: scale(0.96); opacity: 0.55; }
+  50% { transform: scale(1.06); opacity: 0.9; }
 }
 
 @keyframes sparkPulse {
@@ -294,9 +178,9 @@ const guideMessage = computed(() => {
 
 @media (max-width: 900px) {
   .mind-guide {
-    right: 0.55rem;
+    right: 0.6rem;
     bottom: calc(0.7rem + env(safe-area-inset-bottom));
-    transform: scale(0.82);
+    transform: scale(0.76);
     transform-origin: right bottom;
   }
 
@@ -306,9 +190,8 @@ const guideMessage = computed(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mind-guide__figure,
-  .mind-guide__halo,
-  .mind-guide__shadow,
+  .mind-guide__orb,
+  .mind-guide__ring,
   .mind-guide__spark {
     animation: none;
   }

@@ -1,5 +1,5 @@
 import { apiService } from './apiService'
-import { API_ENDPOINTS } from '@/config/api'
+import { API_BASE_URL, API_ENDPOINTS } from '@/config/api'
 import type {
   OtpRequest,
   OtpResponse,
@@ -10,6 +10,56 @@ import type {
 } from '@/types/auth'
 
 const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true' || false
+const AUTH_REQUEST_TIMEOUT = 90000
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+const getHealthUrl = () => {
+  if (API_BASE_URL.endsWith('/api')) return API_BASE_URL.slice(0, -4) + '/health'
+  if (API_BASE_URL.endsWith('/api/')) return API_BASE_URL.slice(0, -5) + '/health'
+  if (API_BASE_URL === '/api') return '/health'
+  return '/health'
+}
+
+const warmUpApi = async () => {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 12000)
+  try {
+    await fetch(getHealthUrl(), {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal
+    })
+  } catch {
+    // A cold Azure App Service can miss this short warmup window.
+    // The auth request below still gets an extended timeout and retry.
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
+
+const isColdStartLikeError = (error: any) =>
+  error?.code === 'ECONNABORTED' ||
+  /timeout/i.test(error?.message || '') ||
+  !error?.response
+
+const withAuthRetry = async <T>(operation: () => Promise<T>): Promise<T> => {
+  try {
+    return await operation()
+  } catch (error: any) {
+    if (!isColdStartLikeError(error)) throw error
+
+    await warmUpApi()
+    await sleep(1600)
+    try {
+      return await operation()
+    } catch (secondError: any) {
+      if (!isColdStartLikeError(secondError)) throw secondError
+      await sleep(2600)
+      return await operation()
+    }
+  }
+}
 
 export const authService = {
   // Request OTP
@@ -23,10 +73,10 @@ export const authService = {
       }
     }
 
-    const response = await apiService.post<OtpResponse>(API_ENDPOINTS.AUTH.REQUEST_OTP, {
+    const response = await withAuthRetry(() => apiService.post<OtpResponse>(API_ENDPOINTS.AUTH.REQUEST_OTP, {
       identifier,
       type
-    })
+    }, { timeout: AUTH_REQUEST_TIMEOUT }))
     return response
   },
 
@@ -64,7 +114,7 @@ export const authService = {
       ...userData
     }
 
-    const response = await apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, payload)
+    const response = await withAuthRetry(() => apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, payload, { timeout: AUTH_REQUEST_TIMEOUT }))
     return response
   },
 
@@ -75,9 +125,9 @@ export const authService = {
       ? { email: trimmedIdentifier, identifier: trimmedIdentifier, password }
       : { mobile: trimmedIdentifier, identifier: trimmedIdentifier, password }
 
-    const response = await apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
+    const response = await withAuthRetry(() => apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
       ...payload
-    })
+    }, { timeout: AUTH_REQUEST_TIMEOUT }))
     return response
   },
 
