@@ -241,7 +241,20 @@ builder.Services.AddControllers()
     });
 
 // CORS
-var corsOrigins = builder.Configuration["Cors:AllowedOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+var configuredCorsOrigins = builder.Configuration["Cors:AllowedOrigins"]?
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    ?? Array.Empty<string>();
+var corsOrigins = configuredCorsOrigins
+    .Concat(new[]
+    {
+        "https://victorious-glacier-0e6507000.6.azurestaticapps.net",
+        "https://localhost",
+        "http://localhost",
+        "capacitor://localhost"
+    })
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -257,15 +270,6 @@ builder.Services.AddCors(options =>
         else if (builder.Environment.IsDevelopment())
         {
             policy.WithOrigins("http://localhost:3000", "http://localhost:3003", "http://localhost:5173")
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials()
-                .WithExposedHeaders("Token-Expired");
-        }
-        else
-        {
-            Log.Warning("No CORS origins configured. Cross-origin browser calls will be blocked until Cors:AllowedOrigins is set.");
-            policy.WithOrigins("https://victorious-glacier-0e6507000.6.azurestaticapps.net")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials()
