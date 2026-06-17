@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -9,6 +9,7 @@ const target = process.argv[2] || 'bundleRelease'
 const allowedTargets = new Set(['bundleRelease', 'assembleRelease'])
 
 const isWindows = process.platform === 'win32'
+const productionApiBaseUrl = 'https://mastermind-api-2404-eadxgpe5f7dch9f6.centralindia-01.azurewebsites.net/api'
 
 if (!allowedTargets.has(target)) {
   console.error(`Unsupported Android build target: ${target}`)
@@ -93,6 +94,63 @@ function run(name, args, options = {}) {
   }
 }
 
+function normalizeApiBaseUrl(value) {
+  const rawValue = (value || productionApiBaseUrl).trim().replace(/\/+$/, '')
+
+  if (!rawValue) {
+    return productionApiBaseUrl
+  }
+
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i.test(rawValue)) {
+    console.error(`Android release builds cannot use a local API URL: ${rawValue}`)
+    process.exit(1)
+  }
+
+  return rawValue.endsWith('/api') ? rawValue : `${rawValue}/api`
+}
+
+function findFiles(dir, predicate) {
+  if (!existsSync(dir)) {
+    return []
+  }
+
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      return findFiles(path, predicate)
+    }
+
+    return predicate(path) ? [path] : []
+  })
+}
+
+function validateBundledApiBaseUrl() {
+  const assetDir = join(androidDir, 'app', 'src', 'main', 'assets', 'public', 'assets')
+  const jsFiles = findFiles(assetDir, (path) => path.endsWith('.js'))
+  const bundleText = jsFiles.map((path) => readFileSync(path, 'utf8')).join('\n')
+
+  const forbiddenMarkers = [
+    'http://localhost:5000/api',
+    'http://127.0.0.1:5000/api',
+    'https://mastermind-api-2404-eadxgpe5f7dch9f6.centralindia-01.azurewebsites.net",',
+    'https://mastermind-api-2404-eadxgpe5f7dch9f6.centralindia-01.azurewebsites.net";'
+  ]
+
+  const forbidden = forbiddenMarkers.find((marker) => bundleText.includes(marker))
+
+  if (forbidden) {
+    console.error(`Android release bundle contains an invalid API marker: ${forbidden}`)
+    process.exit(1)
+  }
+
+  if (!bundleText.includes(productionApiBaseUrl)) {
+    console.error(`Android release bundle does not contain expected API base URL: ${productionApiBaseUrl}`)
+    process.exit(1)
+  }
+
+  console.log(`Verified Android bundle API base URL: ${productionApiBaseUrl}`)
+}
+
 const javaHome = findJavaHome()
 const androidSdk = findAndroidSdk()
 
@@ -111,7 +169,7 @@ const env = {
   JAVA_HOME: javaHome,
   ANDROID_HOME: androidSdk,
   ANDROID_SDK_ROOT: androidSdk,
-  VITE_API_BASE_URL: process.env.VITE_API_BASE_URL || 'https://mastermind-api-2404-eadxgpe5f7dch9f6.centralindia-01.azurewebsites.net/api',
+  VITE_API_BASE_URL: normalizeApiBaseUrl(process.env.VITE_API_BASE_URL),
   VITE_NODE_ENV: 'production',
   VITE_USE_MOCK_API: 'false'
 }
@@ -127,4 +185,5 @@ console.log(`Using ANDROID_HOME=${androidSdk}`)
 
 run(command('npm'), ['run', 'build'])
 run(command('npx'), ['cap', 'sync', 'android'])
+validateBundledApiBaseUrl()
 run(isWindows ? 'gradlew.bat' : './gradlew', [target], { cwd: androidDir })
