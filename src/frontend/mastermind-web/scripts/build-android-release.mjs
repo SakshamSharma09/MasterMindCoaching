@@ -111,7 +111,7 @@ const env = {
   JAVA_HOME: javaHome,
   ANDROID_HOME: androidSdk,
   ANDROID_SDK_ROOT: androidSdk,
-  VITE_API_BASE_URL: process.env.VITE_API_BASE_URL || 'https://mastermind-api-2404-eadxgpe5f7dch9f6.centralindia-01.azurewebsites.net',
+  VITE_API_BASE_URL: process.env.VITE_API_BASE_URL || 'https://mastermind-api-2404-eadxgpe5f7dch9f6.centralindia-01.azurewebsites.net/api',
   VITE_NODE_ENV: 'production',
   VITE_USE_MOCK_API: 'false'
 }

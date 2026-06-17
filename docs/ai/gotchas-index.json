@@ -86,6 +86,13 @@
       "category": "mobile",
       "section": "Android AAB Build Fails Due to Java or SDK Path",
       "severity": "high"
+    },
+    {
+      "id": "android-release-api-base-url",
+      "symptoms": ["mobile app network error", "android login 404", "request failed with status code 404", "localhost api in aab", "missing /api in mobile build"],
+      "category": "mobile",
+      "section": "Android Release Build Must Use Production API Base URL Including /api",
+      "severity": "critical"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # MasterMind Coaching - AI Gotchas & Lessons Learned
 
-> **Last Updated**: 2026-05-24 (Android AAB local SDK build fix)
+> **Last Updated**: 2026-06-17 (Android release API base URL fix)
 
 > **Purpose**: This file is automatically updated by AI assistants when bugs require more than one attempt to fix. It serves as a permanent memory system that prevents the same mistakes from being repeated.
 
@@ -85,6 +85,13 @@ public class StudentsController : ControllerBase
 ---
 
 ## Frontend (Vue 3 + Pinia)
+
+### Android Release Build Must Use Production API Base URL Including /api
+**Symptom**: Internal testing Android app shows `Network Error` when bundled with localhost API, or `Request failed with status code 404` when bundled with the Azure host but missing `/api`.  
+**Root Cause**: Vite loaded the local `.env` during `npm run build:aab`, so the first AAB used `http://localhost:5000/api`. A later override used the Azure host without `/api`, causing calls like `/auth/login` instead of `/api/auth/login`.  
+**Solution**: The Android release build script must explicitly set `VITE_API_BASE_URL` to the production API base URL including `/api`, and each Play upload must bump `versionCode`. Verify compiled assets before upload with `rg "mastermind-api-.../api" dist android/app/src/main/assets/public`.  
+**Files Affected**: `src/frontend/mastermind-web/scripts/build-android-release.mjs`, `src/frontend/mastermind-web/android/app/build.gradle`  
+**Date Learned**: 2026-06-17
 
 ### Pinia Persistence vs Manual localStorage
 **Symptom**: Redirect loop after login, auth state not persisting  
