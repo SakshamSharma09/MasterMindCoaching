@@ -734,10 +734,32 @@ const drawTemplateCard = async (card: TemplateCardData) => {
 const downloadTemplateCard = async (card: TemplateCardData) => {
   const canvas = await drawTemplateCard(card)
   if (!canvas) return
-  const link = document.createElement('a')
-  link.download = card.fileName
-  link.href = canvas.toDataURL('image/png')
-  link.click()
+
+  const safeFileName = card.fileName.endsWith('.png') ? card.fileName : `${card.fileName}.png`
+
+  try {
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png', 0.96))
+    if (!blob) throw new Error('Template image could not be created')
+
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.download = safeFileName
+    link.href = url
+    link.rel = 'noopener'
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    window.setTimeout(() => {
+      URL.revokeObjectURL(url)
+      link.remove()
+    }, 1200)
+  } catch (error) {
+    console.error('Template download failed:', error)
+    const previewWindow = window.open(canvas.toDataURL('image/png'), '_blank', 'noopener,noreferrer')
+    if (!previewWindow) {
+      alert('Your browser blocked the image download. Please allow pop-ups for this site and try again.')
+    }
+  }
 }
 
 onMounted(refreshData)

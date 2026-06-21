@@ -61,8 +61,8 @@ After an internal release is marked available, testers usually need the internal
 
 Every uploaded AAB must use a new Android `versionCode`. The current project version is:
 
-- `versionCode`: `6`
-- `versionName`: `1.0.5`
+- `versionCode`: `7`
+- `versionName`: `1.0.6`
 
 If you prefer Android Studio:
 

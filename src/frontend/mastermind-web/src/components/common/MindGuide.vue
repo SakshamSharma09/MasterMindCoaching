@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import mindGuideImage from '@/assets/images/mind-guide.avif'
+import mindGuideImage from '@/assets/images/mind-guide.png'
 
 const route = useRoute()
 
@@ -91,7 +91,7 @@ const guideMessage = computed(() => {
   position: relative;
   width: 128px;
   height: 128px;
-  border-radius: 2rem;
+  border-radius: 999px;
   background:
     radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.62) 32%, transparent 62%),
     linear-gradient(135deg, rgba(10, 29, 57, 0.92), rgba(25, 166, 140, 0.86));
@@ -104,10 +104,10 @@ const guideMessage = computed(() => {
 
 .mind-guide__image {
   position: absolute;
-  inset: 12px;
-  width: calc(100% - 24px);
-  height: calc(100% - 24px);
-  border-radius: 1.45rem;
+  inset: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
+  border-radius: 999px;
   object-fit: cover;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
   transform: translateZ(18px);
@@ -116,7 +116,7 @@ const guideMessage = computed(() => {
 .mind-guide__ring {
   position: absolute;
   inset: -8px;
-  border-radius: 2.25rem;
+  border-radius: 999px;
   border: 1px solid rgba(217, 161, 45, 0.45);
 }
 

@@ -265,14 +265,21 @@ const createSession = async () => {
   }
 }
 
+const toDateInputValue = (value?: string) => {
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10)
+  return parsed.toISOString().slice(0, 10)
+}
+
 const editSession = (session: Session) => {
   editingSession.value = session
   formData.value = {
     name: session.name,
     displayName: session.displayName,
     description: session.description || '',
-    startDate: session.startDate.split('T')[0],
-    endDate: session.endDate.split('T')[0],
+    startDate: toDateInputValue(session.startDate),
+    endDate: toDateInputValue(session.endDate),
     status: session.status
   }
   isEditing.value = true
@@ -287,6 +294,7 @@ const updateSession = async () => {
       name: formData.value.name,
       displayName: formData.value.displayName || `Academic Year ${formData.value.name}`,
       description: formData.value.description,
+      academicYear: formData.value.name,
       startDate: formData.value.startDate,
       endDate: formData.value.endDate,
       status: formData.value.status

@@ -25,6 +25,45 @@ export interface Session {
   updatedAt: string
 }
 
+const normalizeStatus = (status: unknown) => {
+  if (typeof status === 'number') {
+    return ['Planned', 'Active', 'Completed', 'Suspended', 'Cancelled'][status - 1] || 'Planned'
+  }
+
+  const value = String(status || 'Planned').toLowerCase()
+  const statuses: Record<string, string> = {
+    planned: 'Planned',
+    active: 'Active',
+    completed: 'Completed',
+    suspended: 'Suspended',
+    cancelled: 'Cancelled'
+  }
+
+  return statuses[value] || 'Planned'
+}
+
+const normalizeSession = (session: any): Session => ({
+  id: Number(session?.id || 0),
+  name: session?.name || '',
+  displayName: session?.displayName || session?.name || '',
+  description: session?.description || '',
+  academicYear: session?.academicYear || session?.name || '',
+  startDate: session?.startDate || '',
+  endDate: session?.endDate || '',
+  status: normalizeStatus(session?.status),
+  isActive: Boolean(session?.isActive),
+  totalStudents: Number(session?.totalStudents || 0),
+  activeStudents: Number(session?.activeStudents || 0),
+  totalClasses: Number(session?.totalClasses || 0),
+  activeClasses: Number(session?.activeClasses || 0),
+  totalTeachers: Number(session?.totalTeachers || 0),
+  totalRevenue: Number(session?.totalRevenue || 0),
+  totalExpenses: Number(session?.totalExpenses || 0),
+  settings: session?.settings,
+  createdAt: session?.createdAt || '',
+  updatedAt: session?.updatedAt || ''
+})
+
 export const useSessionStore = defineStore('session', () => {
   // State
   const sessions = ref<Session[]>([])
@@ -54,7 +93,7 @@ export const useSessionStore = defineStore('session', () => {
     try {
       const response = await apiService.get(API_ENDPOINTS.SESSIONS.LIST)
       // Handle ApiResponse wrapper - response is the ApiResponse object directly
-      sessions.value = response.data || []
+      sessions.value = (response.data || []).map(normalizeSession)
       
       // If no session is selected, try to select the active one
       if (!selectedSessionId.value && sessions.value.length > 0) {
@@ -90,7 +129,7 @@ export const useSessionStore = defineStore('session', () => {
     
     try {
       const response = await apiService.post(API_ENDPOINTS.SESSIONS.CREATE, sessionData)
-      const newSession = response.data
+      const newSession = normalizeSession(response.data)
       
       sessions.value.push(newSession)
       
@@ -114,7 +153,7 @@ export const useSessionStore = defineStore('session', () => {
     
     try {
       const response = await apiService.put(`${API_ENDPOINTS.SESSIONS.LIST}/${sessionId}`, sessionData)
-      const updatedSession = response.data
+      const updatedSession = normalizeSession(response.data)
       
       // Update local state
       const index = sessions.value.findIndex(s => s.id === sessionId)

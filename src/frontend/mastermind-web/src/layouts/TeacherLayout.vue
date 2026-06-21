@@ -1,16 +1,18 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(25,166,140,0.13),transparent_30%),linear-gradient(135deg,#f7fbff_0%,#fffaf1_100%)]">
     <!-- Sidebar -->
-    <div class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out"
+    <div class="fixed inset-y-0 left-0 z-50 w-64 transform border-r border-slate-200/80 bg-white/94 shadow-[0_24px_70px_-45px_rgba(10,29,57,0.65)] backdrop-blur-xl transition-transform duration-300 ease-in-out"
          :class="{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }">
       <div class="flex flex-col h-full">
         <!-- Logo -->
-        <div class="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-[#0a1d39] via-[#194f86] to-[#19a68c]">
+        <div class="flex h-20 items-center justify-center border-b border-slate-100 px-4">
           <div class="flex items-center space-x-2">
-            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0a1d39] via-[#194f86] to-[#19a68c] text-white shadow-lg shadow-teal-900/15">
+            <svg class="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
             </svg>
-            <span class="text-white font-bold text-lg">MasterMind</span>
+            </span>
+            <span class="text-lg font-bold text-slate-950">MasterMind</span>
           </div>
         </div>
 
@@ -23,7 +25,7 @@
             class="flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200"
             :class="[
               $route.name === item.name
-                ? 'bg-amber-50 text-[#0a1d39] border-r-2 border-[#d9a12d] shadow-sm'
+                ? 'bg-[#f2edff] text-[#4f46e5] shadow-sm'
                 : 'text-gray-600 hover:bg-emerald-50 hover:text-[#0a1d39]'
             ]"
           >
@@ -67,8 +69,8 @@
     <!-- Main Content -->
     <div class="lg:pl-64">
       <!-- Top Bar -->
-      <div class="sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200">
-        <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+      <div class="sticky top-0 z-40 border-b border-slate-200/70 bg-white/82 shadow-sm backdrop-blur-xl">
+        <div class="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
             @click="sidebarOpen = !sidebarOpen"
             class="lg:hidden p-2 rounded-md text-gray-500 hover:text-[#0a1d39] hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#19a68c]"
