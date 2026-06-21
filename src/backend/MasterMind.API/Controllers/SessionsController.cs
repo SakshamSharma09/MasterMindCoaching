@@ -463,24 +463,51 @@ public class SessionsController : ControllerBase
             .OrderByDescending(s => s.StartDate)
             .ToListAsync();
 
+        var sessionIds = sessions.Select(s => s.Id).ToHashSet();
+        var students = await _context.Students
+            .Where(s => !s.IsDeleted && s.SessionId.HasValue && sessionIds.Contains(s.SessionId.Value))
+            .Select(s => new { s.SessionId, s.IsActive })
+            .ToListAsync();
+        var classes = await _context.Classes
+            .Where(c => !c.IsDeleted && c.SessionId.HasValue && sessionIds.Contains(c.SessionId.Value))
+            .Select(c => new { c.SessionId, c.IsActive })
+            .ToListAsync();
+        var teachers = await _context.Teachers
+            .Where(t => !t.IsDeleted && t.SessionId.HasValue && sessionIds.Contains(t.SessionId.Value))
+            .Select(t => new { t.SessionId })
+            .ToListAsync();
+        var expenses = await _context.Expenses
+            .Where(e => !e.IsDeleted &&
+                        e.SessionId.HasValue &&
+                        sessionIds.Contains(e.SessionId.Value) &&
+                        (e.Status == ExpenseStatus.Paid || e.Status == ExpenseStatus.Processed))
+            .Select(e => new { e.SessionId, e.Amount })
+            .ToListAsync();
+        var payments = await _context.Payments
+            .Where(p => !p.IsDeleted && p.Status == PaymentStatus.Completed)
+            .Include(p => p.StudentFee)
+                .ThenInclude(sf => sf.Student)
+            .Select(p => new
+            {
+                SessionId = p.StudentFee.Student.SessionId,
+                p.Amount
+            })
+            .ToListAsync();
+
         var summaries = new List<SessionSummaryDto>();
         foreach (var session in sessions)
         {
-            var totalStudents = await _context.Students.CountAsync(s => !s.IsDeleted && s.SessionId == session.Id);
-            var activeStudents = await _context.Students.CountAsync(s => !s.IsDeleted && s.SessionId == session.Id && s.IsActive);
-            var totalClasses = await _context.Classes.CountAsync(c => !c.IsDeleted && c.SessionId == session.Id);
-            var activeClasses = await _context.Classes.CountAsync(c => !c.IsDeleted && c.SessionId == session.Id && c.IsActive);
-            var totalTeachers = await _context.Teachers.CountAsync(t => !t.IsDeleted && t.SessionId == session.Id);
-            var totalRevenue = await _context.Payments
-                .Where(p => !p.IsDeleted &&
-                            p.Status == PaymentStatus.Completed &&
-                            p.StudentFee.Student.SessionId == session.Id)
-                .SumAsync(p => (decimal?)p.Amount) ?? 0;
-            var totalExpenses = await _context.Expenses
-                .Where(e => !e.IsDeleted &&
-                            e.SessionId == session.Id &&
-                            (e.Status == ExpenseStatus.Paid || e.Status == ExpenseStatus.Processed))
-                .SumAsync(e => (decimal?)e.Amount) ?? 0;
+            var totalStudents = students.Count(s => s.SessionId == session.Id);
+            var activeStudents = students.Count(s => s.SessionId == session.Id && s.IsActive);
+            var totalClasses = classes.Count(c => c.SessionId == session.Id);
+            var activeClasses = classes.Count(c => c.SessionId == session.Id && c.IsActive);
+            var totalTeachers = teachers.Count(t => t.SessionId == session.Id);
+            var totalRevenue = payments
+                .Where(p => p.SessionId == session.Id)
+                .Sum(p => p.Amount);
+            var totalExpenses = expenses
+                .Where(e => e.SessionId == session.Id)
+                .Sum(e => e.Amount);
 
             summaries.Add(new SessionSummaryDto
             {

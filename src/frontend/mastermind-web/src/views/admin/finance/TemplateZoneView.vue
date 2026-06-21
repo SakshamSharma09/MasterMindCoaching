@@ -544,17 +544,19 @@ const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, wi
 }
 
 const drawWrappedText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines = 4, align: CanvasTextAlign = 'left') => {
-  const words = text.split(/\s+/)
+  const words = text.trim().split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let line = ''
   let truncated = false
-  for (const word of words) {
+
+  for (let index = 0; index < words.length; index += 1) {
+    const word = words[index]
     const next = line ? `${line} ${word}` : word
     if (ctx.measureText(next).width > maxWidth && line) {
       lines.push(line)
       line = word
       if (lines.length === maxLines - 1) {
-        truncated = words.indexOf(word) < words.length - 1
+        truncated = index < words.length - 1
         break
       }
     } else {
@@ -571,20 +573,31 @@ const drawWrappedText = (ctx: CanvasRenderingContext2D, text: string, x: number,
   return lines.length * lineHeight
 }
 
+const fitText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, options: { weight?: number; maxSize: number; minSize: number; family?: string; align?: CanvasTextAlign; style?: string }) => {
+  const { weight = 700, maxSize, minSize, family = 'Arial', align = 'center', style = '' } = options
+  let fontSize = maxSize
+  do {
+    ctx.font = `${style ? `${style} ` : ''}${weight} ${fontSize}px ${family}`
+    if (ctx.measureText(text).width <= maxWidth || fontSize <= minSize) break
+    fontSize -= 2
+  } while (fontSize >= minSize)
+
+  ctx.textAlign = align
+  ctx.fillText(text, x, y)
+  return fontSize
+}
+
 const drawFieldValue = (ctx: CanvasRenderingContext2D, value: string, x: number, y: number, maxWidth: number) => {
-  if (!value.includes(' ')) {
-    let fontSize = 34
-    while (fontSize > 18) {
-      ctx.font = `700 ${fontSize}px Arial`
-      if (ctx.measureText(value).width <= maxWidth) break
-      fontSize -= 2
-    }
-    ctx.fillText(value, x, y)
+  ctx.textBaseline = 'middle'
+  if (!value.includes(' ') || value.length <= 16) {
+    fitText(ctx, value, x, y, maxWidth, { maxSize: 33, minSize: 18 })
+    ctx.textBaseline = 'alphabetic'
     return
   }
 
-  ctx.font = value.length > 18 ? '700 27px Arial' : '700 34px Arial'
-  drawWrappedText(ctx, value, x, y, maxWidth, 34, 2, 'center')
+  ctx.font = value.length > 22 ? '700 24px Arial' : '700 28px Arial'
+  drawWrappedText(ctx, value, x, y - 16, maxWidth, 31, 2, 'center')
+  ctx.textBaseline = 'alphabetic'
 }
 
 const loadImage = (src?: string): Promise<HTMLImageElement | null> => {
@@ -647,86 +660,107 @@ const drawTemplateCard = async (card: TemplateCardData) => {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
+  const ink = '#071a3d'
+  const softInk = '#394761'
+  const gold = '#c9962d'
+
   ctx.fillStyle = '#fffdf8'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-  ctx.fillStyle = '#071a3d'
-  ctx.fillRect(980, 0, 100, 1500)
+  ctx.fillStyle = ink
+  ctx.fillRect(940, 0, 140, 1500)
   ctx.fillStyle = card.accent
-  ctx.fillRect(960, 0, 20, 1500)
-  ctx.globalAlpha = 0.08
-  ctx.fillStyle = '#071a3d'
+  ctx.fillRect(918, 0, 22, 1500)
+  ctx.globalAlpha = 0.1
+  ctx.fillStyle = ink
   ctx.beginPath()
-  ctx.arc(945, 820, 430, 0, Math.PI * 2)
+  ctx.arc(920, 780, 420, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.globalAlpha = 0.07
+  ctx.beginPath()
+  ctx.arc(120, 140, 220, 0, Math.PI * 2)
   ctx.fill()
   ctx.globalAlpha = 1
 
-  ctx.fillStyle = '#071a3d'
-  ctx.font = '700 62px Arial'
-  ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
-  ctx.fillText('The Master Mind', 440, 105)
-  ctx.fillStyle = '#b7831c'
-  ctx.font = 'italic 46px Georgia'
-  ctx.fillText('Coaching Classes', 440, 162)
-  ctx.fillStyle = '#071a3d'
-  ctx.font = '700 23px Arial'
-  ctx.fillText('A DREAM INSTITUTE FOR NURSERY TO XII', 440, 220)
+  ctx.fillStyle = ink
+  fitText(ctx, 'The Master Mind', 455, 98, 720, { maxSize: 62, minSize: 44 })
+  ctx.fillStyle = gold
+  fitText(ctx, 'Coaching Classes', 455, 158, 620, { maxSize: 46, minSize: 34, family: 'Georgia', style: 'italic' })
+  ctx.fillStyle = ink
+  fitText(ctx, 'A DREAM INSTITUTE FOR NURSERY TO XII', 455, 218, 690, { maxSize: 23, minSize: 18 })
+
+  ctx.strokeStyle = 'rgba(7,26,61,0.18)'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(250, 242)
+  ctx.lineTo(660, 242)
+  ctx.stroke()
 
   ctx.fillStyle = card.accent
-  drawRoundedRect(ctx, 92, 275, 300, 56, 20)
+  drawRoundedRect(ctx, 86, 292, 330, 58, 22)
   ctx.fill()
   ctx.fillStyle = '#ffffff'
-  ctx.font = '700 24px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(card.title.toUpperCase(), 242, 312)
+  fitText(ctx, card.title.toUpperCase(), 251, 329, 285, { maxSize: 24, minSize: 17 })
 
-  ctx.fillStyle = '#071a3d'
-  ctx.font = 'italic 72px Georgia'
+  ctx.fillStyle = ink
+  ctx.font = 'italic 66px Georgia'
   ctx.textAlign = 'left'
-  drawWrappedText(ctx, card.headline, 92, 405, 540, 72, 3)
+  drawWrappedText(ctx, card.headline, 88, 445, 560, 66, 3)
 
-  ctx.fillStyle = '#394761'
+  ctx.fillStyle = softInk
   ctx.font = '30px Arial'
-  drawWrappedText(ctx, card.subhead, 96, 555, 560, 42, 3)
+  drawWrappedText(ctx, card.subhead, 92, 600, 555, 42, 3)
 
   await drawPhoto(ctx, card)
 
-  ctx.fillStyle = '#071a3d'
-  ctx.font = '30px Arial'
-  let bodyY = 720
+  ctx.fillStyle = 'rgba(255,255,255,0.78)'
+  drawRoundedRect(ctx, 72, 742, 760, 220, 26)
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(7,26,61,0.1)'
+  ctx.lineWidth = 2
+  drawRoundedRect(ctx, 72, 742, 760, 220, 26)
+  ctx.stroke()
+
+  ctx.fillStyle = ink
+  ctx.font = '29px Arial'
+  let bodyY = 802
   for (const line of card.bodyLines) {
-    bodyY += drawWrappedText(ctx, line, 96, bodyY, 660, 42, 3) + 12
+    bodyY += drawWrappedText(ctx, line, 104, bodyY, 690, 39, 2) + 10
+    if (bodyY > 930) break
   }
 
-  const fieldTop = 1010
+  const fieldTop = 1030
   card.fields.slice(0, 3).forEach((field, index) => {
-    const x = 70 + index * 310
-    ctx.strokeStyle = '#071a3d'
-    ctx.lineWidth = 3
-    drawRoundedRect(ctx, x, fieldTop, 270, 148, 24)
+    const x = 64 + index * 300
+    ctx.fillStyle = '#ffffff'
+    drawRoundedRect(ctx, x, fieldTop, 274, 150, 24)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(7,26,61,0.42)'
+    ctx.lineWidth = 2.5
+    drawRoundedRect(ctx, x, fieldTop, 274, 150, 24)
     ctx.stroke()
-    ctx.fillStyle = '#071a3d'
+    ctx.fillStyle = card.accent
     ctx.font = '700 22px Arial'
     ctx.textAlign = 'center'
-    ctx.fillText(field.label.toUpperCase(), x + 135, fieldTop - 18)
-    drawFieldValue(ctx, field.value, x + 135, fieldTop + 62, 230)
+    ctx.fillText(field.label.toUpperCase(), x + 137, fieldTop + 38)
+    ctx.fillStyle = ink
+    drawFieldValue(ctx, field.value, x + 137, fieldTop + 96, 228)
   })
 
-  ctx.fillStyle = '#071a3d'
+  ctx.fillStyle = ink
   ctx.font = 'italic 36px Georgia'
   ctx.textAlign = 'center'
-  ctx.fillText('Your Success, Our Mission.', 540, 1255)
+  ctx.fillText('Your Success, Our Mission.', 500, 1264)
 
-  ctx.fillStyle = '#071a3d'
-  drawRoundedRect(ctx, 170, 1310, 740, 64, 28)
+  ctx.fillStyle = ink
+  drawRoundedRect(ctx, 132, 1314, 790, 66, 30)
   ctx.fill()
   ctx.fillStyle = '#ffffff'
-  ctx.font = '700 25px Arial'
-  ctx.fillText('9887258679  |  Road No. 5, VKIA Jaipur', 540, 1351)
-  ctx.fillStyle = '#071a3d'
+  fitText(ctx, '9887258679  |  Road No. 5, VKIA Jaipur', 527, 1356, 720, { maxSize: 25, minSize: 18 })
+  ctx.fillStyle = ink
   ctx.font = '700 23px Arial'
-  ctx.fillText('EXCELLENCE  -  DEDICATION  -  SUCCESS', 540, 1422)
+  ctx.fillText('EXCELLENCE  -  DEDICATION  -  SUCCESS', 500, 1430)
 
   return canvas
 }

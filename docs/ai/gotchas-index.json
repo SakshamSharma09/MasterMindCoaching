@@ -32,6 +32,13 @@
       "severity": "medium"
     },
     {
+      "id": "session-summary-ef-translation",
+      "symptoms": ["sessions missing", "sessions empty", "session data disappeared", "sessions endpoint 500", "session summary"],
+      "category": "backend",
+      "section": "Session Summary Queries Must Avoid Complex Navigation Translation",
+      "severity": "high"
+    },
+    {
       "id": "pinia-persistence",
       "symptoms": ["redirect loop", "login", "auth state", "localStorage", "token not found"],
       "category": "frontend",

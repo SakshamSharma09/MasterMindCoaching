@@ -84,6 +84,15 @@ public class StudentsController : ControllerBase
 
 ---
 
+### Session Summary Queries Must Avoid Complex Navigation Translation
+**Symptom**: Sessions look deleted or the Sessions page appears empty after adding computed totals.  
+**Root Cause**: Complex EF Core summary queries over nested navigation properties can fail in Azure SQL translation, causing the sessions endpoint to fail before returning existing rows.  
+**Solution**: Load the small summary source sets first, then compute counts and totals in memory by `SessionId`. Do not let revenue/expense summary failures hide the base sessions list.  
+**Files Affected**: `SessionsController.cs`  
+**Date Learned**: 2026-06-21
+
+---
+
 ## Frontend (Vue 3 + Pinia)
 
 ### Android Release Build Must Use Production API Base URL Including /api
