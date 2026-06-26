@@ -142,9 +142,31 @@
           {{ formError }}
         </div>
 
-        <button class="btn-primary mt-5 w-full" type="button" :disabled="generating || difficultyTotal !== 100" @click="generatePaper">
-          {{ generating ? 'Generating paper...' : 'Generate Paper + Answer Key' }}
-        </button>
+        <div class="mt-5 grid gap-3 sm:grid-cols-2">
+          <button class="btn-primary w-full" type="button" :disabled="generating || difficultyTotal !== 100" @click="generatePaper">
+            {{ generating ? 'Generating paper...' : 'Generate Paper + Answer Key' }}
+          </button>
+          <button class="btn-secondary w-full" type="button" :disabled="difficultyTotal !== 100" @click="generatePrompt">
+            Generate Prompt
+          </button>
+        </div>
+
+        <div v-if="generatedPrompt" class="mt-5 rounded-2xl border border-primary-100 bg-white p-4 shadow-sm">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-surface-950">Ready-made prompt</h3>
+              <p class="mt-1 text-xs text-surface-500">Built from the selected class, blueprint, difficulty, and source documents.</p>
+            </div>
+            <button class="btn-secondary text-sm" type="button" @click="copyPrompt">
+              {{ promptCopied ? 'Copied' : 'Copy prompt' }}
+            </button>
+          </div>
+          <textarea
+            class="mt-4 min-h-64 w-full resize-y rounded-xl border border-surface-200 bg-surface-50 p-3 font-mono text-xs leading-5 text-surface-800 outline-none focus:border-primary-300 focus:ring-4 focus:ring-primary-100"
+            :value="generatedPrompt"
+            readonly
+          ></textarea>
+        </div>
       </section>
     </div>
 
@@ -201,6 +223,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useSessionStore } from '@/stores/session'
+import paperPromptTemplate from '@/prompts/paper-generator-template.txt?raw'
 import {
   paperGeneratorService,
   type CreatePaperGenerationJobRequest,
@@ -220,6 +243,8 @@ const uploading = ref(false)
 const generating = ref(false)
 const uploadError = ref('')
 const formError = ref('')
+const generatedPrompt = ref('')
+const promptCopied = ref(false)
 
 const form = reactive<CreatePaperGenerationJobRequest>({
   sessionId: null,
@@ -304,6 +329,55 @@ const validateForm = () => {
   if (difficultyTotal.value !== 100) return 'Difficulty split must total 100%.'
   if (selectedDocumentIds.value.length > 5) return 'Select at most 5 source PDFs.'
   return ''
+}
+
+const buildPromptVariables = () => {
+  const selectedDocuments = documents.value.filter(document => selectedDocumentIds.value.includes(document.id))
+
+  return {
+    className: form.className || 'Not selected',
+    subject: form.subject || 'Not selected',
+    chapter: form.chapter || 'Full syllabus',
+    totalMarks: String(form.totalMarks || 0),
+    durationMinutes: String(form.durationMinutes || 0),
+    mcqCount: String(form.mcqCount || 0),
+    oneMarkCount: String(form.oneMarkCount || 0),
+    twoMarkCount: String(form.twoMarkCount || 0),
+    fiveMarkCount: String(form.fiveMarkCount || 0),
+    caseStudyCount: String(form.caseStudyCount || 0),
+    easyPercentage: String(form.easyPercentage || 0),
+    mediumPercentage: String(form.mediumPercentage || 0),
+    hardPercentage: String(form.hardPercentage || 0),
+    relevancePercentage: String(form.relevancePercentage || 0),
+    selectedDocumentCount: String(selectedDocuments.length),
+    selectedDocumentNames: selectedDocuments.length
+      ? selectedDocuments.map(document => document.fileName).join(', ')
+      : 'No uploaded documents selected'
+  }
+}
+
+const renderPromptTemplate = () => {
+  const variables = buildPromptVariables()
+  return Object.entries(variables).reduce((prompt, [key, value]) => {
+    return prompt.replaceAll(`{{${key}}}`, value)
+  }, paperPromptTemplate)
+}
+
+const generatePrompt = () => {
+  formError.value = validateForm()
+  if (formError.value) return
+
+  promptCopied.value = false
+  generatedPrompt.value = renderPromptTemplate()
+}
+
+const copyPrompt = async () => {
+  if (!generatedPrompt.value) return
+  await navigator.clipboard.writeText(generatedPrompt.value)
+  promptCopied.value = true
+  window.setTimeout(() => {
+    promptCopied.value = false
+  }, 1600)
 }
 
 const generatePaper = async () => {

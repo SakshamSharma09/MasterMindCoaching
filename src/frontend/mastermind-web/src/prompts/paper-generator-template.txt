@@ -1,0 +1,25 @@
+Create a MasterMind Coaching Classes question paper using the selected settings below.
+
+Class: {{className}}
+Subject: {{subject}}
+Chapter/Unit: {{chapter}}
+Total Marks: {{totalMarks}}
+Duration: {{durationMinutes}} minutes
+
+Question Blueprint:
+- MCQ questions: {{mcqCount}}
+- 1 mark questions: {{oneMarkCount}}
+- 2 marks questions: {{twoMarkCount}}
+- 5 marks questions: {{fiveMarkCount}}
+- Case study questions: {{caseStudyCount}}
+
+Difficulty Split:
+- Easy: {{easyPercentage}}%
+- Medium: {{mediumPercentage}}%
+- Hard: {{hardPercentage}}%
+
+Source Relevance:
+- Use uploaded/source material for {{relevancePercentage}}% of the paper.
+- Selected documents: {{selectedDocumentNames}}
+
+Generate a professional, student-friendly question paper and answer key strictly aligned to these settings.

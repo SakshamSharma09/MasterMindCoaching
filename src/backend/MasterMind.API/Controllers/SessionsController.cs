@@ -42,10 +42,11 @@ public class SessionsController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error retrieving sessions");
             return StatusCode(500, new ApiResponse<IEnumerable<SessionSummaryDto>>
             {
                 Success = false,
-                Message = "Error retrieving sessions: " + ex.Message,
+                Message = "Error retrieving sessions",
                 Data = null
             });
         }
@@ -464,35 +465,81 @@ public class SessionsController : ControllerBase
             .ToListAsync();
 
         var sessionIds = sessions.Select(s => s.Id).ToHashSet();
-        var students = await _context.Students
-            .Where(s => !s.IsDeleted && s.SessionId.HasValue && sessionIds.Contains(s.SessionId.Value))
-            .Select(s => new { s.SessionId, s.IsActive })
-            .ToListAsync();
-        var classes = await _context.Classes
-            .Where(c => !c.IsDeleted && c.SessionId.HasValue && sessionIds.Contains(c.SessionId.Value))
-            .Select(c => new { c.SessionId, c.IsActive })
-            .ToListAsync();
-        var teachers = await _context.Teachers
-            .Where(t => !t.IsDeleted && t.SessionId.HasValue && sessionIds.Contains(t.SessionId.Value))
-            .Select(t => new { t.SessionId })
-            .ToListAsync();
-        var expenses = await _context.Expenses
-            .Where(e => !e.IsDeleted &&
-                        e.SessionId.HasValue &&
-                        sessionIds.Contains(e.SessionId.Value) &&
-                        (e.Status == ExpenseStatus.Paid || e.Status == ExpenseStatus.Processed))
-            .Select(e => new { e.SessionId, e.Amount })
-            .ToListAsync();
-        var payments = await _context.Payments
-            .Where(p => !p.IsDeleted && p.Status == PaymentStatus.Completed)
-            .Include(p => p.StudentFee)
-                .ThenInclude(sf => sf.Student)
-            .Select(p => new
-            {
-                SessionId = p.StudentFee.Student.SessionId,
-                p.Amount
-            })
-            .ToListAsync();
+        var students = new List<SessionStudentSummary>();
+        var classes = new List<SessionClassSummary>();
+        var teachers = new List<SessionTeacherSummary>();
+        var expenses = new List<SessionExpenseSummary>();
+        var payments = new List<SessionPaymentSummary>();
+
+        try
+        {
+            students = await _context.Students
+                .Where(s => !s.IsDeleted && s.SessionId.HasValue && sessionIds.Contains(s.SessionId.Value))
+                .Select(s => new SessionStudentSummary(s.SessionId!.Value, s.IsActive))
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to load student counts for session summaries");
+        }
+
+        try
+        {
+            classes = await _context.Classes
+                .Where(c => !c.IsDeleted && c.SessionId.HasValue && sessionIds.Contains(c.SessionId.Value))
+                .Select(c => new SessionClassSummary(c.SessionId!.Value, c.IsActive))
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to load class counts for session summaries");
+        }
+
+        try
+        {
+            teachers = await _context.Teachers
+                .Where(t => !t.IsDeleted && t.SessionId.HasValue && sessionIds.Contains(t.SessionId.Value))
+                .Select(t => new SessionTeacherSummary(t.SessionId!.Value))
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to load teacher counts for session summaries");
+        }
+
+        try
+        {
+            expenses = await _context.Expenses
+                .Where(e => !e.IsDeleted &&
+                            e.SessionId.HasValue &&
+                            sessionIds.Contains(e.SessionId.Value) &&
+                            (e.Status == ExpenseStatus.Paid || e.Status == ExpenseStatus.Processed))
+                .Select(e => new SessionExpenseSummary(e.SessionId!.Value, e.Amount))
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to load expense totals for session summaries");
+        }
+
+        try
+        {
+            var completedPayments = await _context.Payments
+                .Where(p => !p.IsDeleted && p.Status == PaymentStatus.Completed)
+                .Include(p => p.StudentFee)
+                    .ThenInclude(sf => sf.Student)
+                .ToListAsync();
+
+            payments = completedPayments
+                .Where(p => p.StudentFee?.Student?.SessionId.HasValue == true &&
+                            sessionIds.Contains(p.StudentFee.Student.SessionId.Value))
+                .Select(p => new SessionPaymentSummary(p.StudentFee!.Student!.SessionId!.Value, p.Amount))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to load revenue totals for session summaries");
+        }
 
         var summaries = new List<SessionSummaryDto>();
         foreach (var session in sessions)
@@ -538,6 +585,12 @@ public class SessionsController : ControllerBase
 
     #endregion
 }
+
+file record SessionStudentSummary(int SessionId, bool IsActive);
+file record SessionClassSummary(int SessionId, bool IsActive);
+file record SessionTeacherSummary(int SessionId);
+file record SessionExpenseSummary(int SessionId, decimal Amount);
+file record SessionPaymentSummary(int SessionId, decimal Amount);
 
 // DTOs
 public class SessionSummaryDto

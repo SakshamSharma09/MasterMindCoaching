@@ -135,7 +135,7 @@ const filteredSuggestions = computed(() => {
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
-  subjects.value = [...newValue]
+  subjects.value = normalizeSubjects(newValue)
 }, { immediate: true })
 
 // Methods
@@ -202,6 +202,19 @@ const handlePaste = (event: ClipboardEvent) => {
   })
 }
 
+const normalizeSubjects = (value: string[]) => {
+  const seen = new Set<string>()
+  return value
+    .map(subject => subject.trim())
+    .filter(subject => {
+      if (!subject) return false
+      const key = subject.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
 const addCurrentSubject = () => {
   const subject = currentInput.value.trim()
   if (subject && canAddSubject(subject)) {
@@ -222,17 +235,20 @@ const handleBlur = () => {
 }
 
 const addSubject = (subject: string) => {
-  if (!canAddSubject(subject)) return
+  const normalizedSubject = subject.trim()
+  if (!canAddSubject(normalizedSubject)) return
   
-  subjects.value.push(subject)
-  emit('update:modelValue', subjects.value)
-  emit('subject-added', subject)
+  subjects.value = normalizeSubjects([...subjects.value, normalizedSubject])
+  emit('update:modelValue', [...subjects.value])
+  emit('subject-added', normalizedSubject)
 }
 
 const canAddSubject = (subject: string): boolean => {
+  const normalizedSubject = subject.trim()
+
   // Check if subject already exists
-  if (subjects.value.includes(subject)) {
-    error.value = `"${subject}" is already added`
+  if (subjects.value.some(existingSubject => existingSubject.toLowerCase() === normalizedSubject.toLowerCase())) {
+    error.value = `"${normalizedSubject}" is already added`
     return false
   }
   
@@ -243,7 +259,7 @@ const canAddSubject = (subject: string): boolean => {
   }
   
   // Check minimum length
-  if (subject.length < 2) {
+  if (normalizedSubject.length < 2) {
     error.value = 'Subject name must be at least 2 characters'
     return false
   }
@@ -254,7 +270,7 @@ const canAddSubject = (subject: string): boolean => {
 const removeSubject = (index: number) => {
   const removedSubject = subjects.value[index]
   subjects.value.splice(index, 1)
-  emit('update:modelValue', subjects.value)
+  emit('update:modelValue', [...subjects.value])
   emit('subject-removed', removedSubject)
 }
 
@@ -273,7 +289,7 @@ defineExpose({
   clearAll: () => {
     subjects.value = []
     currentInput.value = ''
-    emit('update:modelValue', subjects.value)
+    emit('update:modelValue', [])
   }
 })
 </script>

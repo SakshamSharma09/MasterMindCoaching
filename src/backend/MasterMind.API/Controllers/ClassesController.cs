@@ -396,46 +396,53 @@ public class ClassesController : ControllerBase
     {
         try
         {
-        foreach (var subjectName in subjectNames)
-        {
-            var trimmedName = subjectName.Trim();
-            if (string.IsNullOrEmpty(trimmedName)) continue;
-
-            var nameNorm = trimmedName.ToLowerInvariant();
-            var subject = await _context.Subjects
-                .FirstOrDefaultAsync(s => s.Name.ToLower() == nameNorm);
-
-            if (subject == null)
+            foreach (var trimmedName in NormalizeSubjectNames(subjectNames))
             {
-                subject = new Subject
+                var nameNorm = trimmedName.ToLowerInvariant();
+                var subject = await _context.Subjects
+                    .FirstOrDefaultAsync(s => s.Name.ToLower() == nameNorm);
+
+                if (subject == null)
                 {
-                    Name = trimmedName,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-                _context.Subjects.Add(subject);
-                await _context.SaveChangesAsync();
+                    subject = new Subject
+                    {
+                        Name = trimmedName,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Subjects.Add(subject);
+                    await _context.SaveChangesAsync();
+                }
+                else if (!subject.IsActive)
+                {
+                    subject.IsActive = true;
+                    subject.UpdatedAt = DateTime.UtcNow;
+                }
+
+                // Check if class-subject relationship already exists
+                var existingClassSubject = await _context.ClassSubjects
+                    .FirstOrDefaultAsync(cs => cs.ClassId == classId && cs.SubjectId == subject.Id);
+
+                if (existingClassSubject == null)
+                {
+                    var classSubject = new ClassSubject
+                    {
+                        ClassId = classId,
+                        SubjectId = subject.Id,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    // Do not set the Id explicitly as it is an identity column
+                    _context.ClassSubjects.Add(classSubject);
+                }
+                else
+                {
+                    existingClassSubject.IsActive = true;
+                    existingClassSubject.UpdatedAt = DateTime.UtcNow;
+                }
             }
 
-            // Check if class-subject relationship already exists
-            var existingClassSubject = await _context.ClassSubjects
-                .FirstOrDefaultAsync(cs => cs.ClassId == classId && cs.SubjectId == subject.Id);
-
-            if (existingClassSubject == null)
-            {
-                var classSubject = new ClassSubject
-                {
-                    ClassId = classId,
-                    SubjectId = subject.Id,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-                // Do not set the Id explicitly as it is an identity column
-                _context.ClassSubjects.Add(classSubject);
-            }
-        }
-
-        await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
@@ -445,19 +452,35 @@ public class ClassesController : ControllerBase
 
     private async Task UpdateClassSubjects(int classId, List<string> subjectNames)
     {
-        // Remove existing class-subject relationships
+        var normalizedSubjectNames = NormalizeSubjectNames(subjectNames);
+        var requestedNames = normalizedSubjectNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         var existingClassSubjects = await _context.ClassSubjects
+            .Include(cs => cs.Subject)
             .Where(cs => cs.ClassId == classId)
             .ToListAsync();
 
         foreach (var cs in existingClassSubjects)
         {
-            cs.IsActive = false;
-            cs.UpdatedAt = DateTime.UtcNow;
+            var subjectName = cs.Subject?.Name;
+            if (string.IsNullOrWhiteSpace(subjectName) || !requestedNames.Contains(subjectName))
+            {
+                cs.IsActive = false;
+                cs.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
-        // Add new subjects
-        await AddSubjectsToClass(classId, subjectNames);
+        await AddSubjectsToClass(classId, normalizedSubjectNames);
+    }
+
+    private static List<string> NormalizeSubjectNames(IEnumerable<string>? subjectNames)
+    {
+        return subjectNames?
+            .Select(subjectName => subjectName?.Trim())
+            .Where(subjectName => !string.IsNullOrWhiteSpace(subjectName))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Cast<string>()
+            .ToList() ?? new List<string>();
     }
 
     private ClassDto MapToClassDto(Class classEntity)

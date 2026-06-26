@@ -1,28 +1,57 @@
 <template>
-  <aside class="mind-guide" :class="{ 'mind-guide--auth': isAuthRoute }" aria-label="MasterMind learning guide">
+  <aside
+    ref="guideRef"
+    class="mind-guide"
+    :class="{ 'mind-guide--auth': isAuthRoute, 'mind-guide--dragging': isDragging }"
+    :style="guideStyle"
+    aria-label="MasterMind learning guide"
+  >
     <div class="mind-guide__bubble">
       <p class="mind-guide__eyebrow">{{ guideContext }}</p>
       <p class="mind-guide__text">{{ guideMessage }}</p>
     </div>
 
-    <div class="mind-guide__orb" aria-hidden="true">
+    <button
+      class="mind-guide__orb"
+      type="button"
+      aria-label="Move learning guide"
+      title="Drag to move"
+      @pointerdown="startDrag"
+      @dblclick="resetPosition"
+    >
       <span class="mind-guide__ring ring-one"></span>
       <span class="mind-guide__ring ring-two"></span>
       <img class="mind-guide__image" :src="mindGuideImage" alt="" />
       <span class="mind-guide__spark spark-one"></span>
       <span class="mind-guide__spark spark-two"></span>
-    </div>
+      <span class="mind-guide__handle" aria-hidden="true">Move</span>
+    </button>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import mindGuideImage from '@/assets/images/mind-guide.png'
 
 const route = useRoute()
+const guideRef = ref<HTMLElement | null>(null)
+const isDragging = ref(false)
+const hasCustomPosition = ref(false)
+const position = ref({ x: 0, y: 0 })
+const dragOffset = ref({ x: 0, y: 0 })
+const storageKey = 'mastermind-mind-guide-position'
 
 const isAuthRoute = computed(() => route.path.includes('login') || route.path.includes('otp-verify'))
+
+const guideStyle = computed(() => hasCustomPosition.value
+  ? {
+      left: `${position.value.x}px`,
+      top: `${position.value.y}px`,
+      right: 'auto',
+      bottom: 'auto'
+    }
+  : {})
 
 const guideContext = computed(() => {
   if (route.path.startsWith('/admin')) return 'Admin mentor'
@@ -43,6 +72,92 @@ const guideMessage = computed(() => {
   if (path.includes('login')) return 'Choose your role path and continue securely.'
   return 'I will stay nearby while you guide learning with care.'
 })
+
+const clampPosition = (x: number, y: number) => {
+  const rect = guideRef.value?.getBoundingClientRect()
+  const width = rect?.width || 160
+  const height = rect?.height || 140
+  const margin = 12
+
+  return {
+    x: Math.min(Math.max(margin, x), Math.max(margin, window.innerWidth - width - margin)),
+    y: Math.min(Math.max(margin, y), Math.max(margin, window.innerHeight - height - margin))
+  }
+}
+
+const savePosition = () => {
+  localStorage.setItem(storageKey, JSON.stringify(position.value))
+}
+
+const applySavedPosition = async () => {
+  const rawPosition = localStorage.getItem(storageKey)
+  if (!rawPosition) return
+
+  try {
+    const savedPosition = JSON.parse(rawPosition) as { x?: number; y?: number }
+    if (typeof savedPosition.x !== 'number' || typeof savedPosition.y !== 'number') return
+
+    hasCustomPosition.value = true
+    position.value = { x: savedPosition.x, y: savedPosition.y }
+    await nextTick()
+    position.value = clampPosition(position.value.x, position.value.y)
+    savePosition()
+  } catch {
+    localStorage.removeItem(storageKey)
+  }
+}
+
+const startDrag = (event: PointerEvent) => {
+  const rect = guideRef.value?.getBoundingClientRect()
+  if (!rect) return
+
+  hasCustomPosition.value = true
+  isDragging.value = true
+  position.value = { x: rect.left, y: rect.top }
+  dragOffset.value = {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  }
+
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  window.addEventListener('pointermove', drag)
+  window.addEventListener('pointerup', stopDrag)
+}
+
+const drag = (event: PointerEvent) => {
+  if (!isDragging.value) return
+  position.value = clampPosition(event.clientX - dragOffset.value.x, event.clientY - dragOffset.value.y)
+}
+
+const stopDrag = () => {
+  if (!isDragging.value) return
+  isDragging.value = false
+  savePosition()
+  window.removeEventListener('pointermove', drag)
+  window.removeEventListener('pointerup', stopDrag)
+}
+
+const resetPosition = () => {
+  hasCustomPosition.value = false
+  localStorage.removeItem(storageKey)
+}
+
+const handleResize = () => {
+  if (!hasCustomPosition.value) return
+  position.value = clampPosition(position.value.x, position.value.y)
+  savePosition()
+}
+
+onMounted(() => {
+  applySavedPosition()
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  window.removeEventListener('pointermove', drag)
+  window.removeEventListener('pointerup', stopDrag)
+})
 </script>
 
 <style scoped>
@@ -55,6 +170,7 @@ const guideMessage = computed(() => {
   align-items: flex-end;
   gap: 0.8rem;
   pointer-events: none;
+  user-select: none;
 }
 
 .mind-guide__bubble {
@@ -91,6 +207,7 @@ const guideMessage = computed(() => {
   position: relative;
   width: 128px;
   height: 128px;
+  border: 0;
   border-radius: 999px;
   background:
     radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.62) 32%, transparent 62%),
@@ -100,6 +217,19 @@ const guideMessage = computed(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
   transform-style: preserve-3d;
   animation: guideFloat 5.6s ease-in-out infinite;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.mind-guide--dragging .mind-guide__orb {
+  cursor: grabbing;
+  animation-play-state: paused;
+}
+
+.mind-guide__orb:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.5);
+  outline-offset: 5px;
 }
 
 .mind-guide__image {
@@ -137,6 +267,22 @@ const guideMessage = computed(() => {
   border-radius: 999px;
   background: #f5c04e;
   box-shadow: 0 0 22px rgba(245, 192, 78, 0.9);
+}
+
+.mind-guide__handle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.16rem 0.45rem;
+  color: #10223f;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 18px -12px rgba(10, 29, 57, 0.7);
 }
 
 .spark-one {
