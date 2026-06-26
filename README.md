@@ -62,6 +62,7 @@ MasterMindCoaching/
 **Parent** - View child attendance, Performance reports, Fee status
 
 ### Recent Enhancements (May 2026)
+- **Paper Generator (Admin)**: Upload source PDFs and generate branded papers/answer keys with private Blob downloads. See `docs/PAPER_GENERATOR_V1.md`.
 - **Academic Planner (Admin)**: New `Syllabus & Timetable Tracker` for Unit Test / Half-Yearly / Yearly planning.
 - **Template Zone + Notes Tracker**: Admin productivity tools for reminders and internal tracking.
 - **Finance robustness**: Fee creation now handles legacy fee-structure IDs more safely and surfaces actionable validation messages.

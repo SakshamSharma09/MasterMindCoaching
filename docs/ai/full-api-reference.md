@@ -142,6 +142,14 @@
 | POST | `/api/academicplanner` | Create |
 | PUT | `/api/academicplanner/{id}` | Update |
 | DELETE | `/api/academicplanner/{id}` | Delete |
+| POST | `/api/paper-generator/documents` | UploadDocuments |
+| GET | `/api/paper-generator/documents` | GetDocuments |
+| POST | `/api/paper-generator/jobs` | CreateJob |
+| GET | `/api/paper-generator/jobs` | GetJobs |
+| GET | `/api/paper-generator/jobs/{id}` | GetJob |
+| GET | `/api/paper-generator/jobs/{id}/paper` | DownloadPaper |
+| GET | `/api/paper-generator/jobs/{id}/answer-key` | DownloadAnswerKey |
+| GET | `/api/paper-generator/questions` | GetQuestions |
 
 ### AcademicPlannerController
 
@@ -154,6 +162,24 @@
 | POST | `/api/academicplanner` | Create |
 | PUT | `/api/academicplanner/{id}` | Update |
 | DELETE | `/api/academicplanner/{id}` | Delete |
+
+---
+
+### PaperGeneratorController
+
+**File:** `src/backend/MasterMind.API/Controllers/PaperGeneratorController.cs`  
+**Auth Required:** Yes (`[Authorize(Roles = "Admin")]`)
+
+| Method | Path | Action | Notes |
+|--------|------|--------|-------|
+| POST | `/api/paper-generator/documents` | UploadDocuments | Multipart upload, up to 5 PDFs, 25 MB each |
+| GET | `/api/paper-generator/documents` | GetDocuments | Lists recent PDFs for active/session query |
+| POST | `/api/paper-generator/jobs` | CreateJob | Creates paper and answer key PDFs |
+| GET | `/api/paper-generator/jobs` | GetJobs | Lists recent generated papers |
+| GET | `/api/paper-generator/jobs/{id}` | GetJob | Poll single job status |
+| GET | `/api/paper-generator/jobs/{id}/paper` | DownloadPaper | Streams private generated paper PDF |
+| GET | `/api/paper-generator/jobs/{id}/answer-key` | DownloadAnswerKey | Streams private answer key PDF |
+| GET | `/api/paper-generator/questions` | GetQuestions | Searches session-specific reusable question bank |
 
 ---
 
@@ -190,4 +216,4 @@ Authorization: Bearer <access_token>
 
 ---
 
-*Auto-generated baseline with manual updates through 2026-06-14 for AdminNotifications, TeacherPortal, AdminNotes, TemplateZone, AcademicPlanner, TeacherStats, and StudentRemarks.*
+*Auto-generated baseline with manual updates through 2026-06-22 for AdminNotifications, TeacherPortal, AdminNotes, TemplateZone, AcademicPlanner, PaperGenerator, TeacherStats, and StudentRemarks.*

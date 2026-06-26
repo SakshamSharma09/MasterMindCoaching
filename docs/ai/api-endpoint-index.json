@@ -5,7 +5,8 @@
     "services":  {
                      "auth":  "src/frontend/mastermind-web/src/services/authService.ts",
                      "api":  "src/frontend/mastermind-web/src/services/apiService.ts",
-                     "academicPlanner":  "src/frontend/mastermind-web/src/services/academicPlannerService.ts"
+                     "academicPlanner":  "src/frontend/mastermind-web/src/services/academicPlannerService.ts",
+                     "paperGenerator":  "src/frontend/mastermind-web/src/services/paperGeneratorService.ts"
                  },
     "frontendViews":  {
                           "auth":  {
@@ -17,6 +18,7 @@
                                         "templateZone":  "src/frontend/mastermind-web/src/views/admin/finance/TemplateZoneView.vue",
                                         "notesTracker":  "src/frontend/mastermind-web/src/views/admin/NotesTrackerView.vue",
                                         "academicPlanner":  "src/frontend/mastermind-web/src/views/admin/AcademicPlannerView.vue",
+                                        "paperGenerator":  "src/frontend/mastermind-web/src/views/admin/PaperGeneratorView.vue",
                                         "attendance":  "src/frontend/mastermind-web/src/views/admin/AttendanceView.vue",
                                         "sessions":  "src/frontend/mastermind-web/src/views/admin/SessionsView.vue",
                                         "students":  "src/frontend/mastermind-web/src/views/admin/StudentsView.vue",
@@ -625,6 +627,55 @@
                                                              }
                                                          ]
                                           },
+                      "paperGenerator":  {
+                                             "requiresAuth":  true,
+                                             "roles":  [
+                                                           "Admin"
+                                                       ],
+                                             "controller":  "src/backend/MasterMind.API/Controllers/PaperGeneratorController.cs",
+                                             "routes":  [
+                                                            {
+                                                                "method":  "POST",
+                                                                "path":  "/api/paper-generator/documents",
+                                                                "action":  "UploadDocuments"
+                                                            },
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/paper-generator/documents",
+                                                                "action":  "GetDocuments"
+                                                            },
+                                                            {
+                                                                "method":  "POST",
+                                                                "path":  "/api/paper-generator/jobs",
+                                                                "action":  "CreateJob"
+                                                            },
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/paper-generator/jobs",
+                                                                "action":  "GetJobs"
+                                                            },
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/paper-generator/jobs/{id}",
+                                                                "action":  "GetJob"
+                                                            },
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/paper-generator/jobs/{id}/paper",
+                                                                "action":  "DownloadPaper"
+                                                            },
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/paper-generator/jobs/{id}/answer-key",
+                                                                "action":  "DownloadAnswerKey"
+                                                            },
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/paper-generator/questions",
+                                                                "action":  "GetQuestions"
+                                                            }
+                                                        ]
+                                           },
                       "auth":  {
                                    "requiresAuth":  true,
                                    "controller":  "src/backend/MasterMind.API/Controllers/AuthController.cs",

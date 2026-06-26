@@ -115,6 +115,11 @@ const router = createRouter({
           component: () => import('@/views/admin/AcademicPlannerView.vue')
         },
         {
+          path: 'paper-generator',
+          name: 'AdminPaperGenerator',
+          component: () => import('@/views/admin/PaperGeneratorView.vue')
+        },
+        {
           path: 'teachers',
           name: 'AdminTeachers',
           component: () => import('@/views/admin/TeachersView.vue')

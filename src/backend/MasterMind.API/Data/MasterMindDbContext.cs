@@ -66,6 +66,10 @@ namespace MasterMind.API.Data
         public DbSet<MessageTemplate> MessageTemplates { get; set; }
         public DbSet<TemplateDispatchLog> TemplateDispatchLogs { get; set; }
         public DbSet<AdminNote> AdminNotes { get; set; }
+        public DbSet<PaperDocument> PaperDocuments { get; set; }
+        public DbSet<PaperExtractedQuestion> PaperExtractedQuestions { get; set; }
+        public DbSet<PaperGenerationJob> PaperGenerationJobs { get; set; }
+        public DbSet<PaperJobDocument> PaperJobDocuments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -292,6 +296,96 @@ namespace MasterMind.API.Data
                     .WithMany(c => c.TeacherClasses)
                     .HasForeignKey(tc => tc.ClassId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PaperDocument>(entity =>
+            {
+                entity.Property(e => e.FileName).HasMaxLength(260);
+                entity.Property(e => e.ContentType).HasMaxLength(120);
+                entity.Property(e => e.BlobContainer).HasMaxLength(100);
+                entity.Property(e => e.BlobName).HasMaxLength(700);
+                entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(40);
+                entity.Property(e => e.ErrorMessage).HasMaxLength(1000);
+
+                entity.HasIndex(e => new { e.SessionId, e.UploadedByUserId, e.CreatedAt });
+                entity.HasIndex(e => e.BlobName).IsUnique();
+
+                entity.HasOne(e => e.Session)
+                    .WithMany()
+                    .HasForeignKey(e => e.SessionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.UploadedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.UploadedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<PaperExtractedQuestion>(entity =>
+            {
+                entity.Property(e => e.Subject).HasMaxLength(100);
+                entity.Property(e => e.ClassName).HasMaxLength(50);
+                entity.Property(e => e.Chapter).HasMaxLength(160);
+                entity.Property(e => e.QuestionType).HasConversion<string>().HasMaxLength(40);
+                entity.Property(e => e.Difficulty).HasConversion<string>().HasMaxLength(40);
+                entity.Property(e => e.QuestionText).HasMaxLength(4000);
+                entity.Property(e => e.AnswerText).HasMaxLength(4000);
+                entity.Property(e => e.SourceMode).HasMaxLength(50);
+
+                entity.HasIndex(e => new { e.SessionId, e.Subject, e.ClassName, e.QuestionType });
+
+                entity.HasOne(e => e.Session)
+                    .WithMany()
+                    .HasForeignKey(e => e.SessionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.SourceDocument)
+                    .WithMany(d => d.ExtractedQuestions)
+                    .HasForeignKey(e => e.SourceDocumentId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<PaperGenerationJob>(entity =>
+            {
+                entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(40);
+                entity.Property(e => e.StatusMessage).HasMaxLength(300);
+                entity.Property(e => e.ClassName).HasMaxLength(50);
+                entity.Property(e => e.Subject).HasMaxLength(100);
+                entity.Property(e => e.Chapter).HasMaxLength(160);
+                entity.Property(e => e.SettingsJson).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.AiModelUsed).HasMaxLength(120);
+                entity.Property(e => e.ErrorMessage).HasMaxLength(1500);
+                entity.Property(e => e.GeneratedPaperBlobContainer).HasMaxLength(100);
+                entity.Property(e => e.GeneratedPaperBlobName).HasMaxLength(700);
+                entity.Property(e => e.AnswerKeyBlobContainer).HasMaxLength(100);
+                entity.Property(e => e.AnswerKeyBlobName).HasMaxLength(700);
+
+                entity.HasIndex(e => new { e.SessionId, e.RequestedByUserId, e.CreatedAt });
+
+                entity.HasOne(e => e.Session)
+                    .WithMany()
+                    .HasForeignKey(e => e.SessionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.RequestedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.RequestedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<PaperJobDocument>(entity =>
+            {
+                entity.HasKey(e => new { e.PaperGenerationJobId, e.PaperDocumentId });
+
+                entity.HasOne(e => e.PaperGenerationJob)
+                    .WithMany(j => j.JobDocuments)
+                    .HasForeignKey(e => e.PaperGenerationJobId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.PaperDocument)
+                    .WithMany(d => d.JobDocuments)
+                    .HasForeignKey(e => e.PaperDocumentId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

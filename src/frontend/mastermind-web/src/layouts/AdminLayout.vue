@@ -425,6 +425,11 @@ const PlannerIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'cu
   h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2zm4-5h6' })
 ])
 
+const PaperIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M9 12h6m-6 4h6M8 3h5.586a1 1 0 01.707.293l4.414 4.414A1 1 0 0119 8.414V21H8a3 3 0 01-3-3V6a3 3 0 013-3z' }),
+  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M13 3v5h5' })
+])
+
 const TemplateIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
   h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M7 8h10M7 12h6m-9 8h16a2 2 0 002-2V6a2 2 0 00-2-2H8l-4 4v10a2 2 0 002 2z' })
 ])
@@ -449,6 +454,7 @@ const managementNavigation = [
   { name: 'Notes Tracker', href: '/admin/notes-tracker', icon: NotesIcon, iconColor: 'text-accent-500', badge: 'New' },
   { name: 'Account Security', href: '/admin/change-password', icon: SecurityIcon, iconColor: 'text-indigo-500' },
   { name: 'Syllabus & Timetable', href: '/admin/academic-planner', icon: PlannerIcon, iconColor: 'text-indigo-500' },
+  { name: 'Paper Generator', href: '/admin/paper-generator', icon: PaperIcon, iconColor: 'text-blue-500', badge: 'AI' },
   { name: 'Teachers', href: '/admin/teachers', icon: TeachersIcon, iconColor: 'text-primary-500' },
   { name: 'Leads', href: '/admin/leads', icon: LeadsIcon, iconColor: 'text-mastermind-500' },
 ]

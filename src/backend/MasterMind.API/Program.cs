@@ -194,6 +194,14 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
+builder.Services.AddScoped<IPaperGenerationService, PaperGenerationService>();
+builder.Services.AddHttpClient<IOpenRouterPaperService, OpenRouterPaperService>(client =>
+{
+    var baseUrl = builder.Configuration["OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1";
+    client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("OpenRouter:TimeoutSeconds", 90));
+});
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 // Azure Blob Storage for student photos
 var blobConnectionCandidates = new (string Key, string? Value)[]
@@ -220,11 +228,13 @@ if (!string.IsNullOrWhiteSpace(blobConnectionString))
 {
     builder.Configuration["AzureBlobStorage:ConnectionString"] = blobConnectionString;
     builder.Services.AddSingleton<IBlobStorageService, BlobStorageService>();
+    builder.Services.AddSingleton<IPaperDocumentStorageService, PaperDocumentStorageService>();
     Log.Information("Azure Blob Storage configured for student photos using key {BlobConfigKey}", blobConfigMatch.Key);
 }
 else
 {
     builder.Services.AddSingleton<IBlobStorageService, DisabledBlobStorageService>();
+    builder.Services.AddSingleton<IPaperDocumentStorageService, DisabledPaperDocumentStorageService>();
     Log.Warning("Azure Blob Storage not configured - photo uploads will not work. Checked keys: {BlobConfigKeys}", string.Join(", ", blobConnectionCandidates.Select(c => c.Key)));
 }
 
