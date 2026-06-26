@@ -99,6 +99,10 @@
             Duration minutes
             <input v-model.number="form.durationMinutes" class="input-field" type="number" min="1" max="360" />
           </label>
+          <label class="field-label sm:col-span-2">
+            Duration text for prompt
+            <input v-model.trim="form.timeDurationLabel" class="input-field" placeholder="Auto, e.g. 3 Hours" />
+          </label>
         </div>
 
         <div class="mt-6 rounded-2xl bg-surface-50 p-4">
@@ -131,11 +135,11 @@
 
         <div class="mt-6 rounded-2xl border border-primary-100 bg-primary-50 p-4">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-surface-900">Uploaded source relevance</h3>
-            <span class="text-sm font-bold text-primary-700">{{ form.relevancePercentage }}%</span>
+            <h3 class="text-sm font-semibold text-surface-900">Exact source usage</h3>
+            <span class="text-sm font-bold text-primary-700">{{ form.exactPercent }}%</span>
           </div>
-          <input v-model.number="form.relevancePercentage" class="mt-4 w-full accent-primary-600" type="range" min="0" max="100" step="10" />
-          <p class="mt-2 text-xs text-surface-500">Higher values reuse extracted/source questions first; lower values create similar structured questions.</p>
+          <input v-model.number="form.exactPercent" class="mt-4 w-full accent-primary-600" type="range" min="0" max="100" step="5" />
+          <p class="mt-2 text-xs text-surface-500">Used as <code>{EXACT_PERCENT}</code> in the master prompt. The app engine still uses source relevance internally.</p>
         </div>
 
         <div v-if="formError" class="mt-4 rounded-xl border border-error-100 bg-error-50 px-4 py-3 text-sm text-error-700">
@@ -253,11 +257,18 @@ const form = reactive<CreatePaperGenerationJobRequest>({
   chapter: '',
   totalMarks: 80,
   durationMinutes: 180,
+  timeDurationLabel: '',
   mcqCount: 10,
+  fibCount: 5,
+  trueFalseCount: 5,
   oneMarkCount: 10,
   twoMarkCount: 5,
+  threeMarkCount: 3,
+  fourMarkCount: 2,
   fiveMarkCount: 4,
   caseStudyCount: 1,
+  rtcCount: 1,
+  exactPercent: 40,
   easyPercentage: 20,
   mediumPercentage: 50,
   hardPercentage: 30,
@@ -265,14 +276,29 @@ const form = reactive<CreatePaperGenerationJobRequest>({
   selectedDocumentIds: []
 })
 
-type QuestionCountKey = 'mcqCount' | 'oneMarkCount' | 'twoMarkCount' | 'fiveMarkCount' | 'caseStudyCount'
+type QuestionCountKey =
+  | 'mcqCount'
+  | 'fibCount'
+  | 'trueFalseCount'
+  | 'oneMarkCount'
+  | 'twoMarkCount'
+  | 'threeMarkCount'
+  | 'fourMarkCount'
+  | 'fiveMarkCount'
+  | 'caseStudyCount'
+  | 'rtcCount'
 
 const questionFields: Array<{ key: QuestionCountKey; label: string }> = [
   { key: 'mcqCount', label: 'MCQ' },
+  { key: 'fibCount', label: 'Fill blank' },
+  { key: 'trueFalseCount', label: 'True/False' },
   { key: 'oneMarkCount', label: '1 mark' },
   { key: 'twoMarkCount', label: '2 marks' },
+  { key: 'threeMarkCount', label: '3 marks' },
+  { key: 'fourMarkCount', label: '4 marks' },
   { key: 'fiveMarkCount', label: '5 marks' },
-  { key: 'caseStudyCount', label: 'Case' }
+  { key: 'caseStudyCount', label: 'Case' },
+  { key: 'rtcCount', label: 'RTC' }
 ]
 
 const progressSteps: Array<{ status: PaperGenerationStatus; label: string }> = [
@@ -327,30 +353,49 @@ const validateForm = () => {
   if (!form.className.trim()) return 'Class is required.'
   if (!form.subject.trim()) return 'Subject is required.'
   if (difficultyTotal.value !== 100) return 'Difficulty split must total 100%.'
+  if (Number(form.exactPercent || 0) < 0 || Number(form.exactPercent || 0) > 100) return 'Exact source usage must be between 0 and 100%.'
   if (selectedDocumentIds.value.length > 5) return 'Select at most 5 source PDFs.'
   return ''
 }
 
+const formatDurationLabel = () => {
+  if (form.timeDurationLabel?.trim()) return form.timeDurationLabel.trim()
+
+  const duration = Number(form.durationMinutes || 0)
+  if (duration > 0 && duration % 60 === 0) {
+    const hours = duration / 60
+    return `${hours} ${hours === 1 ? 'Hour' : 'Hours'}`
+  }
+
+  return `${duration} Minutes`
+}
+
 const buildPromptVariables = () => {
   const selectedDocuments = documents.value.filter(document => selectedDocumentIds.value.includes(document.id))
+  const exactPercent = Number(form.exactPercent || 0)
 
   return {
-    className: form.className || 'Not selected',
-    subject: form.subject || 'Not selected',
-    chapter: form.chapter || 'Full syllabus',
-    totalMarks: String(form.totalMarks || 0),
-    durationMinutes: String(form.durationMinutes || 0),
-    mcqCount: String(form.mcqCount || 0),
-    oneMarkCount: String(form.oneMarkCount || 0),
-    twoMarkCount: String(form.twoMarkCount || 0),
-    fiveMarkCount: String(form.fiveMarkCount || 0),
-    caseStudyCount: String(form.caseStudyCount || 0),
-    easyPercentage: String(form.easyPercentage || 0),
-    mediumPercentage: String(form.mediumPercentage || 0),
-    hardPercentage: String(form.hardPercentage || 0),
-    relevancePercentage: String(form.relevancePercentage || 0),
-    selectedDocumentCount: String(selectedDocuments.length),
-    selectedDocumentNames: selectedDocuments.length
+    CLASS_NAME: form.className || 'Not selected',
+    SUBJECT_NAME: form.subject || 'Not selected',
+    TOTAL_MARKS: String(form.totalMarks || 0),
+    TIME_DURATION: formatDurationLabel(),
+    MCQ_COUNT: String(form.mcqCount || 0),
+    FIB_COUNT: String(form.fibCount || 0),
+    TF_COUNT: String(form.trueFalseCount || 0),
+    Q1_COUNT: String(form.oneMarkCount || 0),
+    Q2_COUNT: String(form.twoMarkCount || 0),
+    Q3_COUNT: String(form.threeMarkCount || 0),
+    Q4_COUNT: String(form.fourMarkCount || 0),
+    Q5_COUNT: String(form.fiveMarkCount || 0),
+    CASE_STUDY_COUNT: String(form.caseStudyCount || 0),
+    RTC_COUNT: String(form.rtcCount || 0),
+    EXACT_PERCENT: String(exactPercent),
+    GENERATED_PERCENT: String(100 - exactPercent),
+    EASY_PERCENT: String(form.easyPercentage || 0),
+    MEDIUM_PERCENT: String(form.mediumPercentage || 0),
+    HARD_PERCENT: String(form.hardPercentage || 0),
+    SELECTED_DOCUMENT_COUNT: String(selectedDocuments.length),
+    SELECTED_DOCUMENT_NAMES: selectedDocuments.length
       ? selectedDocuments.map(document => document.fileName).join(', ')
       : 'No uploaded documents selected'
   }
@@ -358,9 +403,12 @@ const buildPromptVariables = () => {
 
 const renderPromptTemplate = () => {
   const variables = buildPromptVariables()
+  const withComputedPercent = paperPromptTemplate.replaceAll('{100 - {EXACT_PERCENT}}', variables.GENERATED_PERCENT)
   return Object.entries(variables).reduce((prompt, [key, value]) => {
-    return prompt.replaceAll(`{{${key}}}`, value)
-  }, paperPromptTemplate)
+    return prompt
+      .replaceAll(`{${key}}`, value)
+      .replaceAll(`{{${key}}}`, value)
+  }, withComputedPercent)
 }
 
 const generatePrompt = () => {
@@ -387,8 +435,21 @@ const generatePaper = async () => {
   generating.value = true
   try {
     const summary = await paperGeneratorService.createJob({
-      ...form,
       sessionId: sessionStore.selectedSessionId,
+      className: form.className,
+      subject: form.subject,
+      chapter: form.chapter,
+      totalMarks: form.totalMarks,
+      durationMinutes: form.durationMinutes,
+      mcqCount: form.mcqCount,
+      oneMarkCount: form.oneMarkCount,
+      twoMarkCount: form.twoMarkCount,
+      fiveMarkCount: form.fiveMarkCount,
+      caseStudyCount: form.caseStudyCount,
+      easyPercentage: form.easyPercentage,
+      mediumPercentage: form.mediumPercentage,
+      hardPercentage: form.hardPercentage,
+      relevancePercentage: form.exactPercent ?? form.relevancePercentage,
       selectedDocumentIds: selectedDocumentIds.value
     })
     activeJob.value = summary.job

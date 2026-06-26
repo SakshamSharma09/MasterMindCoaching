@@ -61,11 +61,18 @@ export interface CreatePaperGenerationJobRequest {
   chapter?: string | null
   totalMarks: number
   durationMinutes: number
+  timeDurationLabel?: string
   mcqCount: number
+  fibCount?: number
+  trueFalseCount?: number
   oneMarkCount: number
   twoMarkCount: number
+  threeMarkCount?: number
+  fourMarkCount?: number
   fiveMarkCount: number
   caseStudyCount: number
+  rtcCount?: number
+  exactPercent?: number
   easyPercentage: number
   mediumPercentage: number
   hardPercentage: number
