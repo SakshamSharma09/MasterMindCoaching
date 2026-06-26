@@ -95,8 +95,12 @@ export const useSessionStore = defineStore('session', () => {
       // Handle ApiResponse wrapper - response is the ApiResponse object directly
       sessions.value = (response.data || []).map(normalizeSession)
       
-      // If no session is selected, try to select the active one
-      if (!selectedSessionId.value && sessions.value.length > 0) {
+      const selectedSessionExists = selectedSessionId.value
+        ? sessions.value.some(s => s.id === selectedSessionId.value)
+        : false
+
+      // If no valid session is selected, try to select the active one
+      if ((!selectedSessionId.value || !selectedSessionExists) && sessions.value.length > 0) {
         const active = sessions.value.find(s => s.isActive)
         if (active) {
           selectedSessionId.value = active.id

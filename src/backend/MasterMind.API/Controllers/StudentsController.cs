@@ -45,7 +45,16 @@ public class StudentsController : ControllerBase
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 50;
 
-            // If no sessionId provided, use the active session
+            // If no valid sessionId provided, use the active session
+            if (sessionId.HasValue)
+            {
+                var sessionExists = await _context.Sessions.AnyAsync(s => s.Id == sessionId.Value && !s.IsDeleted);
+                if (!sessionExists)
+                {
+                    sessionId = null;
+                }
+            }
+
             if (!sessionId.HasValue)
             {
                 var activeSession = await _context.Sessions

@@ -93,6 +93,15 @@ public class StudentsController : ControllerBase
 
 ---
 
+### Session Filters Can Hide Existing Data
+**Symptom**: Students, classes, teachers, leads, attendance-linked screens, or dashboard counts appear empty even though data still exists in Azure SQL.  
+**Root Cause**: Most admin list endpoints filter by `SessionId`. Legacy rows with `NULL SessionId`, or a stale `selectedSessionId` persisted in browser storage, can make valid records invisible.  
+**Solution**: Backfill legacy `NULL SessionId` rows to the active session during SQL Server startup compatibility checks, validate incoming `sessionId` query values, and make the frontend session store replace stale selected IDs with the active session.  
+**Files Affected**: `Program.cs`, `StudentsController.cs`, `ClassesController.cs`, `TeachersController.cs`, `LeadsController.cs`, `src/frontend/mastermind-web/src/stores/session.ts`  
+**Date Learned**: 2026-06-26
+
+---
+
 ## Frontend (Vue 3 + Pinia)
 
 ### Android Release Build Must Use Production API Base URL Including /api

@@ -27,6 +27,15 @@ public class TeachersController : ControllerBase
     {
         try
         {
+            if (sessionId.HasValue)
+            {
+                var sessionExists = await _context.Sessions.AnyAsync(s => s.Id == sessionId.Value && !s.IsDeleted);
+                if (!sessionExists)
+                {
+                    sessionId = null;
+                }
+            }
+
             if (!sessionId.HasValue)
             {
                 var activeSession = await _context.Sessions.FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);

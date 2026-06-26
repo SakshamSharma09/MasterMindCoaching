@@ -26,7 +26,16 @@ public class ClassesController : ControllerBase
     {
         try
         {
-            // If no sessionId provided, use the active session
+            // If no valid sessionId provided, use the active session
+            if (sessionId.HasValue)
+            {
+                var sessionExists = await _context.Sessions.AnyAsync(s => s.Id == sessionId.Value && !s.IsDeleted);
+                if (!sessionExists)
+                {
+                    sessionId = null;
+                }
+            }
+
             if (!sessionId.HasValue)
             {
                 var activeSession = await _context.Sessions

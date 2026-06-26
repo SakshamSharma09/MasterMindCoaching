@@ -39,6 +39,13 @@
       "severity": "high"
     },
     {
+      "id": "session-filter-data-hidden",
+      "symptoms": ["students missing", "classes missing", "leads missing", "saved data not showing", "data disappeared", "stale selectedSessionId", "null SessionId"],
+      "category": "backend",
+      "section": "Session Filters Can Hide Existing Data",
+      "severity": "critical"
+    },
+    {
       "id": "pinia-persistence",
       "symptoms": ["redirect loop", "login", "auth state", "localStorage", "token not found"],
       "category": "frontend",

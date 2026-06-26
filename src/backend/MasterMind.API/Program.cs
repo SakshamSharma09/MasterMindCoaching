@@ -1240,6 +1240,21 @@ BEGIN
     ALTER TABLE dbo.Students ADD PhotoBlobName nvarchar(260) NULL;
 END
 
+IF COL_LENGTH('dbo.Students', 'SessionId') IS NULL
+BEGIN
+    ALTER TABLE dbo.Students ADD SessionId int NULL;
+END
+
+IF COL_LENGTH('dbo.Classes', 'SessionId') IS NULL
+BEGIN
+    ALTER TABLE dbo.Classes ADD SessionId int NULL;
+END
+
+IF COL_LENGTH('dbo.Teachers', 'SessionId') IS NULL
+BEGIN
+    ALTER TABLE dbo.Teachers ADD SessionId int NULL;
+END
+
 IF COL_LENGTH('dbo.Leads', 'SessionId') IS NULL
 BEGIN
     ALTER TABLE dbo.Leads ADD SessionId int NULL;
@@ -1254,6 +1269,9 @@ DECLARE @ActiveSessionId int;
 SELECT TOP 1 @ActiveSessionId = Id FROM dbo.Sessions WHERE IsActive = 1 AND IsDeleted = 0 ORDER BY Id DESC;
 IF @ActiveSessionId IS NOT NULL
 BEGIN
+    UPDATE dbo.Students SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
+    UPDATE dbo.Classes SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
+    UPDATE dbo.Teachers SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
     UPDATE dbo.Leads SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
     UPDATE dbo.Expenses SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
 END
