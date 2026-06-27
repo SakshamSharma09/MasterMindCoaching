@@ -6,7 +6,8 @@
                      "auth":  "src/frontend/mastermind-web/src/services/authService.ts",
                      "api":  "src/frontend/mastermind-web/src/services/apiService.ts",
                      "academicPlanner":  "src/frontend/mastermind-web/src/services/academicPlannerService.ts",
-                     "paperGenerator":  "src/frontend/mastermind-web/src/services/paperGeneratorService.ts"
+                     "paperGenerator":  "src/frontend/mastermind-web/src/services/paperGeneratorService.ts",
+                     "notifications":  "src/frontend/mastermind-web/src/services/notificationService.ts"
                  },
     "frontendViews":  {
                           "auth":  {
@@ -110,6 +111,17 @@
                                                        }
                                                    ]
                                     },
+                      "notifications":  {
+                                            "requiresAuth":  true,
+                                            "controller":  "src/backend/MasterMind.API/Controllers/NotificationsController.cs",
+                                            "routes":  [
+                                                           {
+                                                               "method":  "GET",
+                                                               "path":  "/api/notifications",
+                                                               "action":  "GetNotifications"
+                                                           }
+                                                       ]
+                                        },
                       "feecollection":  {
                                             "requiresAuth":  true,
                                             "controller":  "src/backend/MasterMind.API/Controllers/FeeCollectionController.cs",

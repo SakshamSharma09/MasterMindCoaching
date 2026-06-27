@@ -83,11 +83,42 @@
           <div class="flex-1"></div>
 
           <!-- Notifications -->
-          <button class="p-2 text-gray-400 hover:text-gray-600">
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM21 5a2 2 0 00-2-2H5a2 2 0 00-2 2v14l7-7h11z"></path>
-            </svg>
-          </button>
+          <div class="relative">
+            <button class="relative p-2 text-gray-400 hover:text-gray-600" type="button" @click="toggleNotifications">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM21 5a2 2 0 00-2-2H5a2 2 0 00-2 2v14l7-7h11z"></path>
+              </svg>
+              <span v-if="notificationCount > 0" class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                {{ notificationCount }}
+              </span>
+            </button>
+
+            <div v-if="notificationsOpen" class="absolute right-0 mt-3 w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+              <div class="border-b border-slate-100 px-4 py-3">
+                <p class="text-sm font-bold text-slate-950">Parent notifications</p>
+                <p class="text-xs text-slate-500">{{ notificationSummary }}</p>
+              </div>
+              <div v-if="notificationsLoading" class="px-4 py-5 text-sm text-slate-500">Loading updates...</div>
+              <div v-else-if="notifications.length === 0" class="px-4 py-5 text-sm text-slate-500">No pending fee or feedback updates.</div>
+              <button
+                v-for="item in notifications"
+                v-else
+                :key="item.id"
+                type="button"
+                class="flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
+                @click="openNotification(item)"
+              >
+                <span class="mt-1 h-8 w-1.5 shrink-0 rounded-full" :class="notificationTone(item.type)"></span>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm font-semibold text-slate-950">{{ item.title }}</span>
+                  <span class="mt-0.5 block text-xs leading-5 text-slate-500">{{ item.message }}</span>
+                </span>
+                <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" :class="notificationPriorityClass(item.priority)">
+                  {{ item.priority }}
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -116,6 +147,7 @@
 import { ref, computed, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { notificationService, type PortalNotification } from '@/services/notificationService'
 
 // Icon components
 const HomeIcon = () => h('svg', { class: 'h-5 w-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
@@ -142,6 +174,9 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const sidebarOpen = ref(false)
+const notificationsOpen = ref(false)
+const notificationsLoading = ref(false)
+const notifications = ref<PortalNotification[]>([])
 
 const navigation = [
   { name: 'Dashboard', href: '/parent', icon: HomeIcon },
@@ -157,15 +192,60 @@ const userInitials = computed(() => {
   return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
 })
 
+const notificationCount = computed(() => Math.min(notifications.value.length, 99))
+const notificationSummary = computed(() => {
+  if (notificationsLoading.value) return 'Checking fees and teacher feedback'
+  if (notifications.value.length === 0) return 'Everything is clear for now'
+  const fees = notifications.value.filter(item => item.type === 'FeeReminder').length
+  const feedback = notifications.value.filter(item => item.type === 'TeacherFeedback').length
+  return `${fees} fee reminder${fees === 1 ? '' : 's'}, ${feedback} feedback update${feedback === 1 ? '' : 's'}`
+})
+
+const notificationTone = (type: string) => {
+  if (type === 'FeeReminder') return 'bg-rose-400'
+  if (type === 'TeacherFeedback') return 'bg-emerald-400'
+  return 'bg-slate-300'
+}
+
+const notificationPriorityClass = (priority: string) => {
+  if (priority === 'High') return 'bg-rose-50 text-rose-700'
+  if (priority === 'Medium') return 'bg-amber-50 text-amber-700'
+  return 'bg-slate-100 text-slate-600'
+}
+
+const loadNotifications = async () => {
+  notificationsLoading.value = true
+  try {
+    notifications.value = await notificationService.getNotifications()
+  } catch (error) {
+    console.error('Failed to load parent notifications:', error)
+    notifications.value = []
+  } finally {
+    notificationsLoading.value = false
+  }
+}
+
+const toggleNotifications = async () => {
+  notificationsOpen.value = !notificationsOpen.value
+  if (notificationsOpen.value) await loadNotifications()
+}
+
+const openNotification = (item: PortalNotification) => {
+  notificationsOpen.value = false
+  if (item.actionUrl) router.push(item.actionUrl)
+}
+
 const logout = async () => {
   await authStore.logout()
   router.push('/login')
 }
 
 onMounted(() => {
+  loadNotifications()
   // Close sidebar on mobile when route changes
   router.afterEach(() => {
     sidebarOpen.value = false
+    notificationsOpen.value = false
   })
 })
 </script>

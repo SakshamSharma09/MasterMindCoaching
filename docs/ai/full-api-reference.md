@@ -60,6 +60,7 @@
 | GET | `/api/dashboard/parent-stats` | GetParentStats |
 | GET | `/api/dashboard/teacher-stats` | GetTeacherStats |
 | GET | `/api/dashboard/recent-students` | GetRecentStudents |
+| GET | `/api/notifications` | GetNotifications |
 | GET | `/api/expenses` | GetExpenses |
 | GET | `/api/expenses/categories` | GetExpenseCategories |
 | GET | `/api/expenses/summary` | GetExpenseSummary |

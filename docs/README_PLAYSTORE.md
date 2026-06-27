@@ -22,6 +22,22 @@ Use this as the single entry point for Android Play Store release work.
 - Auth UX aligned for production:
   - email-only OTP flow for non-admin users
   - no quick demo login panel in primary login flow
+- Parent/teacher in-app bell notifications are wired to production data:
+  - parent overdue/upcoming fee reminders
+  - parent-visible teacher feedback
+  - teacher salary status and attendance reminders
+
+## Notification Scope
+
+The current mobile build supports in-app bell notifications and foreground browser-style notifications when the app is open and permission is granted.
+
+True background phone push notifications require Firebase Cloud Messaging setup before Play Store production release:
+
+1. Create a Firebase project for `com.mastermind.coaching`.
+2. Add the Android app in Firebase and download `google-services.json`.
+3. Add Capacitor/Firebase push plugin support.
+4. Store device tokens through a secured backend endpoint.
+5. Send push messages from backend jobs when fees become overdue, teacher feedback is created, or salary status changes.
 
 ## What You Need To Provide
 
