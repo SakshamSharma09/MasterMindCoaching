@@ -13,7 +13,7 @@
     </div>
 
     <!-- Child Selection with enhanced styling -->
-    <div class="mb-8 animate-slide-up" style="animation-delay: 0.1s;">
+    <div v-if="children.length > 1" class="mb-8 animate-slide-up" style="animation-delay: 0.1s;">
       <div class="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/40 p-6 shadow-glass">
         <label for="child-select" class="block text-sm font-semibold text-gray-700 mb-3">Select Child</label>
         <select
@@ -25,6 +25,15 @@
             {{ child.firstName }} {{ child.lastName }} - {{ child.className }}
           </option>
         </select>
+      </div>
+    </div>
+    <div v-else-if="children.length === 1" class="mb-8 animate-slide-up" style="animation-delay: 0.1s;">
+      <div class="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/40 p-6 shadow-glass">
+        <p class="text-sm font-semibold text-gray-500">Viewing child</p>
+        <p class="mt-1 text-xl font-bold text-gray-900">
+          {{ children[0].firstName }} {{ children[0].lastName }}
+          <span class="text-base font-semibold text-primary-600">- {{ children[0].className }}</span>
+        </p>
       </div>
     </div>
 
@@ -128,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { parentService, type ParentChild } from '@/services/parentService'
 
 // Reactive data
@@ -145,6 +154,7 @@ const currentChildStats = computed(() => {
 })
 
 const recentActivities = ref<Array<{ id: string; title: string; description: string; date: string }>>([])
+const SELECTED_CHILD_KEY = 'mastermind-parent-selected-child'
 
 // Load data
 const loadData = async () => {
@@ -157,7 +167,10 @@ const loadData = async () => {
     children.value = await parentService.getChildren()
     
     if (children.value.length > 0) {
-      selectedChild.value = children.value[0].id
+      const savedChildId = Number(localStorage.getItem(SELECTED_CHILD_KEY))
+      selectedChild.value = children.value.some(child => child.id === savedChildId)
+        ? savedChildId
+        : children.value[0].id
       
       // Load stats for each child
       for (const child of children.value) {
@@ -222,6 +235,12 @@ const loadData = async () => {
 
 onMounted(() => {
   loadData()
+})
+
+watch(selectedChild, childId => {
+  if (childId) {
+    localStorage.setItem(SELECTED_CHILD_KEY, childId.toString())
+  }
 })
 </script>
 

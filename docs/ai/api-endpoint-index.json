@@ -96,6 +96,11 @@
                                                        },
                                                        {
                                                            "method":  "GET",
+                                                           "path":  "/api/dashboard/daily-stats",
+                                                           "action":  "GetDailyStats"
+                                                       },
+                                                       {
+                                                           "method":  "GET",
                                                            "path":  "/api/dashboard/parent-stats",
                                                            "action":  "GetParentStats"
                                                        },
@@ -465,6 +470,11 @@
                                                             "method":  "GET",
                                                             "path":  "/api/attendance",
                                                             "action":  "GetAttendance"
+                                                        },
+                                                        {
+                                                            "method":  "GET",
+                                                            "path":  "/api/attendance/report",
+                                                            "action":  "GetAttendanceReport"
                                                         },
                                                         {
                                                             "method":  "POST",

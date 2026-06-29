@@ -171,7 +171,7 @@ const form = reactive({
   password: ''
 })
 
-const loginMode = ref<LoginMode>('admin-password')
+const loginMode = ref<LoginMode>('mobile-password')
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
@@ -260,5 +260,5 @@ const handleSubmit = async () => {
   }
 }
 
-selectMode('admin-password')
+selectMode('mobile-password')
 </script>

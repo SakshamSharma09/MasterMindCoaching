@@ -6,6 +6,12 @@
         <p class="text-surface-500 mt-1">Update the password for your account.</p>
       </div>
 
+      <div v-if="authStore.user?.mobile" class="mb-5 rounded-2xl border border-primary-100 bg-primary-50/70 p-4">
+        <p class="text-sm font-semibold text-primary-900">Mobile password login number</p>
+        <p class="mt-1 text-lg font-bold text-primary-700">{{ authStore.user.mobile }}</p>
+        <p class="mt-1 text-sm text-primary-700/80">Use this mobile number with the password you set here.</p>
+      </div>
+
       <form class="space-y-4" @submit.prevent="submit">
         <div>
           <label class="block text-sm font-medium text-surface-700 mb-2">New Password</label>

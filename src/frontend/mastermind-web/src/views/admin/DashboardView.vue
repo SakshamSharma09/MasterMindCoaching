@@ -109,6 +109,44 @@
       </div>
     </div>
 
+    <div class="card-premium">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-surface-900">Daily Snapshot</h2>
+          <p class="text-sm text-surface-500">Operational numbers for the selected date.</p>
+        </div>
+        <input
+          v-model="dailyStatsDate"
+          type="date"
+          class="input-primary w-full lg:w-48"
+          @change="loadDailyStats"
+        />
+      </div>
+
+      <div class="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <div class="rounded-2xl bg-primary-50 p-4 ring-1 ring-primary-100">
+          <p class="text-xs font-semibold uppercase tracking-wide text-primary-700">Students</p>
+          <p class="mt-2 text-2xl font-bold text-primary-950">{{ dailyStats.totalStudents }}</p>
+        </div>
+        <div class="rounded-2xl bg-mastermind-50 p-4 ring-1 ring-mastermind-100">
+          <p class="text-xs font-semibold uppercase tracking-wide text-mastermind-700">Classes</p>
+          <p class="mt-2 text-2xl font-bold text-mastermind-950">{{ dailyStats.totalClasses }}</p>
+        </div>
+        <div class="rounded-2xl bg-success-50 p-4 ring-1 ring-success-100">
+          <p class="text-xs font-semibold uppercase tracking-wide text-success-700">Present</p>
+          <p class="mt-2 text-2xl font-bold text-success-950">{{ dailyStats.present }}</p>
+        </div>
+        <div class="rounded-2xl bg-error-50 p-4 ring-1 ring-error-100">
+          <p class="text-xs font-semibold uppercase tracking-wide text-error-700">Absent</p>
+          <p class="mt-2 text-2xl font-bold text-error-950">{{ dailyStats.absent }}</p>
+        </div>
+        <div class="rounded-2xl bg-warning-50 p-4 ring-1 ring-warning-100">
+          <p class="text-xs font-semibold uppercase tracking-wide text-warning-700">Fee Received</p>
+          <p class="mt-2 text-2xl font-bold text-warning-950">Rs {{ formatCurrency(dailyStats.feeReceived) }}</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <!-- Recent Students - Takes 2 columns -->
@@ -348,6 +386,17 @@ interface LeadItem {
   interest?: string
 }
 
+interface DailyStats {
+  totalStudents: number
+  totalClasses: number
+  present: number
+  absent: number
+  marked: number
+  notMarked: number
+  attendancePercentage: number
+  feeReceived: number
+}
+
 const stats = ref<DashboardStats>({
   totalStudents: 0,
   totalTeachers: 0,
@@ -357,6 +406,17 @@ const stats = ref<DashboardStats>({
 
 const recentStudents = ref<StudentItem[]>([])
 const recentLeads = ref<LeadItem[]>([])
+const dailyStatsDate = ref(new Date().toISOString().split('T')[0])
+const dailyStats = ref<DailyStats>({
+  totalStudents: 0,
+  totalClasses: 0,
+  present: 0,
+  absent: 0,
+  marked: 0,
+  notMarked: 0,
+  attendancePercentage: 0,
+  feeReceived: 0
+})
 
 const firstName = computed(() => authStore.user?.firstName || 'Admin')
 const currentDate = computed(() => format(new Date(), 'EEEE, MMMM do, yyyy'))
@@ -437,16 +497,56 @@ const loadDashboardData = async () => {
   }
 }
 
+const loadDailyStats = async () => {
+  try {
+    const selectedSessionId = sessionStore.selectedSessionId
+    if (!selectedSessionId) {
+      dailyStats.value = {
+        totalStudents: 0,
+        totalClasses: 0,
+        present: 0,
+        absent: 0,
+        marked: 0,
+        notMarked: 0,
+        attendancePercentage: 0,
+        feeReceived: 0
+      }
+      return
+    }
+
+    const res = await apiService.get('/dashboard/daily-stats', {
+      params: { date: dailyStatsDate.value, sessionId: selectedSessionId }
+    })
+    dailyStats.value = {
+      totalStudents: res?.data?.totalStudents ?? res?.data?.TotalStudents ?? 0,
+      totalClasses: res?.data?.totalClasses ?? res?.data?.TotalClasses ?? 0,
+      present: res?.data?.present ?? res?.data?.Present ?? 0,
+      absent: res?.data?.absent ?? res?.data?.Absent ?? 0,
+      marked: res?.data?.marked ?? res?.data?.Marked ?? 0,
+      notMarked: res?.data?.notMarked ?? res?.data?.NotMarked ?? 0,
+      attendancePercentage: res?.data?.attendancePercentage ?? res?.data?.AttendancePercentage ?? 0,
+      feeReceived: res?.data?.feeReceived ?? res?.data?.FeeReceived ?? 0
+    }
+  } catch (error) {
+    console.error('Failed to load daily dashboard stats:', error)
+  }
+}
+
 onMounted(() => {
   if (sessionStore.sessions.length === 0) {
-    sessionStore.loadSessions().then(() => loadDashboardData())
+    sessionStore.loadSessions().then(async () => {
+      await loadDashboardData()
+      await loadDailyStats()
+    })
   } else {
     loadDashboardData()
+    loadDailyStats()
   }
 })
 
 watch(() => sessionStore.selectedSessionId, () => {
   loadDashboardData()
+  loadDailyStats()
 })
 </script>
 

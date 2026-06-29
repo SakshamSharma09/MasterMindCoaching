@@ -94,6 +94,76 @@ public class DashboardController : ControllerBase
         return await GetStats(sessionId);
     }
 
+    [HttpGet("daily-stats")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<object>>> GetDailyStats([FromQuery] DateOnly date, [FromQuery] int? sessionId = null)
+    {
+        try
+        {
+            if (!sessionId.HasValue)
+            {
+                var activeSession = await _context.Sessions.FirstOrDefaultAsync(s => s.IsActive && !s.IsDeleted);
+                sessionId = activeSession?.Id;
+            }
+
+            var start = date.ToDateTime(TimeOnly.MinValue);
+            var end = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+            var studentsQuery = _context.Students.Where(s => !s.IsDeleted && s.IsActive);
+            var classesQuery = _context.Classes.Where(c => !c.IsDeleted && c.IsActive);
+            var attendanceQuery = _context.Attendances.Where(a => !a.IsDeleted && a.Date == date);
+            var paymentQuery = _context.Payments
+                .Include(p => p.StudentFee)
+                    .ThenInclude(sf => sf.Student)
+                .Where(p => !p.IsDeleted && p.Status == PaymentStatus.Completed && p.PaymentDate >= start && p.PaymentDate < end);
+
+            if (sessionId.HasValue)
+            {
+                studentsQuery = studentsQuery.Where(s => s.SessionId == sessionId);
+                classesQuery = classesQuery.Where(c => c.SessionId == sessionId);
+                attendanceQuery = attendanceQuery.Where(a => a.Student.SessionId == sessionId || a.Class.SessionId == sessionId);
+                paymentQuery = paymentQuery.Where(p => p.StudentFee.Student.SessionId == sessionId);
+            }
+
+            var totalStudents = await studentsQuery.CountAsync();
+            var totalClasses = await classesQuery.CountAsync();
+            var present = await attendanceQuery.CountAsync(a => a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late || a.Status == AttendanceStatus.HalfDay);
+            var absent = await attendanceQuery.CountAsync(a => a.Status == AttendanceStatus.Absent);
+            var marked = await attendanceQuery.Select(a => a.StudentId).Distinct().CountAsync();
+            var feeReceived = await paymentQuery.SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+            var data = new
+            {
+                Date = date.ToString("yyyy-MM-dd"),
+                TotalStudents = totalStudents,
+                TotalClasses = totalClasses,
+                Present = present,
+                Absent = absent,
+                Marked = marked,
+                NotMarked = Math.Max(0, totalStudents - marked),
+                AttendancePercentage = totalStudents == 0 ? 0 : Math.Round((decimal)present * 100m / totalStudents, 2),
+                FeeReceived = feeReceived
+            };
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Daily dashboard stats retrieved successfully",
+                Data = data
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving daily dashboard stats");
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Error retrieving daily dashboard stats"
+            });
+        }
+    }
+
     /// <summary>
     /// Get teacher dashboard statistics
     /// </summary>

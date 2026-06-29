@@ -9,8 +9,8 @@
 | Metric | Value |
 |--------|-------|
 | Total Controllers | 14 |
-| Total Endpoints | 90 |
-| Protected Endpoints | 90 |
+| Total Endpoints | 92 |
+| Protected Endpoints | 92 |
 | Public Endpoints | 0 |
 
 ## Base URLs
@@ -31,6 +31,7 @@
 
 | Method | Path | Action |
 |--------|------|--------|| GET | `/api/attendance` | GetAttendance |
+| GET | `/api/attendance/report` | GetAttendanceReport |
 | POST | `/api/attendance` | MarkAttendance |
 | PUT | `/api/attendance/{id}` | UpdateAttendance |
 | DELETE | `/api/attendance/{id}` | DeleteAttendance |
@@ -57,6 +58,7 @@
 | DELETE | `/api/classes/{id}` | DeleteClass |
 | GET | `/api/dashboard/stats` | GetStats |
 | GET | `/api/dashboard/admin-stats` | GetAdminStats |
+| GET | `/api/dashboard/daily-stats` | GetDailyStats |
 | GET | `/api/dashboard/parent-stats` | GetParentStats |
 | GET | `/api/dashboard/teacher-stats` | GetTeacherStats |
 | GET | `/api/dashboard/recent-students` | GetRecentStudents |

@@ -9,11 +9,36 @@ export interface AttendanceRecord {
   studentName: string
   classId: number
   className: string
-  status: 'present' | 'absent' | 'late' | 'halfday' | 'holiday' | 'leave'
+  status: 'present' | 'absent' | 'late' | 'halfday' | 'holiday' | 'leave' | 'notmarked'
   checkInTime: string
   checkOutTime?: string
   date: string
   remarks?: string
+  parentName?: string
+  parentMobile?: string
+  studentMobile?: string
+  isMarked?: boolean
+}
+
+export interface AttendanceDailySummary {
+  date: string
+  present: number
+  absent: number
+  notMarked: number
+  total: number
+  percentage: number
+}
+
+export interface AttendanceReport {
+  startDate: string
+  endDate: string
+  present: number
+  absent: number
+  notMarked: number
+  total: number
+  percentage: number
+  daily: AttendanceDailySummary[]
+  records: AttendanceRecord[]
 }
 
 export interface CreateAttendanceDto {
@@ -75,7 +100,7 @@ export const attendanceService = {
         // Normalize status to lowercase
         status = status.toLowerCase()
         // Validate it's a known status
-        const validStatuses = ['present', 'absent', 'late', 'halfday', 'holiday', 'leave']
+        const validStatuses = ['present', 'absent', 'late', 'halfday', 'holiday', 'leave', 'notmarked']
         status = validStatuses.includes(status) ? status : 'present'
       } 
       // If status is a number, map it using the reverse map
@@ -93,6 +118,22 @@ export const attendanceService = {
       }
     })
     return mappedData
+  },
+
+  async getAttendanceReport(startDate: string, endDate: string, classId?: number): Promise<AttendanceReport> {
+    const params = new URLSearchParams()
+    params.append('startDate', startDate)
+    params.append('endDate', endDate)
+    if (classId) params.append('classId', classId.toString())
+
+    const response = await apiService.get(`/attendance/report?${params.toString()}`)
+    return {
+      ...response.data,
+      records: (response.data?.records || []).map((record: any) => ({
+        ...record,
+        status: typeof record.status === 'string' ? record.status.toLowerCase() : ATTENDANCE_STATUS_REVERSE_MAP[record.status] || 'present'
+      }))
+    }
   },
 
   // Mark attendance for a student

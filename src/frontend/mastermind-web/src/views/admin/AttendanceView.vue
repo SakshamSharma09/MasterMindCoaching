@@ -43,6 +43,17 @@
         >
           Bulk Attendance
         </button>
+        <button
+          @click="activeTab = 'reports'"
+          :class="[
+            activeTab === 'reports'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+            'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm'
+          ]"
+        >
+          Reports
+        </button>
       </nav>
     </div>
 
@@ -75,6 +86,7 @@
             <option value="present">Present</option>
             <option value="absent">Absent</option>
             <option value="late">Late</option>
+            <option value="notmarked">Not Marked</option>
           </select>
       </div>
       <div>
@@ -86,6 +98,20 @@
           class="mt-1 input-primary"
         />
       </div>
+    </div>
+
+    <div v-if="absentAttendance.length > 0" class="mt-5 flex flex-col gap-3 rounded-2xl border border-red-100 bg-red-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold text-red-900">{{ absentAttendance.length }} absent student{{ absentAttendance.length === 1 ? '' : 's' }} on {{ selectedDate }}</p>
+        <p class="mt-1 text-sm text-red-700">Prepare WhatsApp absence messages for linked parent numbers.</p>
+      </div>
+      <button
+        type="button"
+        @click="openAbsentWhatsAppBatch"
+        class="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
+      >
+        Send WhatsApp Follow-ups
+      </button>
     </div>
 
     <!-- Attendance Table -->
@@ -154,16 +180,10 @@
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     <span
-                      :class="[
-                        record.status === 'present' 
-                          ? 'bg-green-100 text-green-800 ring-1 ring-green-500/20' 
-                          : record.status === 'absent'
-                          ? 'bg-red-100 text-red-800 ring-1 ring-red-500/20'
-                          : 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-500/20'
-                      ]"
+                      :class="getStatusClass(record.status)"
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                     >
-                      {{ record.status }}
+                      {{ formatStatus(record.status) }}
                     </span>
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
@@ -177,13 +197,21 @@
                       @click="editAttendance(record)"
                       class="text-indigo-600 hover:text-indigo-900 mr-4"
                     >
-                      Edit
+                      {{ record.id ? 'Edit' : 'Mark' }}
                     </button>
                     <button
+                      v-if="record.id"
                       @click="deleteAttendance(record.id)"
                       class="text-red-600 hover:text-red-900"
                     >
                       Delete
+                    </button>
+                    <button
+                      v-if="record.status === 'absent'"
+                      @click="openAbsentWhatsApp(record)"
+                      class="ml-4 text-emerald-600 hover:text-emerald-900"
+                    >
+                      WhatsApp
                     </button>
                   </td>
                 </tr>
@@ -193,6 +221,70 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <!-- Attendance Reports Tab -->
+    <div v-if="activeTab === 'reports'" class="mt-6">
+      <div class="rounded-2xl border border-white/60 bg-white/80 p-6 shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Attendance Reports</h2>
+            <p class="mt-1 text-sm text-gray-500">Review present, absent, and not-marked records across a custom date range.</p>
+          </div>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">From</label>
+              <input v-model="reportStartDate" type="date" class="mt-1 input-primary" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">To</label>
+              <input v-model="reportEndDate" type="date" class="mt-1 input-primary" />
+            </div>
+            <button
+              type="button"
+              @click="loadReport"
+              :disabled="loadingReport"
+              class="mt-6 inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 sm:mt-auto"
+            >
+              {{ loadingReport ? 'Loading...' : 'Generate Report' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="attendanceReport" class="mt-6 space-y-6">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div class="rounded-2xl bg-green-50 p-4 ring-1 ring-green-100">
+              <p class="text-sm font-medium text-green-700">Present</p>
+              <p class="mt-2 text-3xl font-bold text-green-900">{{ attendanceReport.present }}</p>
+            </div>
+            <div class="rounded-2xl bg-red-50 p-4 ring-1 ring-red-100">
+              <p class="text-sm font-medium text-red-700">Absent</p>
+              <p class="mt-2 text-3xl font-bold text-red-900">{{ attendanceReport.absent }}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <p class="text-sm font-medium text-slate-700">Not Marked</p>
+              <p class="mt-2 text-3xl font-bold text-slate-900">{{ attendanceReport.notMarked }}</p>
+            </div>
+            <div class="rounded-2xl bg-indigo-50 p-4 ring-1 ring-indigo-100">
+              <p class="text-sm font-medium text-indigo-700">Attendance</p>
+              <p class="mt-2 text-3xl font-bold text-indigo-900">{{ attendanceReport.percentage }}%</p>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-gray-100 bg-white p-4">
+            <h3 class="text-sm font-semibold text-gray-900">Daily Trend</h3>
+            <div class="mt-4 space-y-3">
+              <div v-for="day in attendanceReport.daily" :key="day.date" class="grid grid-cols-[92px_1fr_58px] items-center gap-3">
+                <span class="text-xs font-medium text-gray-500">{{ day.date }}</span>
+                <div class="h-3 overflow-hidden rounded-full bg-gray-100">
+                  <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-indigo-500" :style="{ width: `${Math.min(100, day.percentage)}%` }"></div>
+                </div>
+                <span class="text-right text-xs font-semibold text-gray-700">{{ day.percentage }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Bulk Attendance Tab -->
@@ -479,7 +571,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { formatClassForDropdown } from '@/utils/classUtils'
-import { attendanceService, type AttendanceRecord, ATTENDANCE_STATUS_MAP, ATTENDANCE_STATUS_REVERSE_MAP } from '@/services/attendanceService'
+import { attendanceService, type AttendanceRecord, type AttendanceReport, ATTENDANCE_STATUS_MAP, ATTENDANCE_STATUS_REVERSE_MAP } from '@/services/attendanceService'
 import { classesService } from '@/services/classesService'
 import { studentsService, type Student } from '@/services/studentsService'
 
@@ -491,6 +583,10 @@ const selectedClass = ref('')
 const selectedStatus = ref('')
 const searchQuery = ref('')
 const loading = ref(false)
+const reportStartDate = ref(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0])
+const reportEndDate = ref(new Date().toISOString().split('T')[0])
+const attendanceReport = ref<AttendanceReport | null>(null)
+const loadingReport = ref(false)
 
 // Modal State
 const showMarkModal = ref(false)
@@ -526,6 +622,10 @@ const filteredAttendance = computed(() => {
   })
 })
 
+const absentAttendance = computed(() =>
+  filteredAttendance.value.filter(record => record.status === 'absent')
+)
+
 // Computed property for grouped bulk students
 const groupedBulkStudents = computed(() => {
   const grouped: { [key: number]: any } = {}
@@ -556,6 +656,19 @@ const loadData = async () => {
     console.error('Error fetching attendance:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const loadReport = async () => {
+  loadingReport.value = true
+  try {
+    const classId = selectedClass.value ? parseInt(selectedClass.value) : undefined
+    attendanceReport.value = await attendanceService.getAttendanceReport(reportStartDate.value, reportEndDate.value, classId)
+  } catch (error: any) {
+    console.error('Error fetching attendance report:', error)
+    alert(error.response?.data?.message || 'Error loading attendance report')
+  } finally {
+    loadingReport.value = false
   }
 }
 
@@ -593,6 +706,63 @@ const getAttendanceBoards = (record: any) => {
   return classInfo?.board ? [classInfo.board] : []
 }
 
+const formatStatus = (status: string) => {
+  const labels: Record<string, string> = {
+    present: 'Present',
+    absent: 'Absent',
+    late: 'Late',
+    halfday: 'Half Day',
+    holiday: 'Holiday',
+    leave: 'Leave',
+    notmarked: 'Not Marked'
+  }
+  return labels[status] || status
+}
+
+const getStatusClass = (status: string) => {
+  const classes: Record<string, string> = {
+    present: 'bg-green-100 text-green-800 ring-1 ring-green-500/20',
+    absent: 'bg-red-100 text-red-800 ring-1 ring-red-500/20',
+    late: 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-500/20',
+    halfday: 'bg-orange-100 text-orange-800 ring-1 ring-orange-500/20',
+    holiday: 'bg-blue-100 text-blue-800 ring-1 ring-blue-500/20',
+    leave: 'bg-purple-100 text-purple-800 ring-1 ring-purple-500/20',
+    notmarked: 'bg-slate-100 text-slate-700 ring-1 ring-slate-400/20'
+  }
+  return classes[status] || classes.notmarked
+}
+
+const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '')
+
+const buildAbsentMessage = (record: AttendanceRecord) => {
+  return `Namaste ${record.parentName || 'Parent'}, ${record.studentName} was marked absent for ${record.className} on ${record.date}. Please contact MasterMind Coaching Classes if this needs correction.`
+}
+
+const openAbsentWhatsApp = (record: AttendanceRecord) => {
+  const phone = normalizePhone(record.parentMobile || record.studentMobile)
+  if (!phone) {
+    alert(`No WhatsApp/mobile number found for ${record.studentName}.`)
+    return
+  }
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildAbsentMessage(record))}`, '_blank', 'noopener,noreferrer')
+}
+
+const openAbsentWhatsAppBatch = () => {
+  const targets = absentAttendance.value.filter(record => normalizePhone(record.parentMobile || record.studentMobile))
+  if (targets.length === 0) {
+    alert('No parent WhatsApp/mobile numbers found for the absent students.')
+    return
+  }
+
+  targets.slice(0, 8).forEach((record, index) => {
+    window.setTimeout(() => openAbsentWhatsApp(record), index * 450)
+  })
+
+  if (targets.length > 8) {
+    alert('Opened the first 8 WhatsApp chats. Please use individual WhatsApp buttons for the remaining students to avoid browser popup blocking.')
+  }
+}
+
 // API methods
 const openMarkModal = () => {
   isEditing.value = false
@@ -613,8 +783,8 @@ const openMarkModal = () => {
 }
 
 const editAttendance = async (record: AttendanceRecord) => {
-  isEditing.value = true
-  editingId.value = record.id
+  isEditing.value = record.id > 0
+  editingId.value = record.id > 0 ? record.id : null
   
   // Need to load students for the class of the record
   markForm.value.classId = record.classId.toString()
@@ -813,7 +983,7 @@ const saveBulkAttendance = async () => {
       if (existingAttendance.length > 0) {
         // Update existing attendance
         const existingRecord = existingAttendance.find(record => record.studentId === student.id)
-        if (existingRecord) {
+        if (existingRecord && existingRecord.id > 0) {
           console.log(`Updating existing attendance for ${student.firstName}`)
           return await attendanceService.updateAttendance(existingRecord.id, {
             status: status,
@@ -822,11 +992,11 @@ const saveBulkAttendance = async () => {
             remarks: attendanceData.remarks
           })
         }
-      } else {
-        // Create new attendance
-        console.log(`Creating new attendance for ${student.firstName}`)
-        return await attendanceService.markAttendance(attendanceData)
       }
+
+      // Create new attendance
+      console.log(`Creating new attendance for ${student.firstName}`)
+      return await attendanceService.markAttendance(attendanceData)
     })
     
     const results = await Promise.allSettled(attendancePromises)
@@ -858,6 +1028,7 @@ watch([selectedDate, selectedClass], () => {
 onMounted(async () => {
   await loadClasses()
   await loadData()
+  await loadReport()
 })
 </script>
 
