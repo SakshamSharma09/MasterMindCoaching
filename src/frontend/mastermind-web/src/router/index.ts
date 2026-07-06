@@ -16,6 +16,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/privacy-policy',
+      name: 'PrivacyPolicy',
+      component: () => import('@/views/PrivacyPolicyView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/otp-verify',
       name: 'OtpVerify',
       component: () => import('@/views/auth/OtpVerifyView.vue'),

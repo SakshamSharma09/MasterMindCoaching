@@ -142,6 +142,12 @@
                 </button>
                 and then set your password inside the app.
               </p>
+              <p class="mt-3">
+                By using this app, you agree to our
+                <router-link to="/privacy-policy" class="font-bold text-[#6049e8] hover:text-[#503bd1]">
+                  Privacy Policy
+                </router-link>.
+              </p>
             </div>
           </div>
         </div>
