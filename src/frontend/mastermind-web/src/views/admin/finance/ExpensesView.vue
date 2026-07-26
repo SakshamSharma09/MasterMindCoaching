@@ -63,7 +63,10 @@
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white">
             <tr v-for="expense in filteredExpenses" :key="expense.id" class="hover:bg-gray-50 transition-colors">
-              <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm text-gray-900">{{ formatDate(expense.date) }}</td>
+              <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm text-gray-900">
+                {{ formatDate(expense.date) }}
+                <p v-if="expense.dueDate" class="mt-1 text-xs text-gray-500">Due: {{ formatDate(expense.dueDate) }}</p>
+              </td>
               <td class="whitespace-nowrap px-3 py-4 text-sm">
                 <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-800">
                   {{ expense.category }}
@@ -73,7 +76,7 @@
               <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">₹{{ formatCurrency(expense.amount) }}</td>
               <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ expense.paidTo }}</td>
               <td class="whitespace-nowrap px-3 py-4 text-sm">
-                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                <span :class="statusClass(expense.status)" class="rounded-full px-2.5 py-1 text-xs font-semibold">
                   {{ expense.status || 'Pending' }}
                 </span>
               </td>
@@ -81,12 +84,18 @@
                 <template v-if="expense.source === 'TeacherSalary'">
                   <button
                     v-if="expense.status !== 'Paid' && expense.salaryId"
-                    @click="markSalaryPaid(expense.salaryId)"
+                    @click="openSalaryPaymentModal(expense)"
                     class="font-medium text-emerald-600 hover:text-emerald-900"
                   >
                     Mark paid
                   </button>
-                  <span v-else class="text-xs text-slate-400">Salary obligation</span>
+                  <button
+                    v-else-if="expense.salaryId"
+                    @click="downloadSalaryReceipt(expense.salaryId)"
+                    class="font-medium text-indigo-600 hover:text-indigo-900"
+                  >
+                    Download receipt
+                  </button>
                 </template>
                 <template v-else>
                   <button @click="editExpense(expense)" class="text-indigo-600 hover:text-indigo-900 mr-3 font-medium">Edit</button>
@@ -101,6 +110,44 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div v-if="showSalaryPaymentModal" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex min-h-screen items-center justify-center px-4">
+        <div class="fixed inset-0 bg-gray-500/75" @click="closeSalaryPaymentModal"></div>
+        <form @submit.prevent="markSalaryPaid" class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <h3 class="text-lg font-semibold text-gray-900">Mark teacher salary as paid</h3>
+          <p class="mt-1 text-sm text-gray-600">{{ selectedSalary?.paidTo }} · ₹{{ formatCurrency(selectedSalary?.amount || 0) }}</p>
+          <div class="mt-5 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Payment Date *</label>
+              <input v-model="salaryPaymentForm.paymentDate" type="date" required class="mt-1 w-full rounded-lg border-gray-300 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Payment Method *</label>
+              <select v-model.number="salaryPaymentForm.paymentMethod" required class="mt-1 w-full rounded-lg border-gray-300 text-sm">
+                <option :value="0">Cash</option>
+                <option :value="1">UPI</option>
+                <option :value="2">Bank Transfer</option>
+                <option :value="5">Cheque</option>
+                <option :value="7">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Transaction / Reference</label>
+              <input v-model="salaryPaymentForm.transactionId" type="text" class="mt-1 w-full rounded-lg border-gray-300 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Remarks</label>
+              <textarea v-model="salaryPaymentForm.remarks" rows="2" class="mt-1 w-full rounded-lg border-gray-300 text-sm"></textarea>
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <button type="button" @click="closeSalaryPaymentModal" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium">Cancel</button>
+            <button type="submit" :disabled="loading" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Confirm payment</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -178,6 +225,14 @@ const loading = ref(false)
 const expenses = ref<Expense[]>([])
 const showExpenseModal = ref(false)
 const isEditingExpense = ref(false)
+const showSalaryPaymentModal = ref(false)
+const selectedSalary = ref<Expense | null>(null)
+const salaryPaymentForm = ref({
+  paymentDate: new Date().toISOString().slice(0, 10),
+  paymentMethod: 0,
+  transactionId: '',
+  remarks: ''
+})
 
 const expenseFilters = ref({ category: '', startDate: '', endDate: '' })
 
@@ -209,6 +264,11 @@ const formatCurrency = (amount: number): string => amount.toLocaleString('en-IN'
 const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
+const statusClass = (status?: string): string => {
+  if (status === 'Paid') return 'bg-emerald-100 text-emerald-800'
+  if (status === 'Overdue') return 'bg-red-100 text-red-800'
+  return 'bg-amber-100 text-amber-800'
+}
 
 const loadExpenses = async () => {
   try {
@@ -216,6 +276,7 @@ const loadExpenses = async () => {
   } catch (error) {
     console.error('Error loading expenses:', error)
     expenses.value = []
+    toast.error('Unable to load expenses', 'Please refresh and try again.')
   }
 }
 
@@ -281,15 +342,45 @@ const deleteExpense = async (expenseId: number) => {
   }
 }
 
-const markSalaryPaid = async (salaryId: number) => {
-  if (!confirm('Mark this teacher salary as paid?')) return
+const openSalaryPaymentModal = (expense: Expense) => {
+  selectedSalary.value = expense
+  salaryPaymentForm.value = {
+    paymentDate: new Date().toISOString().slice(0, 10),
+    paymentMethod: 0,
+    transactionId: '',
+    remarks: ''
+  }
+  showSalaryPaymentModal.value = true
+}
+
+const closeSalaryPaymentModal = () => {
+  showSalaryPaymentModal.value = false
+  selectedSalary.value = null
+}
+
+const markSalaryPaid = async () => {
+  if (!selectedSalary.value?.salaryId) return
+  loading.value = true
   try {
-    await financeService.markSalaryPaid(salaryId)
+    await financeService.markSalaryPaid(selectedSalary.value.salaryId, salaryPaymentForm.value)
     await loadExpenses()
+    closeSalaryPaymentModal()
     toast.success('Salary paid', 'Teacher salary has been marked as paid.')
   } catch (error) {
     console.error('Error marking salary paid:', error)
     toast.error('Failed to update salary', 'Please try again.')
+  } finally {
+    loading.value = false
+  }
+}
+
+const downloadSalaryReceipt = async (salaryId: number) => {
+  try {
+    await financeService.downloadSalaryReceipt(salaryId)
+    toast.success('Receipt downloaded', 'Teacher salary receipt is ready.')
+  } catch (error) {
+    console.error('Error downloading salary receipt:', error)
+    toast.error('Unable to download receipt', 'Please try again.')
   }
 }
 

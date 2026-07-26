@@ -114,6 +114,25 @@
       </button>
     </div>
 
+    <div v-if="whatsappQueue.length > 0" class="mt-3 flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm text-emerald-900">
+        WhatsApp {{ whatsappQueueIndex }} of {{ whatsappQueue.length }} opened. Return here after sending it, then open the next parent.
+      </p>
+      <div class="flex gap-2">
+        <button
+          v-if="whatsappQueueIndex < whatsappQueue.length"
+          type="button"
+          @click="openNextAbsentWhatsApp"
+          class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+        >
+          Open next ({{ whatsappQueueIndex + 1 }}/{{ whatsappQueue.length }})
+        </button>
+        <button type="button" @click="clearWhatsAppQueue" class="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-800">
+          Done
+        </button>
+      </div>
+    </div>
+
     <!-- Attendance Table -->
     <div class="mt-8 flex flex-col">
       <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -572,6 +591,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { formatClassForDropdown } from '@/utils/classUtils'
 import { normalizeIndianMobile } from '@/utils/phoneUtils'
+import { buildAbsentWhatsAppMessage } from '@/utils/attendanceMessaging'
 import { attendanceService, type AttendanceRecord, type AttendanceReport, ATTENDANCE_STATUS_MAP, ATTENDANCE_STATUS_REVERSE_MAP } from '@/services/attendanceService'
 import { classesService } from '@/services/classesService'
 import { studentsService, type Student } from '@/services/studentsService'
@@ -584,6 +604,8 @@ const selectedClass = ref('')
 const selectedStatus = ref('')
 const searchQuery = ref('')
 const loading = ref(false)
+const whatsappQueue = ref<AttendanceRecord[]>([])
+const whatsappQueueIndex = ref(0)
 const reportStartDate = ref(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0])
 const reportEndDate = ref(new Date().toISOString().split('T')[0])
 const attendanceReport = ref<AttendanceReport | null>(null)
@@ -758,7 +780,7 @@ const openAbsentWhatsApp = (record: AttendanceRecord) => {
     alert(`No WhatsApp/mobile number found for ${record.studentName}.`)
     return
   }
-  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildAbsentMessage(record))}`, '_blank', 'noopener,noreferrer')
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildAbsentWhatsAppMessage(record, formatAttendanceDate(record.date)))}`, '_blank', 'noopener,noreferrer')
 }
 
 const openAbsentWhatsAppBatch = () => {
@@ -768,13 +790,21 @@ const openAbsentWhatsAppBatch = () => {
     return
   }
 
-  targets.slice(0, 8).forEach((record, index) => {
-    window.setTimeout(() => openAbsentWhatsApp(record), index * 450)
-  })
+  whatsappQueue.value = targets
+  whatsappQueueIndex.value = 0
+  openNextAbsentWhatsApp()
+}
 
-  if (targets.length > 8) {
-    alert('Opened the first 8 WhatsApp chats. Please use individual WhatsApp buttons for the remaining students to avoid browser popup blocking.')
-  }
+const openNextAbsentWhatsApp = () => {
+  const record = whatsappQueue.value[whatsappQueueIndex.value]
+  if (!record) return
+  openAbsentWhatsApp(record)
+  whatsappQueueIndex.value += 1
+}
+
+const clearWhatsAppQueue = () => {
+  whatsappQueue.value = []
+  whatsappQueueIndex.value = 0
 }
 
 // API methods

@@ -253,6 +253,15 @@ public class StudentsController : ControllerBase
             });
         }
 
+        if (!IsValidDateOfBirth(student.DateOfBirth))
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "A valid student date of birth is required"
+            });
+        }
+
         // If no sessionId provided, use the active session
         if (!sessionId.HasValue)
         {
@@ -322,6 +331,15 @@ public class StudentsController : ControllerBase
             {
                 Success = false,
                 Message = parentMobileError
+            });
+        }
+
+        if (!IsValidDateOfBirth(student.DateOfBirth))
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "A valid student date of birth is required"
             });
         }
 
@@ -907,6 +925,10 @@ public class StudentsController : ControllerBase
         student.SecondaryParentMobile = string.IsNullOrWhiteSpace(secondary) ? null : secondary;
         return null;
     }
+
+    private static bool IsValidDateOfBirth(DateTime dateOfBirth) =>
+        dateOfBirth.Date >= new DateTime(1900, 1, 1) &&
+        dateOfBirth.Date <= DateTime.Today;
 
     private static string BuildParentPlaceholderEmail(string mobile) =>
         $"parent_{mobile}@placeholder.mastermind.local";

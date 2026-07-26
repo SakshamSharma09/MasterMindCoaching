@@ -67,6 +67,8 @@
 | GET | `/api/expenses/categories` | GetExpenseCategories |
 | GET | `/api/expenses/summary` | GetExpenseSummary |
 | POST | `/api/expenses` | CreateExpense |
+| POST | `/api/expenses/salaries/{id}/pay` | MarkSalaryPaid |
+| GET | `/api/expenses/salaries/{id}/receipt` | DownloadSalaryReceipt |
 | PUT | `/api/expenses/{id}` | UpdateExpense |
 | DELETE | `/api/expenses/{id}` | DeleteExpense |
 | GET | `/api/feecollection` | GetFeeCollections |
@@ -200,8 +202,9 @@
 | POST | `/api/account/public-deletion-request` | Public | Request deletion using a registered email or mobile without exposing account existence |
 | GET | `/api/expenses` | Authenticated | Return general expenses and teacher salary obligations with `source`, `status`, and `salaryId` |
 | POST | `/api/expenses/salaries/{id}/pay` | Authenticated | Mark a teacher salary obligation paid |
+| GET | `/api/expenses/salaries/{id}/receipt` | Authenticated | Download a PDF receipt for a paid teacher salary obligation |
 
-Student create/update payloads persist `motherName`, `fatherName`, `currentSchool`, `parentMobile`, `secondaryParentMobile`, and `admissionDate` independently. `parentMobile` is required and is the parent account identity. Admin does not supply `parentEmail`; the parent supplies it while accepting the invitation.
+Student create/update payloads persist `motherName`, `fatherName`, `dateOfBirth`, `currentSchool`, `parentMobile`, `secondaryParentMobile`, and `admissionDate` independently. `parentMobile` is required and is the parent account identity. Admin does not supply `parentEmail`; the parent supplies it while accepting the invitation. Attendance records expose the separate parent names for correctly addressed WhatsApp follow-ups.
 
 ---
 

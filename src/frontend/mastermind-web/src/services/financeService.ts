@@ -51,10 +51,14 @@ export interface Expense {
   amount: number
   paidTo: string
   date: string
+  dueDate?: string
+  paymentDate?: string
   receiptNumber?: string
   status?: string
   source?: 'General' | 'TeacherSalary'
   salaryId?: number
+  paymentMethod?: string
+  transactionId?: string
 }
 
 export interface CreateExpenseDto {
@@ -484,10 +488,17 @@ export const financeService = {
     return true
   },
 
-  async markSalaryPaid(id: number): Promise<void> {
-    await apiService.post(`/expenses/salaries/${id}/pay`, {
-      paymentDate: new Date().toISOString()
-    })
+  async markSalaryPaid(id: number, data: {
+    paymentDate: string
+    paymentMethod?: number
+    transactionId?: string
+    remarks?: string
+  }): Promise<void> {
+    await apiService.post(`/expenses/salaries/${id}/pay`, data)
+  },
+
+  async downloadSalaryReceipt(id: number): Promise<void> {
+    await apiService.download(`/expenses/salaries/${id}/receipt`, `Teacher-Salary-Receipt-${id}.pdf`)
   },
 
   // ===== REPORT METHODS =====

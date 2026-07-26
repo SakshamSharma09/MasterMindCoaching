@@ -65,6 +65,26 @@ export interface CreateStudentRequest {
   standard?: string
 }
 
+export const resolveParentNames = (
+  parentName?: string,
+  motherName?: string,
+  fatherName?: string
+): { motherName: string; fatherName: string } => {
+  const mother = (motherName || '').trim()
+  const father = (fatherName || '').trim()
+  if (mother || father) return { motherName: mother, fatherName: father }
+
+  const legacyParts = (parentName || '').trim().split(/\s+/).filter(Boolean)
+  if (legacyParts.length < 3) {
+    return { motherName: '', fatherName: '' }
+  }
+
+  return {
+    motherName: legacyParts.slice(0, 2).join(' '),
+    fatherName: legacyParts.slice(2).join(' ')
+  }
+}
+
 const toIsoDateOrToday = (value?: string): string => {
   if (!value) return new Date().toISOString()
   const parsed = new Date(value)

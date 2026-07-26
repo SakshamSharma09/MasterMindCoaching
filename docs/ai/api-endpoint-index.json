@@ -264,6 +264,11 @@
                                                           "action":  "MarkSalaryPaid"
                                                       },
                                                       {
+                                                          "method":  "GET",
+                                                          "path":  "/api/expenses/salaries/{id}/receipt",
+                                                          "action":  "DownloadSalaryReceipt"
+                                                      },
+                                                      {
                                                           "method":  "PUT",
                                                           "path":  "/api/expenses/{id}",
                                                           "action":  "UpdateExpense"
