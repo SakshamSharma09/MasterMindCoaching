@@ -19,7 +19,7 @@
     },
     {
       "id": "ef-design-time-assembly-provider",
-      "symptoms": ["migration omits changes", "stale migration", "SQLite nvarchar max", "test database syntax error"],
+      "symptoms": ["migration omits changes", "stale migration", "SQLite nvarchar max", "test database syntax error", "more than one DbContext", "migration script wrong provider"],
       "category": "backend",
       "section": "EF Migration and Test Providers Must Match the Intended Assembly",
       "severity": "high"
