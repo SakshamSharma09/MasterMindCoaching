@@ -121,6 +121,13 @@
       "category": "database",
       "section": "Optional EF Include Fails Against Compatibility Database",
       "severity": "high"
+    },
+    {
+      "id": "recurring-fee-parent-future-rows",
+      "symptoms": ["all future fees visible", "duplicate monthly fee", "recurring parent fee listed", "fee deletion error", "future installment"],
+      "category": "backend",
+      "section": "Recurring Fee Parent Rows and Future Installments Must Stay Operationally Hidden",
+      "severity": "high"
     }
   ]
 }

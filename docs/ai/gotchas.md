@@ -198,6 +198,13 @@ $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
 
 ## Database (Azure SQL)
 
+### Recurring Fee Parent Rows and Future Installments Must Stay Operationally Hidden
+**Symptom**: Adding one monthly fee immediately lists a recurring parent record plus every future month, creates apparent duplicates, and makes deletion behavior unclear.
+**Root Cause**: The recurring schedule row and all generated child installments were returned by the same operational query. Future child rows were materialized and displayed before their due month.
+**Solution**: Treat the recurring row as internal schedule metadata, show only non-recurring installments due on or before today, generate missing due months idempotently on Finance access, and delete an unpaid recurring family together while blocking any family with payments.
+**Files Affected**: `src/backend/MasterMind.API/Controllers/FinanceController.cs`, `src/backend/MasterMind.API/Controllers/FeesController.cs`
+**Date Learned**: 2026-07-26
+
 ### Optional EF Include Fails Against Compatibility Database
 **Symptom**: The Expenses page is empty and `GET /api/expenses` returns 500 with `Invalid object name 'BudgetCategories'`.
 **Root Cause**: The production compatibility database has the active `Expenses` table but not the optional `BudgetCategories` table. An unused `.Include(e => e.BudgetCategory)` forces SQL Server to query the missing table.

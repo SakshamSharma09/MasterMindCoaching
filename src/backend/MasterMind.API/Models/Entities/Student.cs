@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace MasterMind.API.Models.Entities;
 
 /// <summary>
@@ -20,6 +22,7 @@ public class Student : BaseEntity
     public string? AdmissionNumber { get; set; }
     public DateTime AdmissionDate { get; set; } = DateTime.UtcNow;
     public bool IsActive { get; set; } = true;
+    public DateTime? InactiveDate { get; set; }
 
     // Parent Information
     public string ParentName { get; set; } = string.Empty;
@@ -43,6 +46,9 @@ public class Student : BaseEntity
     public ICollection<StudentPerformance> StudentPerformances { get; set; } = new List<StudentPerformance>();
 
     // Computed properties
+    [NotMapped]
+    public bool ParentOnboarded { get; set; }
+
     public string FullName => $"{FirstName} {LastName}";
     public int Age => DateTime.Today.Year - DateOfBirth.Year - 
         (DateTime.Today.DayOfYear < DateOfBirth.DayOfYear ? 1 : 0);

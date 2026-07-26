@@ -319,14 +319,14 @@ export const financeService = {
   },
 
   // Delete a fee
-  async deleteFee(id: number): Promise<boolean> {
+  async deleteFee(id: number): Promise<string> {
     if (USE_MOCK_API) {
       await new Promise(resolve => setTimeout(resolve, 500))
-      return true
+      return 'Fee deleted successfully'
     }
 
-    await apiService.delete(`/fees/${id}`)
-    return true
+    const response = await apiService.delete(`/fees/${id}`)
+    return response.message || 'Fee deleted successfully'
   },
 
   // Get all fees

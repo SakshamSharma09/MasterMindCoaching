@@ -101,6 +101,25 @@ public class StudentsController : ControllerBase
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+            var parentUserIds = students
+                .Where(s => s.ParentUserId.HasValue)
+                .Select(s => s.ParentUserId!.Value)
+                .Distinct()
+                .ToList();
+            var onboardedParentIds = parentUserIds.Count == 0
+                ? new HashSet<int>()
+                : (await _context.Users
+                    .AsNoTracking()
+                    .Where(u => parentUserIds.Contains(u.Id) &&
+                        u.PasswordHash != null && u.PasswordHash != string.Empty && !u.IsDeleted)
+                    .Select(u => u.Id)
+                    .ToListAsync())
+                    .ToHashSet();
+            foreach (var student in students)
+            {
+                student.ParentOnboarded = student.ParentUserId.HasValue &&
+                    onboardedParentIds.Contains(student.ParentUserId.Value);
+            }
 
             var result = new PaginatedResult<Student>
             {
@@ -358,7 +377,17 @@ public class StudentsController : ControllerBase
         existingStudent.PhotoBlobName = student.PhotoBlobName;
         existingStudent.AdmissionNumber = student.AdmissionNumber;
         existingStudent.AdmissionDate = student.AdmissionDate;
+        var becameInactive = existingStudent.IsActive && !student.IsActive;
+        var becameActive = !existingStudent.IsActive && student.IsActive;
         existingStudent.IsActive = student.IsActive;
+        if (becameInactive)
+        {
+            existingStudent.InactiveDate = DateTime.Today;
+        }
+        else if (becameActive)
+        {
+            existingStudent.InactiveDate = null;
+        }
         existingStudent.ParentName = student.ParentName;
         existingStudent.MotherName = student.MotherName;
         existingStudent.FatherName = student.FatherName;
@@ -368,6 +397,32 @@ public class StudentsController : ControllerBase
         existingStudent.ParentEmail = student.ParentEmail;
         existingStudent.ParentOccupation = student.ParentOccupation;
         existingStudent.UpdatedAt = DateTime.UtcNow;
+
+        if (becameInactive)
+        {
+            var inactiveDate = DateOnly.FromDateTime(existingStudent.InactiveDate!.Value);
+            var recurringFees = await _context.StudentFees
+                .Where(sf => sf.StudentId == id && !sf.IsDeleted && sf.IsRecurring)
+                .ToListAsync();
+            foreach (var recurringFee in recurringFees)
+            {
+                if (!recurringFee.EndDate.HasValue || recurringFee.EndDate.Value > inactiveDate)
+                {
+                    recurringFee.EndDate = inactiveDate;
+                    recurringFee.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            var unpaidFutureFees = await _context.StudentFees
+                .Where(sf => sf.StudentId == id && !sf.IsDeleted && !sf.IsRecurring &&
+                    sf.DueDate > inactiveDate && !sf.Payments.Any(p => !p.IsDeleted))
+                .ToListAsync();
+            foreach (var futureFee in unpaidFutureFees)
+            {
+                futureFee.IsDeleted = true;
+                futureFee.UpdatedAt = DateTime.UtcNow;
+            }
+        }
 
         await _context.SaveChangesAsync();
         await LinkParentUserAsync(existingStudent);
@@ -717,19 +772,32 @@ public class StudentsController : ControllerBase
         }
 
         await LinkParentUserAsync(student);
+        var parentUser = student.ParentUserId.HasValue
+            ? await _context.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == student.ParentUserId.Value && !u.IsDeleted)
+            : null;
+        if (!string.IsNullOrWhiteSpace(parentUser?.PasswordHash))
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "This parent has already created a password. They can sign in with their primary mobile number."
+            });
+        }
         var invitation = await CreateParentInvitationAsync(student);
 
         return Ok(new ApiResponse<object>
         {
             Success = true,
             Message = invitation.EmailSent
-                ? "A fresh invite link was created and emailed. You can also copy and share it."
-                : "A fresh invite link was created. Copy and share it with the parent.",
+                ? "A fresh invite link was created for WhatsApp and also emailed."
+                : "A fresh invite link was created for the primary parent WhatsApp number.",
             Data = new
             {
                 invitation.InviteUrl,
                 invitation.ExpiresAt,
-                invitation.EmailSent
+                invitation.EmailSent,
+                PrimaryMobile = student.ParentMobile
             }
         });
     }

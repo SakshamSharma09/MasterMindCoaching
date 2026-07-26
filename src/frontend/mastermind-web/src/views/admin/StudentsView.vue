@@ -134,7 +134,7 @@
           Clear All
         </button>
       </div>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Search Students</label>
           <div class="relative">
@@ -176,6 +176,28 @@
           </select>
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">School</label>
+          <select
+            v-model="filters.school"
+            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          >
+            <option value="">All Schools</option>
+            <option v-for="school in schoolOptions" :key="school.key" :value="school.key">
+              {{ school.label }} ({{ school.count }})
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">View</label>
+          <select
+            v-model="filters.groupBy"
+            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          >
+            <option value="">Student List</option>
+            <option value="school">Group by School</option>
+          </select>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
           <select
             v-model="filters.sortBy"
@@ -199,27 +221,18 @@
           </div>
         </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-[1120px] w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+      <div ref="studentTableScroller" class="max-h-[70vh] overflow-auto">
+        <table class="min-w-[940px] w-full divide-y divide-gray-200">
+          <thead class="sticky top-0 z-20 bg-gray-50">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="sticky left-0 z-30 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Student
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Class
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Medium
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Board
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Contact
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Parents
+                Contact & Parents
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 School
@@ -230,14 +243,20 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th scope="col" class="relative px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="sticky right-0 z-30 bg-gray-50 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="student in filteredStudents" :key="student.id" class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap">
+            <template v-for="group in groupedStudents" :key="group.key">
+            <tr v-if="filters.groupBy === 'school'" class="bg-indigo-50">
+              <td colspan="7" class="px-6 py-2 text-sm font-semibold text-indigo-900">
+                {{ group.label }} · {{ group.students.length }} student{{ group.students.length === 1 ? '' : 's' }}
+              </td>
+            </tr>
+            <tr v-for="student in group.students" :key="student.id" class="hover:bg-gray-50 transition-colors duration-150">
+              <td class="sticky left-0 z-10 bg-white px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="h-10 w-10 flex-shrink-0">
                     <img 
@@ -270,9 +289,7 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ student.className || 'Not Assigned' }}</div>
                 <div class="text-xs text-gray-500">ID: {{ student.id.toString().padStart(4, '0') }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex flex-wrap gap-1">
+                <div class="mt-1 flex flex-wrap gap-1">
                   <span 
                     v-for="(medium, index) in getStudentMediums(student)" 
                     :key="index"
@@ -280,10 +297,6 @@
                   >
                     {{ medium }}
                   </span>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex flex-wrap gap-1">
                   <span 
                     v-for="(board, index) in getStudentBoards(student)" 
                     :key="index"
@@ -297,9 +310,7 @@
                 <div class="text-sm text-gray-900">{{ student.phone }}</div>
                 <div class="text-xs text-gray-500">Primary: {{ student.parentMobile || 'No parent mobile' }}</div>
                 <div v-if="student.secondaryParentMobile" class="text-xs text-gray-400">Secondary: {{ student.secondaryParentMobile }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex flex-col space-y-1">
+                <div class="mt-2 flex flex-col space-y-1 border-t border-gray-100 pt-2">
                   <div v-if="student.motherName" class="text-xs text-gray-500">Mother: {{ student.motherName }}</div>
                   <div v-if="student.fatherName" class="text-xs text-gray-500">Father: {{ student.fatherName }}</div>
                   <div v-if="!student.motherName && !student.fatherName" class="text-xs text-gray-500">
@@ -331,12 +342,13 @@
                   {{ student.status }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="sticky right-0 z-10 bg-white px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
-                  @click="copyInvitation(student.id)"
-                  class="mr-3 font-medium text-emerald-600 transition-colors duration-150 hover:text-emerald-900"
+                  @click="sendInvitation(student)"
+                  :disabled="student.parentOnboarded"
+                  class="mr-3 font-medium text-emerald-600 transition-colors duration-150 hover:text-emerald-900 disabled:cursor-not-allowed disabled:text-gray-400"
                 >
-                  Copy Invite
+                  {{ student.parentOnboarded ? 'Parent Joined' : 'Send Invite' }}
                 </button>
                 <button 
                   @click="editStudent(student)" 
@@ -352,6 +364,7 @@
                 </button>
               </td>
             </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -555,7 +568,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { formatClassForDropdown } from '@/utils/classUtils'
 import { classesService } from '@/services/classesService'
-import { studentsService, resolveParentNames, type Student, type CreateStudentRequest } from '@/services/studentsService'
+import { studentsService, normalizeSchoolKey, resolveParentNames, type Student, type CreateStudentRequest } from '@/services/studentsService'
+import { normalizeIndianMobile } from '@/utils/phoneUtils'
+import { buildParentInvitationWhatsAppMessage } from '@/utils/parentInvitation'
 import { apiService } from '@/services/apiService'
 import { API_ENDPOINTS } from '@/config/api'
 import { useSessionStore } from '@/stores/session'
@@ -579,6 +594,8 @@ interface ExtendedStudent extends Student {
   admissionDate: string
   classId?: number | null
   className: string
+  classMedium: string
+  classBoard: string
   status: 'Active' | 'Inactive'
   createdAt: string
   motherName: string
@@ -594,6 +611,7 @@ interface ExtendedStudent extends Student {
   caste: string
   rollNumber: string
   standard: string
+  parentOnboarded: boolean
 }
 
 // Reactive data
@@ -652,8 +670,10 @@ const filteredStudents = computed(() => {
       student.phone.includes(filters.value.search)
     const matchesClass = !filters.value.class || student.className === filters.value.class
     const matchesStatus = !filters.value.status || student.status === filters.value.status
+    const matchesSchool = !filters.value.school ||
+      normalizeSchoolKey(student.currentSchool) === filters.value.school
     
-    return matchesSearch && matchesStatus && matchesClass
+    return matchesSearch && matchesStatus && matchesClass && matchesSchool
   }).sort((a, b) => {
     switch (filters.value.sortBy) {
       case 'name':
@@ -668,24 +688,41 @@ const filteredStudents = computed(() => {
   })
 })
 
+const schoolOptions = computed(() => {
+  const schools = new Map<string, { key: string; label: string; count: number }>()
+  for (const student of students.value) {
+    const key = normalizeSchoolKey(student.currentSchool)
+    if (!key) continue
+    const existing = schools.get(key)
+    if (existing) existing.count += 1
+    else schools.set(key, { key, label: student.currentSchool.trim(), count: 1 })
+  }
+  return [...schools.values()].sort((a, b) => a.label.localeCompare(b.label))
+})
+
+const groupedStudents = computed(() => {
+  if (filters.value.groupBy !== 'school') {
+    return [{ key: 'all', label: 'All Students', students: filteredStudents.value }]
+  }
+
+  const groups = new Map<string, { key: string; label: string; students: ExtendedStudent[] }>()
+  for (const student of filteredStudents.value) {
+    const key = normalizeSchoolKey(student.currentSchool) || '__unspecified'
+    const label = student.currentSchool.trim() || 'School not specified'
+    const existing = groups.get(key)
+    if (existing) existing.students.push(student)
+    else groups.set(key, { key, label, students: [student] })
+  }
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label))
+})
+
 // Helper functions for student class information
 const getStudentMediums = (student: any) => {
-  // Extract medium from student's class information
-  if (student.className) {
-    // For now, return a default medium - this could be enhanced to extract from class data
-    return ['English'] // Default medium
-  }
-  return []
+  return student.classMedium ? [student.classMedium] : []
 }
 
 const getStudentBoards = (student: any) => {
-  // Extract board from student's class information
-  if (student.className && student.className.includes('CBSE')) {
-    return ['CBSE']
-  } else if (student.className && student.className.includes('State')) {
-    return ['State Board']
-  }
-  return ['CBSE'] // Default board
+  return student.classBoard ? [student.classBoard] : []
 }
 
 // Computed statistics
@@ -715,6 +752,8 @@ const filters = ref({
   search: '',
   class: '',
   status: '',
+  school: '',
+  groupBy: '',
   sortBy: 'name'
 })
 
@@ -724,6 +763,8 @@ const clearFilters = () => {
     search: '',
     class: '',
     status: '',
+    school: '',
+    groupBy: '',
     sortBy: 'name'
   }
 }
@@ -757,6 +798,8 @@ const loadData = async () => {
         admissionDate: student.admissionDate?.slice(0, 10) || '',
         classId: activeClass?.classId ?? activeClass?.class?.id ?? null,
         className: activeClass?.class?.name || 'Not Assigned',
+        classMedium: activeClass?.class?.medium || '',
+        classBoard: activeClass?.class?.board || '',
         status: student.isActive ? 'Active' : 'Inactive',
         motherName: parentNames.motherName,
         fatherName: parentNames.fatherName,
@@ -771,6 +814,7 @@ const loadData = async () => {
         caste: '',
         rollNumber: '',
         standard: '',
+        parentOnboarded: Boolean(student.parentOnboarded),
         createdAt: student.createdAt
       }
     })
@@ -947,14 +991,29 @@ const deleteStudent = async (id: number) => {
   }
 }
 
-const copyInvitation = async (id: number) => {
+const sendInvitation = async (student: ExtendedStudent) => {
+  const inviteWindow = window.open('about:blank', '_blank')
   try {
-    const invitation = await studentsService.createParentInvitation(id)
+    const invitation = await studentsService.createParentInvitation(student.id)
     if (!invitation.inviteUrl) throw new Error('The invite link was not returned.')
-    await navigator.clipboard.writeText(invitation.inviteUrl)
-    alert(`${invitation.message}\n\nThe link has been copied and expires in 72 hours.`)
+    const phone = normalizeIndianMobile(invitation.primaryMobile || student.parentMobile)
+    if (!phone) throw new Error('A valid primary parent mobile number is required.')
+    const parentName = student.motherName || student.fatherName || 'Parent'
+    const message = buildParentInvitationWhatsAppMessage({
+      parentName,
+      studentName: `${student.firstName} ${student.lastName}`,
+      inviteUrl: invitation.inviteUrl
+    })
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+    if (inviteWindow) inviteWindow.location.href = whatsappUrl
+    else {
+      await navigator.clipboard.writeText(invitation.inviteUrl)
+      alert('WhatsApp could not be opened. The invitation link has been copied.')
+    }
   } catch (error: any) {
+    inviteWindow?.close()
     alert(error.response?.data?.message || error.message || 'Parent invitation could not be created. Please try again.')
+    await loadData()
   }
 }
 
