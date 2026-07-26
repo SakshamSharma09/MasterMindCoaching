@@ -30,14 +30,16 @@ export interface CreateClassDto {
 
 export const classesService = {
   // Get all classes
-  async getClasses(): Promise<Class[]> {
+  async getClasses(sessionId?: number): Promise<Class[]> {
     if (USE_MOCK_API) {
       console.log('Mock API: Getting classes')
       await new Promise(resolve => setTimeout(resolve, 500))
       return mockClasses
     }
 
-    const response = await apiService.get(API_ENDPOINTS.CLASSES.LIST)
+    const response = await apiService.get(API_ENDPOINTS.CLASSES.LIST, {
+      params: sessionId ? { sessionId } : undefined
+    })
     const apiData = response.data
     
     // Map API response to frontend interface

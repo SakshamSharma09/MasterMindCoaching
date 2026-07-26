@@ -539,12 +539,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { formatClassForDropdown } from '@/utils/classUtils'
 import { classesService } from '@/services/classesService'
 import { studentsService, type Student, type CreateStudentRequest } from '@/services/studentsService'
 import { apiService } from '@/services/apiService'
 import { API_ENDPOINTS } from '@/config/api'
+import { useSessionStore } from '@/stores/session'
 import StudentClassMapping from '@/components/admin/StudentClassMapping.vue'
 
 interface Class {
@@ -582,6 +583,7 @@ interface ExtendedStudent extends Student {
 }
 
 // Reactive data
+const sessionStore = useSessionStore()
 const students = ref<ExtendedStudent[]>([])
 const classes = ref<Class[]>([])
 
@@ -713,9 +715,16 @@ const clearFilters = () => {
 
 // Load initial data
 const loadData = async () => {
+  const selectedSessionId = sessionStore.selectedSessionId
+  if (!selectedSessionId) {
+    students.value = []
+    classes.value = []
+    return
+  }
+
   try {
     // Load students using centralized service
-    const studentsResponse = await studentsService.getStudents(1, 50)
+    const studentsResponse = await studentsService.getStudents(1, 50, undefined, selectedSessionId)
     students.value = studentsResponse.data.map((student: any) => {
       const activeClass = student.studentClasses?.find((sc: any) => sc.isActive)
 
@@ -754,7 +763,7 @@ const loadData = async () => {
 
   // Load classes from API
   try {
-    const classesData = await classesService.getClasses()
+    const classesData = await classesService.getClasses(selectedSessionId)
     classes.value = classesData.map((c: any) => ({
       id: c.id,
       name: c.name,
@@ -870,7 +879,7 @@ const submitForm = async () => {
       if (photoUrl) form.value.photo = photoUrl
     } else {
       // Add new student via API
-      const newStudent = await studentsService.createStudent(form.value)
+      const newStudent = await studentsService.createStudent(form.value, sessionStore.selectedSessionId ?? undefined)
       await syncStudentClassMapping(newStudent.id, null)
       let photoUrl = form.value.photo || ''
       if (selectedPhotoFile.value && newStudent?.id) {
@@ -933,7 +942,14 @@ const handleMappingComplete = async () => {
   await loadData()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (sessionStore.sessions.length === 0) {
+    await sessionStore.loadSessions()
+  }
+  await loadData()
+})
+
+watch(() => sessionStore.selectedSessionId, () => {
   loadData()
 })
 </script>

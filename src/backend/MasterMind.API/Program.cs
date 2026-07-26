@@ -1329,7 +1329,6 @@ DECLARE @ActiveSessionId int;
 SELECT TOP 1 @ActiveSessionId = Id FROM dbo.Sessions WHERE IsActive = 1 AND IsDeleted = 0 ORDER BY Id DESC;
 IF @ActiveSessionId IS NOT NULL
 BEGIN
-    UPDATE dbo.Students SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
     UPDATE dbo.Classes SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
     UPDATE dbo.Teachers SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
     UPDATE dbo.Leads SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
@@ -1337,6 +1336,67 @@ BEGIN
     BEGIN
         UPDATE dbo.Expenses SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
     END
+END
+
+IF OBJECT_ID('dbo.ApplicationDataRepairs', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ApplicationDataRepairs
+    (
+        RepairKey nvarchar(100) NOT NULL CONSTRAINT PK_ApplicationDataRepairs PRIMARY KEY,
+        AppliedAt datetime2 NOT NULL
+    );
+END
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM dbo.ApplicationDataRepairs
+    WHERE RepairKey = '20260726-student-session-assignments'
+)
+BEGIN
+    ;WITH RankedStudentSessions AS
+    (
+        SELECT
+            sc.StudentId,
+            c.SessionId,
+            ROW_NUMBER() OVER
+            (
+                PARTITION BY sc.StudentId
+                ORDER BY
+                    CASE WHEN sc.IsActive = 1 THEN 0 ELSE 1 END,
+                    sc.EnrollmentDate DESC,
+                    c.SessionId DESC
+            ) AS RowNumber
+        FROM dbo.StudentClasses sc
+        INNER JOIN dbo.Classes c ON c.Id = sc.ClassId
+        WHERE c.IsDeleted = 0
+          AND c.SessionId IS NOT NULL
+    )
+    UPDATE students
+    SET SessionId = ranked.SessionId
+    FROM dbo.Students students
+    INNER JOIN RankedStudentSessions ranked
+        ON ranked.StudentId = students.Id
+       AND ranked.RowNumber = 1
+    WHERE students.IsDeleted = 0
+      AND (students.SessionId IS NULL OR students.SessionId <> ranked.SessionId);
+
+    UPDATE students
+    SET SessionId = NULL
+    FROM dbo.Students students
+    WHERE students.IsDeleted = 0
+      AND NOT EXISTS
+      (
+          SELECT 1
+          FROM dbo.StudentClasses sc
+          INNER JOIN dbo.Classes c ON c.Id = sc.ClassId
+          WHERE sc.StudentId = students.Id
+            AND c.IsDeleted = 0
+            AND c.SessionId IS NOT NULL
+      );
+
+    INSERT INTO dbo.ApplicationDataRepairs (RepairKey, AppliedAt)
+    VALUES ('20260726-student-session-assignments', sysutcdatetime());
 END
 
 IF COL_LENGTH('dbo.Classes', 'IsActive') IS NULL

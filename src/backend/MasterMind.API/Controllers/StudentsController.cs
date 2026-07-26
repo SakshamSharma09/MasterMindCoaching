@@ -353,6 +353,11 @@ public class StudentsController : ControllerBase
                 EnrollmentDate = DateTime.UtcNow
             };
 
+            if (classEntity.SessionId.HasValue)
+            {
+                student.SessionId = classEntity.SessionId;
+            }
+
             _context.StudentClasses.Add(studentClass);
             await _context.SaveChangesAsync();
 

@@ -103,8 +103,17 @@ export const mapStudentPayload = (studentData: Partial<CreateStudentRequest>, id
   }
 }
 
+export const buildStudentQueryParams = (page: number, pageSize: number, classId?: number, sessionId?: number) => {
+  const params = new URLSearchParams()
+  params.append('page', page.toString())
+  params.append('pageSize', pageSize.toString())
+  if (classId) params.append('classId', classId.toString())
+  if (sessionId) params.append('sessionId', sessionId.toString())
+  return params
+}
+
 export const studentsService = {
-  async getStudents(page = 1, pageSize = 50, classId?: number): Promise<{ data: Student[], totalCount: number }> {
+  async getStudents(page = 1, pageSize = 50, classId?: number, sessionId?: number): Promise<{ data: Student[], totalCount: number }> {
     if (USE_MOCK_API) {
       console.log('Mock API: Getting students')
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -114,10 +123,7 @@ export const studentsService = {
       }
     }
 
-    const params = new URLSearchParams()
-    params.append('page', page.toString())
-    params.append('pageSize', pageSize.toString())
-    if (classId) params.append('classId', classId.toString())
+    const params = buildStudentQueryParams(page, pageSize, classId, sessionId)
 
     const response = await apiService.get(`${API_ENDPOINTS.STUDENTS.LIST}?${params.toString()}`)
     return {
@@ -195,7 +201,7 @@ export const studentsService = {
     await apiService.delete(`${API_ENDPOINTS.STUDENTS.LIST}/${studentId}/classes/${classId}`)
   },
 
-  async createStudent(studentData: CreateStudentRequest): Promise<Student> {
+  async createStudent(studentData: CreateStudentRequest, sessionId?: number): Promise<Student> {
     if (USE_MOCK_API) {
       console.log('Mock API: Creating student')
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -211,7 +217,9 @@ export const studentsService = {
     }
 
     const payload = mapStudentPayload(studentData)
-    const response = await apiService.post(API_ENDPOINTS.STUDENTS.CREATE, payload)
+    const response = await apiService.post(API_ENDPOINTS.STUDENTS.CREATE, payload, {
+      params: sessionId ? { sessionId } : undefined
+    })
     return response.data
   },
 
