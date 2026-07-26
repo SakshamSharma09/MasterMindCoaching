@@ -209,6 +209,11 @@ const router = createRouter({
           path: 'performance',
           name: 'ParentPerformance',
           component: () => import('@/views/parent/PerformanceView.vue')
+        },
+        {
+          path: 'account-security',
+          name: 'ParentAccountSecurity',
+          component: () => import('@/views/parent/AccountSecurityView.vue')
         }
       ]
     },

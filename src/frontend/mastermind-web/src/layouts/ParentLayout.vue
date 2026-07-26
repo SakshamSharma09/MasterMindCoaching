@@ -183,7 +183,7 @@ const navigation = [
   { name: 'Attendance', href: '/parent/attendance', icon: ClipboardListIcon },
   { name: 'Fees', href: '/parent/fees', icon: CurrencyDollarIcon },
   { name: 'Performance', href: '/parent/performance', icon: ChartBarIcon },
-  { name: 'Change Password', href: '/change-password', icon: KeyIcon }
+  { name: 'Account Security', href: '/parent/account-security', icon: KeyIcon }
 ]
 
 const userInitials = computed(() => {

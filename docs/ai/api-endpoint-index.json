@@ -50,6 +50,11 @@
                                                       },
                                                       {
                                                           "method":  "GET",
+                                                          "path":  "/api/students/export",
+                                                          "action":  "ExportStudents"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
                                                           "path":  "/api/students/available-for-mapping",
                                                           "action":  "GetAvailableStudentsForMapping"
                                                       },
@@ -817,6 +822,16 @@
                                                          "method":  "POST",
                                                          "path":  "/api/account/public-deletion-request",
                                                          "action":  "RequestPublicDeletion"
+                                                     },
+                                                     {
+                                                         "method":  "GET",
+                                                         "path":  "/api/account/security",
+                                                         "action":  "GetSecurityDetails"
+                                                     },
+                                                     {
+                                                         "method":  "PUT",
+                                                         "path":  "/api/account/security/email",
+                                                         "action":  "UpdateRecoveryEmail"
                                                      }
                                                  ]
                                   }

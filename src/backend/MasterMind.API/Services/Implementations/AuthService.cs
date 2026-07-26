@@ -239,19 +239,18 @@ public class AuthService : IAuthService
 
     private async Task<User> EnsureParentLinkedUserAsync(List<Student> students, string? email)
     {
-        var parentEmail = string.IsNullOrWhiteSpace(email)
-            ? $"{Guid.NewGuid():N}@placeholder.mastermind.local"
-            : email.ToLowerInvariant();
         var primaryStudent = students[0];
+        var normalizedMobile = NormalizeMobile(primaryStudent.ParentMobile);
+        var parentEmail = string.IsNullOrWhiteSpace(email)
+            ? $"parent_{normalizedMobile}@placeholder.mastermind.local"
+            : email.ToLowerInvariant();
 
-        var existingParentUserId = students.Select(s => s.ParentUserId).FirstOrDefault(id => id.HasValue);
-        User? user = null;
-        if (existingParentUserId.HasValue)
-        {
-            user = await _userService.GetByIdAsync(existingParentUserId.Value);
-        }
-
-        user ??= await _userService.GetByEmailAsync(parentEmail);
+        var users = await _context.Users.Where(u => !u.IsDeleted).ToListAsync();
+        var user = users
+            .Where(u => !string.IsNullOrWhiteSpace(u.Mobile) && NormalizeMobile(u.Mobile) == normalizedMobile)
+            .OrderByDescending(u => u.UpdatedAt ?? u.CreatedAt)
+            .ThenByDescending(u => u.Id)
+            .FirstOrDefault();
 
         if (user == null)
         {
@@ -259,7 +258,8 @@ public class AuthService : IAuthService
             user = new User
             {
                 Email = parentEmail,
-                Mobile = string.IsNullOrWhiteSpace(primaryStudent.ParentMobile) ? GeneratePlaceholderMobile() : primaryStudent.ParentMobile,
+                Mobile = normalizedMobile,
+                SecondaryMobile = primaryStudent.SecondaryParentMobile,
                 FirstName = firstName,
                 LastName = lastName,
                 IsActive = true,
@@ -270,10 +270,15 @@ public class AuthService : IAuthService
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
         }
+        else
+        {
+            user.SecondaryMobile = primaryStudent.SecondaryParentMobile;
+            user.UpdatedAt = DateTime.UtcNow;
+        }
 
         await _userService.AssignRoleAsync(user.Id, "Parent");
 
-        foreach (var student in students.Where(s => !s.ParentUserId.HasValue || s.ParentUserId == user.Id))
+        foreach (var student in students)
         {
             student.ParentUserId = user.Id;
             student.UpdatedAt = DateTime.UtcNow;

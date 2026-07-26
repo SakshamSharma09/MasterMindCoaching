@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 using MasterMind.API.Data;
 using MasterMind.API.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,71 @@ public class AccountController : ControllerBase
     public AccountController(MasterMindDbContext context)
     {
         _context = context;
+    }
+
+    [HttpGet("security")]
+    [Authorize(Roles = "Parent")]
+    public async Task<ActionResult<ApiResponse<object>>> GetSecurityDetails()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized(new ApiResponse<object> { Success = false, Message = "Invalid account" });
+        }
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Account security details retrieved",
+            Data = new
+            {
+                Email = IsPlaceholderEmail(user.Email) ? string.Empty : user.Email,
+                PrimaryMobile = user.Mobile,
+                SecondaryMobile = user.SecondaryMobile,
+                user.IsEmailVerified
+            }
+        });
+    }
+
+    [HttpPut("security/email")]
+    [Authorize(Roles = "Parent")]
+    public async Task<ActionResult<ApiResponse<object>>> UpdateRecoveryEmail([FromBody] UpdateRecoveryEmailDto request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "Enter a valid email address" });
+        }
+
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized(new ApiResponse<object> { Success = false, Message = "Invalid account" });
+        }
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        if (await _context.Users.AnyAsync(u => !u.IsDeleted && u.Id != user.Id && u.Email.ToLower() == normalizedEmail))
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "This email is already linked to another account" });
+        }
+
+        user.Email = normalizedEmail;
+        user.IsEmailVerified = false;
+        user.UpdatedAt = DateTime.UtcNow;
+        var students = await _context.Students
+            .Where(s => !s.IsDeleted && s.ParentUserId == user.Id)
+            .ToListAsync();
+        foreach (var student in students)
+        {
+            student.ParentEmail = normalizedEmail;
+            student.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Recovery email updated. Use Email OTP to verify and securely access your account."
+        });
     }
 
     [HttpPost("deletion-request")]
@@ -93,6 +159,18 @@ public class AccountController : ControllerBase
             Message = "Account deletion request recorded"
         });
     }
+
+    private async Task<User?> GetCurrentUserAsync()
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(userIdValue, out var userId)
+            ? await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted)
+            : null;
+    }
+
+    private static bool IsPlaceholderEmail(string? email) =>
+        string.IsNullOrWhiteSpace(email) ||
+        email.EndsWith("@placeholder.mastermind.local", StringComparison.OrdinalIgnoreCase);
 }
 
 public class AccountDeletionRequestDto
@@ -103,4 +181,11 @@ public class AccountDeletionRequestDto
 public class PublicAccountDeletionRequestDto : AccountDeletionRequestDto
 {
     public string EmailOrMobile { get; set; } = string.Empty;
+}
+
+public class UpdateRecoveryEmailDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
 }

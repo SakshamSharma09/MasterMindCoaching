@@ -152,8 +152,16 @@ export const authService = {
     return apiService.get(`/auth/invitations/${encodeURIComponent(token)}`)
   },
 
-  async acceptInvitation(token: string, password: string): Promise<any> {
-    return apiService.post('/auth/invitations/accept', { token, password })
+  async acceptInvitation(token: string, email: string, password: string): Promise<any> {
+    return apiService.post('/auth/invitations/accept', { token, email, password })
+  },
+
+  async getAccountSecurity(): Promise<any> {
+    return apiService.get('/account/security')
+  },
+
+  async updateRecoveryEmail(email: string): Promise<any> {
+    return apiService.put('/account/security/email', { email })
   },
 
   async requestAccountDeletion(reason = ''): Promise<any> {
