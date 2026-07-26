@@ -43,6 +43,13 @@ var result = data.Select(x => new Dto {
 **Files Affected**: `Program.cs`, `Data/Migrations/`  
 **Date Learned**: 2026-04-18
 
+### EF Migration and Test Providers Must Match the Intended Assembly
+**Symptom**: A newly scaffolded migration omits current model changes, or an EF test fails while creating SQLite tables with SQL Server-specific column types such as `nvarchar(max)`.
+**Root Cause**: `dotnet ef --no-build` can load a stale Debug assembly while the current model was built in Release, and this project contains SQL Server-specific model types that SQLite cannot create.
+**Solution**: Build the same configuration passed to `dotnet ef` before scaffolding (`--configuration Release --no-build`). For service tests that do not validate relational SQL, use EF Core InMemory; reserve SQL Server for migration validation.
+**Files Affected**: `Data/Migrations/`, `MasterMind.API.Tests`
+**Date Learned**: 2026-07-26
+
 ### Fee Save Failure Due to Missing/Hardcoded Fee Structures
 **Symptom**: `POST /api/finance/fees` fails with `400` and message `Fee structure not found`, especially when frontend sends fixed IDs (like `1..7`) but the database has no fee structure rows.  
 **Root Cause**: Frontend had hardcoded fee structure IDs; production DB can have empty or different IDs, so payload references invalid records.  

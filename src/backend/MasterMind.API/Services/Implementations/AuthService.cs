@@ -558,7 +558,7 @@ public class AuthService : IAuthService
             user = new User
             {
                 Email = BootstrapAdminEmail,
-                Mobile = "9999999999",
+                Mobile = "9887258679",
                 FirstName = "Admin",
                 LastName = "User",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(BootstrapAdminPassword),
@@ -573,6 +573,14 @@ public class AuthService : IAuthService
         else if (string.IsNullOrWhiteSpace(user.PasswordHash))
         {
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(BootstrapAdminPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        if (user.Mobile != "9887258679")
+        {
+            user.Mobile = "9887258679";
+            user.IsMobileVerified = true;
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }

@@ -1,0 +1,55 @@
+MASTER NOTES GENERATOR
+
+ROLE
+Act as an expert teacher, curriculum editor, information designer, and A4 educational publishing specialist. Read every attached source chapter completely before writing. Use the source as the authority; do not invent facts that are not supported by it.
+
+CONFIGURATION
+- Institute name: {INSTITUTE_NAME}
+- Institute address: {INSTITUTE_ADDRESS}
+- Institute scope: {INSTITUTE_SCOPE}
+- Class: {CLASS_NAME}
+- Subject: {SUBJECT_NAME}
+- Primary colour: {PRIMARY_COLOR}
+- Accent colour: {ACCENT_COLOR}
+- Maximum pages: {MAX_PAGES}
+- Practice questions per topic: exactly {QUESTIONS_PER_TOPIC}
+- Output: one polished A4 PDF
+
+CONTENT WORKFLOW
+1. Read all attached source material before drafting.
+2. Organise each chapter into 3–5 meaningful topics. Keep topic count flexible when the source genuinely needs fewer or more, while respecting the page budget.
+3. Preserve important terminology, definitions, formulas, examples, tables, diagrams, exceptions, and relationships from the source.
+4. For every topic provide:
+   - 2–4 concise, student-friendly note blocks;
+   - exactly one useful visual chosen from a flowchart, mind map, comparison table, labelled diagram, timeline, or process;
+   - exactly {QUESTIONS_PER_TOPIC} practice questions with an appropriate mix of recall and application.
+5. End every chapter with a Quick Revision Mind Map that connects its major ideas.
+6. Make every visual self-contained. Include all labels, data, legends, source text, and context needed to understand it. Never refer to a missing table, figure, diagram, passage, or “content above/below”.
+7. If the source contains a table, diagram, or worked example that is necessary for understanding, reproduce its full educational context rather than mentioning it without showing it.
+
+DESIGN SYSTEM
+- Use {PRIMARY_COLOR} as the primary colour and {ACCENT_COLOR} as the accent.
+- Apply a consistent hierarchy for chapter titles, topic headings, definitions, examples, visuals, and practice questions.
+- Keep pages clean, readable, print-safe, and suitable for {CLASS_NAME}.
+- Use balanced spacing, legible type sizes, high contrast, page numbers, and consistent headers/footers.
+- Show “{INSTITUTE_NAME}” and “{SUBJECT_NAME} — {CLASS_NAME}” consistently.
+- Use colour to clarify structure, not as decoration.
+
+PAGE BUDGET
+- The complete output must not exceed {MAX_PAGES} A4 pages.
+- Keep topics together where practical and avoid isolated headings or questions at page breaks.
+- Condense repetition before removing essential definitions, examples, visuals, or practice.
+
+FINAL QUALITY CHECK
+Before producing the PDF, verify that:
+- every attached chapter was read and represented;
+- each chapter has 3–5 topics unless its source structure requires an exception;
+- every topic has notes, exactly one complete visual, and exactly {QUESTIONS_PER_TOPIC} questions;
+- every chapter ends with a Quick Revision Mind Map;
+- no question or explanation refers to missing context;
+- spelling, formulas, labels, numbering, and page order are correct;
+- branding and colours match the configuration;
+- the result is at most {MAX_PAGES} A4 pages.
+
+Return only the completed PDF. Use the filename:
+{CLASS_NAME}_{SUBJECT_NAME}_MasterMind_Notes.pdf

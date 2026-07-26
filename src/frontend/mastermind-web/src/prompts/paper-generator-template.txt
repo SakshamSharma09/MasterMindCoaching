@@ -870,3 +870,15 @@ const paper = await generatePaper({
 
 *Mastermind Coaching Classes | Road No. 5, VKIA, Jaipur | 9887258679*
 *Prompt Template v1.0 — For internal use only*
+## NON-NEGOTIABLE CONTEXT COMPLETENESS RULE
+
+Every passage, case, table, chart, figure, diagram, dataset, extract, map, image, or other source referred to by a question MUST be printed in full immediately before the related question group. It must be readable, fully labelled, and include all rows, columns, legends, units, captions, and source text needed to answer the questions.
+
+Never write orphaned directions such as “refer to the table below”, “study the figure”, “read the following case”, “from the passage above”, or equivalent wording unless that exact complete context appears with the question. A reference to source material is not a substitute for reproducing the required context.
+
+Before returning the paper, run a context preflight:
+1. Search every question for language that refers to a passage, case, table, chart, figure, diagram, dataset, extract, map, or image.
+2. Confirm the complete referenced item is present immediately before that question group.
+3. Confirm its labels and data are readable and sufficient to answer every linked question.
+4. If any reference is orphaned or incomplete, add the missing context or replace the question with a fully self-contained question.
+5. Do not return the paper until there are zero orphaned context references.

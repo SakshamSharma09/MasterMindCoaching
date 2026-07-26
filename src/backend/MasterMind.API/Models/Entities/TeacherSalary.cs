@@ -12,6 +12,7 @@ public class TeacherSalary : BaseEntity
     public decimal NetSalary { get; set; }
     public string Month { get; set; } = string.Empty; // e.g., "January 2024"
     public int Year { get; set; }
+    public string? ObligationKey { get; set; }
     public DateTime? PaymentDate { get; set; }
     public PaymentMethod? PaymentMethod { get; set; }
     public string? TransactionId { get; set; }

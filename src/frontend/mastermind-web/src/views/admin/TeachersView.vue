@@ -65,6 +65,12 @@
                     Phone
                   </th>
                   <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Joining Date
+                  </th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Monthly Salary
+                  </th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                     Status
                   </th>
                   <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
@@ -117,6 +123,12 @@
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     {{ teacher.mobile }}
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                    {{ formatDate(teacher.joiningDate) }}
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">
+                    {{ formatSalary(teacher.monthlySalary) }}
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     <span
@@ -330,24 +342,36 @@
                         <h4 class="text-sm font-medium text-gray-900 mb-3">Professional Information</h4>
                         <div class="space-y-4">
                           <div>
-                            <label for="experienceYears" class="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
+                            <label for="joiningDate" class="block text-sm font-medium text-gray-700 mb-1">Joining Date *</label>
+                            <input
+                              v-model="teacherForm.joiningDate"
+                              type="date"
+                              id="joiningDate"
+                              required
+                              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label for="experienceYears" class="block text-sm font-medium text-gray-700 mb-1">Experience (Years) *</label>
                             <input
                               v-model.number="teacherForm.experienceYears"
                               type="number"
                               id="experienceYears"
                               min="0"
+                              required
                               class="block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                               placeholder="e.g., 5"
                             />
                           </div>
                           <div>
-                            <label for="monthlySalary" class="block text-sm font-medium text-gray-700 mb-1">Monthly Salary (₹)</label>
+                            <label for="monthlySalary" class="block text-sm font-medium text-gray-700 mb-1">Monthly Salary (₹) *</label>
                             <input
                               v-model.number="teacherForm.monthlySalary"
                               type="number"
                               id="monthlySalary"
                               min="0"
                               step="100"
+                              required
                               class="block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                               placeholder="e.g., 25000"
                             />
@@ -409,6 +433,7 @@ interface Teacher {
   subjects?: string
   experienceYears?: number
   monthlySalary?: number
+  joiningDate?: string
   isActive?: boolean
   teacherClasses?: any[]
 }
@@ -431,6 +456,11 @@ const loadingClasses = ref(false)
 const showClassesDropdown = ref(false)
 
 // Class assignment modal - removed as per user request
+const getLocalDate = () => {
+  const value = new Date()
+  value.setMinutes(value.getMinutes() - value.getTimezoneOffset())
+  return value.toISOString().slice(0, 10)
+}
 
 const teacherForm = ref({
   id: 0,
@@ -442,7 +472,8 @@ const teacherForm = ref({
   qualification: '',
   subjects: [] as string[],
   classes: [] as number[], // Array of class IDs
-  experienceYears: null as number | null,
+  joiningDate: getLocalDate(),
+  experienceYears: 0,
   monthlySalary: null as number | null
 })
 
@@ -462,6 +493,20 @@ const fetchTeachers = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const formatDate = (value?: string) => {
+  if (!value) return 'Not set'
+  return new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  })
+}
+
+const formatSalary = (value?: number) => {
+  if (value === null || value === undefined) return 'Not set'
+  return `₹${value.toLocaleString('en-IN')}`
 }
 
 // Get teacher classes as array of class names
@@ -537,7 +582,8 @@ const openAddModal = () => {
     qualification: '',
     subjects: [],
     classes: [],
-    experienceYears: null,
+    joiningDate: getLocalDate(),
+    experienceYears: 0,
     monthlySalary: null
   }
   showModal.value = true
@@ -556,7 +602,8 @@ const openEditModal = (teacher: any) => {
     qualification: teacher.qualification || '',
     subjects: teacher.subjects ? teacher.subjects.split(',').map((s: string) => s.trim()) : [],
     classes: teacher.teacherClasses ? teacher.teacherClasses.map((tc: any) => tc.classId) : [],
-    experienceYears: teacher.experienceYears,
+    joiningDate: teacher.joiningDate ? teacher.joiningDate.slice(0, 10) : getLocalDate(),
+    experienceYears: teacher.experienceYears ?? 0,
     monthlySalary: teacher.monthlySalary
   }
   showModal.value = true
@@ -575,7 +622,8 @@ const closeModal = () => {
     qualification: '',
     subjects: [],
     classes: [],
-    experienceYears: null,
+    joiningDate: getLocalDate(),
+    experienceYears: 0,
     monthlySalary: null
   }
 }
@@ -595,7 +643,7 @@ const saveTeacher = async () => {
       subjects: teacherForm.value.subjects.join(', '),
       experienceYears: teacherForm.value.experienceYears,
       monthlySalary: teacherForm.value.monthlySalary,
-      joiningDate: new Date().toISOString(),
+      joiningDate: teacherForm.value.joiningDate,
       isActive: true,
       classIds: teacherForm.value.classes // Send selected class IDs
     }

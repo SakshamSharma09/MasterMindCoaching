@@ -3,6 +3,7 @@ using MasterMind.API.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MasterMind.API.Services.Interfaces;
 
 namespace MasterMind.API.Controllers;
 
@@ -14,11 +15,16 @@ public class ExpensesController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly ILogger<ExpensesController> _logger;
+    private readonly ITeacherSalaryService _teacherSalaryService;
 
-    public ExpensesController(MasterMindDbContext context, ILogger<ExpensesController> logger)
+    public ExpensesController(
+        MasterMindDbContext context,
+        ILogger<ExpensesController> logger,
+        ITeacherSalaryService teacherSalaryService)
     {
         _context = context;
         _logger = logger;
+        _teacherSalaryService = teacherSalaryService;
     }
 
     /// <summary>
@@ -34,7 +40,8 @@ public class ExpensesController : ControllerBase
     public async Task<ActionResult<ApiResponse<IEnumerable<ExpenseDto>>>> GetExpenses(
         [FromQuery] string? category,
         [FromQuery] string? startDate,
-        [FromQuery] string? endDate)
+        [FromQuery] string? endDate,
+        [FromQuery] int? sessionId = null)
     {
         try
         {
@@ -42,6 +49,7 @@ public class ExpensesController : ControllerBase
             var expensesList = await _context.Expenses
                 .Include(e => e.ProcessedByUser)
                 .Include(e => e.BudgetCategory)
+                .Where(e => !e.IsDeleted && (!sessionId.HasValue || e.SessionId == sessionId.Value))
                 .OrderByDescending(e => e.ExpenseDate)
                 .Take(100)
                 .ToListAsync();
@@ -79,8 +87,29 @@ public class ExpensesController : ControllerBase
                     VendorName = e.VendorName,
                     IsRecurring = e.IsRecurring,
                     ProcessedBy = e.ProcessedByUser != null ? $"{e.ProcessedByUser.FirstName} {e.ProcessedByUser.LastName}" : null
+                    ,Source = "General"
                 })
                 .ToList();
+
+            var salaryRows = await _teacherSalaryService.GetObligationsAsync(sessionId);
+            var salaries = salaryRows
+                .Where(s => s.Status != SalaryStatus.Cancelled)
+                .Select(s => new ExpenseDto
+                {
+                    Id = -s.Id,
+                    SalaryId = s.Id,
+                    Source = "TeacherSalary",
+                    Category = "Salary",
+                    Description = $"{s.Month} {s.Year} salary",
+                    Amount = s.NetSalary,
+                    PaidTo = s.Teacher.FullName,
+                    Date = (s.PaymentDate ?? s.CreatedAt).ToString("yyyy-MM-dd"),
+                    Status = s.Status.ToString(),
+                    PaymentMethod = s.PaymentMethod?.ToString(),
+                    IsRecurring = true
+                });
+            expenses.AddRange(salaries);
+            expenses = expenses.OrderByDescending(e => e.Date).ToList();
 
             return Ok(new ApiResponse<IEnumerable<ExpenseDto>>
             {
@@ -130,7 +159,11 @@ public class ExpensesController : ControllerBase
                 VendorContact = request.VendorContact,
                 IsRecurring = request.IsRecurring,
                 RecurrencePattern = request.RecurrencePattern,
-                ProcessedByUserId = GetCurrentUserId()
+                ProcessedByUserId = GetCurrentUserId(),
+                SessionId = await _context.Sessions
+                    .Where(s => s.IsActive && !s.IsDeleted)
+                    .Select(s => (int?)s.Id)
+                    .FirstOrDefaultAsync()
             };
 
             _context.Expenses.Add(expense);
@@ -277,7 +310,8 @@ public class ExpensesController : ControllerBase
                 });
             }
 
-            _context.Expenses.Remove(expense);
+            expense.IsDeleted = true;
+            expense.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             _logger.LogInformation($"Expense {id} deleted");
@@ -298,6 +332,35 @@ public class ExpensesController : ControllerBase
                 Message = "Error deleting expense"
             });
         }
+    }
+
+    [HttpPost("salaries/{id}/pay")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<object>>> MarkSalaryPaid(
+        int id,
+        [FromBody] MarkSalaryPaidRequest request)
+    {
+        var salary = await _context.TeacherSalaries
+            .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+        if (salary == null)
+        {
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Salary obligation not found" });
+        }
+
+        salary.Status = SalaryStatus.Paid;
+        salary.PaymentDate = request.PaymentDate ?? DateTime.UtcNow;
+        salary.PaymentMethod = request.PaymentMethod;
+        salary.TransactionId = request.TransactionId?.Trim();
+        salary.Remarks = request.Remarks?.Trim();
+        salary.ProcessedByUserId = GetCurrentUserId();
+        salary.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Teacher salary marked as paid"
+        });
     }
 
     /// <summary>
@@ -423,6 +486,16 @@ public class ExpenseDto
     public string? VendorName { get; set; }
     public bool IsRecurring { get; set; }
     public string? ProcessedBy { get; set; }
+    public string Source { get; set; } = "General";
+    public int? SalaryId { get; set; }
+}
+
+public class MarkSalaryPaidRequest
+{
+    public DateTime? PaymentDate { get; set; }
+    public PaymentMethod? PaymentMethod { get; set; }
+    public string? TransactionId { get; set; }
+    public string? Remarks { get; set; }
 }
 
 public class CreateExpenseRequest

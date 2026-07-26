@@ -89,6 +89,106 @@ namespace MasterMind.API.Data.Migrations
                     b.ToTable("AcademicPlannerEntries");
                 });
 
+            modelBuilder.Entity("MasterMind.API.Models.Entities.AccountDeletionRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EmailOrMobile")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("AccountDeletionRequests");
+                });
+
+            modelBuilder.Entity("MasterMind.API.Models.Entities.AccountInvitation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "ExpiresAt");
+
+                    b.ToTable("AccountInvitations");
+                });
+
             modelBuilder.Entity("MasterMind.API.Models.Entities.AdminNote", b =>
                 {
                     b.Property<int>("Id")
@@ -1663,8 +1763,16 @@ namespace MasterMind.API.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CurrentSchool")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime>("DateOfBirth")
                         .HasColumnType("date");
+
+                    b.Property<string>("FatherName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -1684,6 +1792,10 @@ namespace MasterMind.API.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MotherName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("ParentEmail")
                         .HasMaxLength(255)
@@ -2241,6 +2353,10 @@ namespace MasterMind.API.Data.Migrations
                     b.Property<decimal>("NetSalary")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("ObligationKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
                     b.Property<DateTime?>("PaymentDate")
                         .HasColumnType("datetime2");
 
@@ -2269,6 +2385,10 @@ namespace MasterMind.API.Data.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ObligationKey")
+                        .IsUnique()
+                        .HasFilter("[ObligationKey] IS NOT NULL");
 
                     b.HasIndex("ProcessedByUserId");
 
@@ -2537,6 +2657,41 @@ namespace MasterMind.API.Data.Migrations
                     b.Navigation("Session");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("MasterMind.API.Models.Entities.AccountDeletionRequest", b =>
+                {
+                    b.HasOne("MasterMind.API.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MasterMind.API.Models.Entities.AccountInvitation", b =>
+                {
+                    b.HasOne("MasterMind.API.Models.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("MasterMind.API.Models.Entities.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MasterMind.API.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Student");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MasterMind.API.Models.Entities.Attendance", b =>
@@ -3080,12 +3235,13 @@ namespace MasterMind.API.Data.Migrations
                 {
                     b.HasOne("MasterMind.API.Models.Entities.User", "ProcessedByUser")
                         .WithMany()
-                        .HasForeignKey("ProcessedByUserId");
+                        .HasForeignKey("ProcessedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("MasterMind.API.Models.Entities.Teacher", "Teacher")
                         .WithMany("TeacherSalaries")
                         .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ProcessedByUser");

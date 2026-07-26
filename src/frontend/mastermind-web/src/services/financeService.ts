@@ -52,6 +52,9 @@ export interface Expense {
   paidTo: string
   date: string
   receiptNumber?: string
+  status?: string
+  source?: 'General' | 'TeacherSalary'
+  salaryId?: number
 }
 
 export interface CreateExpenseDto {
@@ -427,7 +430,8 @@ export const financeService = {
     if (filters?.startDate) params.append('startDate', filters.startDate)
     if (filters?.endDate) params.append('endDate', filters.endDate)
 
-    const response = await apiService.get(`/finance/expenses?${params.toString()}`)
+    const query = params.toString()
+    const response = await apiService.get(`/expenses${query ? `?${query}` : ''}`)
     return response.data || []
   },
 
@@ -446,7 +450,7 @@ export const financeService = {
       }
     }
 
-    const response = await apiService.post('/finance/expenses', data)
+    const response = await apiService.post('/expenses', data)
     return response.data
   },
 
@@ -478,6 +482,12 @@ export const financeService = {
 
     await apiService.delete(`/expenses/${id}`)
     return true
+  },
+
+  async markSalaryPaid(id: number): Promise<void> {
+    await apiService.post(`/expenses/salaries/${id}/pay`, {
+      paymentDate: new Date().toISOString()
+    })
   },
 
   // ===== REPORT METHODS =====

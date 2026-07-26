@@ -23,6 +23,8 @@ namespace MasterMind.API.Data
         public DbSet<UserDevice> UserDevices { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<OtpRecord> OtpRecords { get; set; }
+        public DbSet<AccountInvitation> AccountInvitations { get; set; }
+        public DbSet<AccountDeletionRequest> AccountDeletionRequests { get; set; }
 
         // Attendance Management
         public DbSet<Attendance> Attendances { get; set; }
@@ -91,6 +93,38 @@ namespace MasterMind.API.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            modelBuilder.Entity<AccountInvitation>(entity =>
+            {
+                entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.ExpiresAt });
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Student)
+                    .WithMany()
+                    .HasForeignKey(e => e.StudentId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(e => e.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            modelBuilder.Entity<AccountDeletionRequest>(entity =>
+            {
+                entity.Property(e => e.EmailOrMobile).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Reason).HasMaxLength(1000);
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(40);
+                entity.HasIndex(e => new { e.Status, e.CreatedAt });
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
             // Student configuration
             modelBuilder.Entity<MasterMind.API.Models.Entities.Student>(entity =>
             {
@@ -107,6 +141,9 @@ namespace MasterMind.API.Data
                 entity.Property(e => e.ProfileImageUrl).HasMaxLength(500);
                 entity.Property(e => e.AdmissionNumber).HasMaxLength(200);
                 entity.Property(e => e.ParentName).HasMaxLength(200);
+                entity.Property(e => e.MotherName).HasMaxLength(200);
+                entity.Property(e => e.FatherName).HasMaxLength(200);
+                entity.Property(e => e.CurrentSchool).HasMaxLength(200);
                 entity.Property(e => e.ParentEmail).HasMaxLength(255);
                 entity.Property(e => e.ParentOccupation).HasMaxLength(200);
                 entity.Property(e => e.DateOfBirth).HasColumnType("date");
@@ -251,6 +288,23 @@ namespace MasterMind.API.Data
                 entity.HasOne(t => t.Session)
                     .WithMany(session => session.Teachers)
                     .HasForeignKey(t => t.SessionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<TeacherSalary>(entity =>
+            {
+                entity.Property(e => e.Month).IsRequired();
+                entity.Property(e => e.ObligationKey).HasMaxLength(80);
+                entity.HasIndex(e => e.ObligationKey)
+                    .IsUnique()
+                    .HasFilter("[ObligationKey] IS NOT NULL");
+                entity.HasOne(e => e.Teacher)
+                    .WithMany(t => t.TeacherSalaries)
+                    .HasForeignKey(e => e.TeacherId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ProcessedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProcessedByUserId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 

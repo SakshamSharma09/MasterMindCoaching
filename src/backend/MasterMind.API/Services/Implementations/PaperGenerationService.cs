@@ -328,7 +328,11 @@ public class PaperGenerationService : IPaperGenerationService
         return type switch
         {
             PaperQuestionType.Mcq => $"Choose the correct option for concept {serial} from {chapter} in {request.Subject}.",
-            PaperQuestionType.CaseStudy => $"Read a short case based on {chapter} and answer the related analytical questions.",
+            PaperQuestionType.CaseStudy => $"""
+                Case study: A learner is applying the key ideas from {chapter} in {request.Subject} to solve a new classroom problem. The learner identifies the relevant concept, explains why it applies, tests the result against the given conditions, and records a justified conclusion.
+
+                Using the complete case above, identify the concept being applied and explain how the learner should validate the conclusion.
+                """,
             PaperQuestionType.FiveMark => $"Explain concept {serial} from {chapter} with reasoning, example, and conclusion.",
             PaperQuestionType.TwoMark => $"Write a concise answer for concept {serial} from {chapter}.",
             _ => $"Answer concept {serial} from {chapter} in {request.Subject}."

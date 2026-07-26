@@ -1,3 +1,4 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
@@ -8,16 +9,42 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{FE36
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterMind.API", "src\backend\MasterMind.API\MasterMind.API.csproj", "{88C54308-0AC0-38F3-8969-19666D798CEA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterMind.API.Tests", "src\backend\MasterMind.API.Tests\MasterMind.API.Tests.csproj", "{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{88C54308-0AC0-38F3-8969-19666D798CEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{88C54308-0AC0-38F3-8969-19666D798CEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88C54308-0AC0-38F3-8969-19666D798CEA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{88C54308-0AC0-38F3-8969-19666D798CEA}.Debug|x64.Build.0 = Debug|Any CPU
+		{88C54308-0AC0-38F3-8969-19666D798CEA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{88C54308-0AC0-38F3-8969-19666D798CEA}.Debug|x86.Build.0 = Debug|Any CPU
 		{88C54308-0AC0-38F3-8969-19666D798CEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{88C54308-0AC0-38F3-8969-19666D798CEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88C54308-0AC0-38F3-8969-19666D798CEA}.Release|x64.ActiveCfg = Release|Any CPU
+		{88C54308-0AC0-38F3-8969-19666D798CEA}.Release|x64.Build.0 = Release|Any CPU
+		{88C54308-0AC0-38F3-8969-19666D798CEA}.Release|x86.ActiveCfg = Release|Any CPU
+		{88C54308-0AC0-38F3-8969-19666D798CEA}.Release|x86.Build.0 = Release|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Debug|x64.Build.0 = Debug|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Debug|x86.Build.0 = Debug|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Release|x64.ActiveCfg = Release|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Release|x64.Build.0 = Release|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Release|x86.ActiveCfg = Release|Any CPU
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -25,6 +52,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{FE360695-3F2B-1049-3887-35FBB5135923} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{88C54308-0AC0-38F3-8969-19666D798CEA} = {FE360695-3F2B-1049-3887-35FBB5135923}
+		{BF07FA10-91A6-4D6B-8F34-E6E3BCA353D8} = {FE360695-3F2B-1049-3887-35FBB5135923}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7947AF26-1A5A-479B-8736-832D5CEE868D}

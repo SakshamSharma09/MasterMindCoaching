@@ -136,11 +136,10 @@
 
             <div class="mt-6 border-t border-slate-100 pt-5 text-sm leading-6 text-slate-500">
               <p>
-                First time parent or teacher?
-                <button type="button" class="font-bold text-[#6049e8]" @click="selectMode('email-otp')">
-                  Verify with email OTP
-                </button>
-                and then set your password inside the app.
+                First time parent? Use the private joining link sent by MasterMind to set your password.
+                Teachers can use
+                <button type="button" class="font-bold text-[#6049e8]" @click="selectMode('email-otp')">email OTP</button>
+                if their account has not been set up yet.
               </p>
               <p class="mt-3">
                 By using this app, you agree to our
@@ -158,12 +157,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 type LoginMode = 'admin-password' | 'email-otp' | 'mobile-password'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const loginOptions: Array<{ label: string; value: LoginMode }> = [
@@ -267,4 +267,7 @@ const handleSubmit = async () => {
 }
 
 selectMode('mobile-password')
+if (route.query.mobile) {
+  form.identifier = String(route.query.mobile)
+}
 </script>

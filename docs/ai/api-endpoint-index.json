@@ -64,6 +64,11 @@
                                                           "action":  "MapStudentToClass"
                                                       },
                                                       {
+                                                          "method":  "POST",
+                                                          "path":  "/api/students/{id}/parent-invitation",
+                                                          "action":  "ResendParentInvitation"
+                                                      },
+                                                      {
                                                           "method":  "PUT",
                                                           "path":  "/api/students/{id}",
                                                           "action":  "UpdateStudent"
@@ -247,6 +252,11 @@
                                                           "method":  "POST",
                                                           "path":  "/api/expenses",
                                                           "action":  "CreateExpense"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/expenses/salaries/{id}/pay",
+                                                          "action":  "MarkSalaryPaid"
                                                       },
                                                       {
                                                           "method":  "PUT",
@@ -753,6 +763,16 @@
                                                       "action":  "SetPassword"
                                                   },
                                                   {
+                                                      "method":  "GET",
+                                                      "path":  "/api/auth/invitations/{token}",
+                                                      "action":  "ValidateInvitation"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/auth/invitations/accept",
+                                                      "action":  "AcceptInvitation"
+                                                  },
+                                                  {
                                                       "method":  "POST",
                                                       "path":  "/api/auth/token/refresh",
                                                       "action":  "RefreshToken"
@@ -783,6 +803,22 @@
                                                       "action":  "RevokeDevice"
                                                   }
                                               ]
-                               }
+                               },
+                      "account":  {
+                                      "requiresAuth":  false,
+                                      "controller":  "src/backend/MasterMind.API/Controllers/AccountController.cs",
+                                      "routes":  [
+                                                     {
+                                                         "method":  "POST",
+                                                         "path":  "/api/account/deletion-request",
+                                                         "action":  "RequestAuthenticatedDeletion"
+                                                     },
+                                                     {
+                                                         "method":  "POST",
+                                                         "path":  "/api/account/public-deletion-request",
+                                                         "action":  "RequestPublicDeletion"
+                                                     }
+                                                 ]
+                                  }
                   }
 }

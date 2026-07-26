@@ -5,6 +5,7 @@ using MasterMind.API.Data;
 using MasterMind.API.Models.Entities;
 using MasterMind.API.Models.DTOs.Common;
 using System.Text.Json;
+using MasterMind.API.Services.Interfaces;
 
 namespace MasterMind.API.Controllers;
 
@@ -14,10 +15,12 @@ namespace MasterMind.API.Controllers;
 public class TeachersController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
+    private readonly ITeacherSalaryService _teacherSalaryService;
 
-    public TeachersController(MasterMindDbContext context)
+    public TeachersController(MasterMindDbContext context, ITeacherSalaryService teacherSalaryService)
     {
         _context = context;
+        _teacherSalaryService = teacherSalaryService;
     }
 
     // GET: api/Teachers
@@ -187,6 +190,7 @@ public class TeachersController : ControllerBase
             await _context.SaveChangesAsync();
 
             await LinkTeacherUserAsync(teacher);
+            await _teacherSalaryService.EnsureMonthlyObligationsAsync(activeSession.Id);
 
             // Handle class assignments if provided
             if (teacherData.TryGetProperty("classIds", out JsonElement classIdsElement))
@@ -261,6 +265,16 @@ public class TeachersController : ControllerBase
             decimal monthlySalary = updateData.GetProperty("monthlySalary").GetDecimal();
             teacher.ExperienceYears = experienceYears;
             teacher.MonthlySalary = monthlySalary;
+            JsonElement teacherUpdate = updateData;
+            if (teacherUpdate.TryGetProperty("joiningDate", out JsonElement joiningDateElement) &&
+                DateTime.TryParse(joiningDateElement.GetString(), out DateTime parsedJoiningDate))
+            {
+                teacher.JoiningDate = parsedJoiningDate;
+            }
+            if (teacherUpdate.TryGetProperty("isActive", out JsonElement activeElement))
+            {
+                teacher.IsActive = activeElement.GetBoolean();
+            }
             teacher.UpdatedAt = DateTime.UtcNow;
 
             // Handle class assignments if provided
@@ -286,6 +300,7 @@ public class TeachersController : ControllerBase
             await _context.SaveChangesAsync();
 
             await LinkTeacherUserAsync(teacher);
+            await _teacherSalaryService.EnsureMonthlyObligationsAsync(teacher.SessionId);
 
             return Ok(new ApiResponse<Teacher>
             {

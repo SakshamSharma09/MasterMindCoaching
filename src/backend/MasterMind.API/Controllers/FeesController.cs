@@ -43,7 +43,8 @@ public class FeesController : ControllerBase
                 .Include(sf => sf.Student)
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
-                .Include(sf => sf.FeeStructure);
+                .Include(sf => sf.FeeStructure)
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted);
 
             if (classId.HasValue)
             {
@@ -139,7 +140,7 @@ public class FeesController : ControllerBase
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .FirstOrDefaultAsync(sf => sf.Id == id);
+                .FirstOrDefaultAsync(sf => sf.Id == id && !sf.IsDeleted && !sf.Student.IsDeleted);
 
             if (studentFee == null)
             {
@@ -230,7 +231,7 @@ public class FeesController : ControllerBase
         {
             var studentFee = await _context.StudentFees
                 .Include(sf => sf.Payments)
-                .FirstOrDefaultAsync(sf => sf.Id == id);
+                .FirstOrDefaultAsync(sf => sf.Id == id && !sf.IsDeleted);
 
             if (studentFee == null)
             {
@@ -242,7 +243,7 @@ public class FeesController : ControllerBase
             }
 
             // Don't allow deletion if there are payments
-            if (studentFee.Payments.Any())
+            if (studentFee.Payments.Any(p => !p.IsDeleted))
             {
                 return BadRequest(new ApiResponse<bool>
                 {
@@ -251,7 +252,8 @@ public class FeesController : ControllerBase
                 });
             }
 
-            _context.StudentFees.Remove(studentFee);
+            studentFee.IsDeleted = true;
+            studentFee.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return Ok(new ApiResponse<bool>

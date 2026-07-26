@@ -194,7 +194,7 @@
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="min-w-[980px] w-full divide-y divide-gray-200">
+        <table class="min-w-[1120px] w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -217,6 +217,9 @@
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 School
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Enrollment
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -286,17 +289,25 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ student.phone }}</div>
+                <div class="text-xs text-gray-500">{{ student.parentMobile || 'No parent mobile' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-col space-y-1">
-                  <div class="text-sm font-medium text-gray-900">Parents</div>
-                  <div class="text-xs text-gray-500">Mother: {{ student.motherName }}</div>
-                  <div class="text-xs text-gray-500">Father: {{ student.fatherName }}</div>
+                  <div v-if="student.motherName" class="text-xs text-gray-500">Mother: {{ student.motherName }}</div>
+                  <div v-if="student.fatherName" class="text-xs text-gray-500">Father: {{ student.fatherName }}</div>
+                  <div v-if="!student.motherName && !student.fatherName" class="text-xs text-gray-500">
+                    Parent: {{ student.parentName || 'Not provided' }}
+                  </div>
+                  <div class="text-xs text-gray-400">{{ student.parentEmail }}</div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ student.currentSchool }}</div>
                 <div class="text-xs text-gray-400">Current School</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">{{ formatDate(student.admissionDate) }}</div>
+                <div class="text-xs text-gray-400">Admission Date</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
@@ -314,6 +325,13 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button
+                  v-if="student.parentEmail"
+                  @click="resendInvitation(student.id)"
+                  class="mr-3 font-medium text-emerald-600 transition-colors duration-150 hover:text-emerald-900"
+                >
+                  Invite
+                </button>
                 <button 
                   @click="editStudent(student)" 
                   class="text-indigo-600 hover:text-indigo-900 font-medium mr-3 transition-colors duration-150"
@@ -379,19 +397,47 @@
                 </div>
               </div>
               <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Student Email</label>
                 <input
                   v-model="form.email"
                   type="email"
-                  required
                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
                 />
               </div>
               <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Student Mobile</label>
                 <input
                   v-model="form.phone"
                   type="tel"
+                  class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+                />
+              </div>
+              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Parent Email</label>
+                  <input
+                    v-model="form.parentEmail"
+                    type="email"
+                    required
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Parent Mobile</label>
+                  <input
+                    v-model="form.parentMobile"
+                    type="tel"
+                    required
+                    inputmode="numeric"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+                  />
+                </div>
+              </div>
+              <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Admission Date</label>
+                <input
+                  v-model="form.admissionDate"
+                  type="date"
                   required
                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
                 />
@@ -511,6 +557,10 @@ interface Class {
 interface ExtendedStudent extends Student {
   email: string
   phone: string
+  parentName: string
+  parentEmail: string
+  parentMobile: string
+  admissionDate: string
   classId?: number | null
   className: string
   status: 'Active' | 'Inactive'
@@ -541,6 +591,11 @@ const showMappingModal = ref(false)
 const editingStudent = ref<ExtendedStudent | null>(null)
 const selectedPhotoFile = ref<File | null>(null)
 const selectedPhotoPreviewUrl = ref('')
+const todayDateInput = () => {
+  const today = new Date()
+  const offset = today.getTimezoneOffset()
+  return new Date(today.getTime() - offset * 60_000).toISOString().slice(0, 10)
+}
 
 // Form data
 const form = ref<CreateStudentRequest>({
@@ -548,9 +603,13 @@ const form = ref<CreateStudentRequest>({
   lastName: '',
   email: '',
   phone: '',
+  parentEmail: '',
+  parentMobile: '',
+  admissionDate: todayDateInput(),
   classId: null,
   className: '',
   status: 'Active' as 'Active' | 'Inactive',
+  parentName: '',
   motherName: '',
   fatherName: '',
   address: '',
@@ -582,7 +641,7 @@ const filteredStudents = computed(() => {
       case 'name':
         return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
       case 'enrollmentDate':
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        return new Date(b.admissionDate).getTime() - new Date(a.admissionDate).getTime()
       case 'class':
         return (a.className || '').localeCompare(b.className || '')
       default:
@@ -620,10 +679,18 @@ const newStudents = computed(() => {
   const currentMonth = new Date().getMonth()
   const currentYear = new Date().getFullYear()
   return students.value.filter(student => {
-    const createdDate = new Date(student.createdAt)
-    return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
+    const admissionDate = new Date(student.admissionDate)
+    return admissionDate.getMonth() === currentMonth && admissionDate.getFullYear() === currentYear
   }).length
 })
+
+const formatDate = (value?: string) => {
+  if (!value) return 'Not set'
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`)
+  return Number.isNaN(date.getTime())
+    ? 'Not set'
+    : new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
+}
 
 // Filters object
 const filters = ref({
@@ -655,15 +722,19 @@ const loadData = async () => {
         id: student.id,
         firstName: student.firstName,
         lastName: student.lastName,
-        email: student.studentEmail,
-        phone: student.studentMobile,
+        email: student.studentEmail || '',
+        phone: student.studentMobile || '',
+        parentName: student.parentName || '',
+        parentEmail: student.parentEmail || '',
+        parentMobile: student.parentMobile || '',
+        admissionDate: student.admissionDate?.slice(0, 10) || '',
         classId: activeClass?.classId ?? activeClass?.class?.id ?? null,
         className: activeClass?.class?.name || 'Not Assigned',
         status: student.isActive ? 'Active' : 'Inactive',
-        motherName: student.parentName?.split(' ')[0] || '',
-        fatherName: student.parentName?.split(' ').slice(1).join(' ') || '',
+        motherName: student.motherName || '',
+        fatherName: student.fatherName || '',
         address: student.address,
-        currentSchool: '',
+        currentSchool: student.currentSchool || '',
         photo: student.profileImageUrl,
         dateOfBirth: student.dateOfBirth,
         gender: student.gender === 0 ? 'Male' : student.gender === 1 ? 'Female' : 'Other',
@@ -702,9 +773,13 @@ const resetForm = () => {
     lastName: '',
     email: '',
     phone: '',
+    parentEmail: '',
+    parentMobile: '',
+    admissionDate: todayDateInput(),
     classId: null,
     className: '',
     status: 'Active' as 'Active' | 'Inactive',
+    parentName: '',
     motherName: '',
     fatherName: '',
     address: '',
@@ -754,9 +829,13 @@ const editStudent = (student: ExtendedStudent) => {
     lastName: student.lastName,
     email: student.email,
     phone: student.phone,
+    parentEmail: student.parentEmail,
+    parentMobile: student.parentMobile,
+    admissionDate: student.admissionDate,
     classId: student.classId ?? null,
     className: student.className,
     status: student.status,
+    parentName: student.parentName,
     motherName: student.motherName,
     fatherName: student.fatherName,
     address: student.address,
@@ -836,6 +915,15 @@ const deleteStudent = async (id: number) => {
       console.error('Error deleting student:', error)
       alert('Failed to delete student. Please try again.')
     }
+  }
+}
+
+const resendInvitation = async (id: number) => {
+  try {
+    const message = await studentsService.resendParentInvitation(id)
+    alert(message)
+  } catch (error: any) {
+    alert(error.response?.data?.message || 'Parent invitation could not be sent. Please try again.')
   }
 }
 

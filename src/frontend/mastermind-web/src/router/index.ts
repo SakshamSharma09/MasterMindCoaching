@@ -22,6 +22,18 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/data-deletion',
+      name: 'DataDeletion',
+      component: () => import('@/views/DataDeletionView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/accept-invitation',
+      name: 'AcceptInvitation',
+      component: () => import('@/views/auth/AcceptInvitationView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/otp-verify',
       name: 'OtpVerify',
       component: () => import('@/views/auth/OtpVerifyView.vue'),

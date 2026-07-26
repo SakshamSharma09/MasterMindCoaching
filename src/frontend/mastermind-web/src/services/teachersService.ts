@@ -12,7 +12,7 @@ export interface Teacher {
   qualification?: string
   subjects?: string
   joiningDate?: string
-  salary?: number
+  monthlySalary?: number
   isActive: boolean
   classes?: TeacherClass[]
 }
@@ -33,7 +33,7 @@ export interface CreateTeacherDto {
   qualification?: string
   subjects?: string
   joiningDate?: string
-  salary?: number
+  monthlySalary?: number
 }
 
 export interface UpdateTeacherDto {
@@ -44,7 +44,8 @@ export interface UpdateTeacherDto {
   specialization?: string
   qualification?: string
   subjects?: string
-  salary?: number
+  joiningDate?: string
+  monthlySalary?: number
   isActive?: boolean
 }
 

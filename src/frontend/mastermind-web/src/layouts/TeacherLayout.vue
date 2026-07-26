@@ -69,7 +69,7 @@
     <!-- Main Content -->
     <div class="lg:pl-64">
       <!-- Top Bar -->
-      <div class="sticky top-0 z-40 border-b border-slate-200/70 bg-white/82 shadow-sm backdrop-blur-xl">
+      <div class="safe-sticky-header sticky z-40 border-b border-slate-200/70 bg-white/82 shadow-sm backdrop-blur-xl">
         <div class="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
             @click="sidebarOpen = !sidebarOpen"

@@ -57,11 +57,34 @@ public class DashboardController : ControllerBase
         var totalClasses = await classesQuery.CountAsync();
         var totalTeachers = await teachersQuery.CountAsync();
 
-        // Calculate today's attendance (mock for now - you can implement actual attendance logic)
-        var todayAttendance = 85; // Placeholder
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var presentStudentIds = _context.Attendances
+            .Where(a => !a.IsDeleted && a.Date == today &&
+                (a.Status == AttendanceStatus.Present ||
+                 a.Status == AttendanceStatus.Late ||
+                 a.Status == AttendanceStatus.HalfDay));
+        if (sessionId.HasValue)
+        {
+            presentStudentIds = presentStudentIds.Where(a => a.Student.SessionId == sessionId.Value);
+        }
 
-        // Calculate pending fees (mock for now - you can implement actual fee calculation)
-        var pendingFees = 25000; // Placeholder
+        var presentStudents = await presentStudentIds
+            .Select(a => a.StudentId)
+            .Distinct()
+            .CountAsync();
+        var todayAttendance = activeStudents == 0
+            ? 0
+            : (int)Math.Round((decimal)presentStudents * 100m / activeStudents);
+
+        var pendingFeesQuery = _context.StudentFees
+            .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted && sf.Student.IsActive &&
+                (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid));
+        if (sessionId.HasValue)
+        {
+            pendingFeesQuery = pendingFeesQuery.Where(sf => sf.Student.SessionId == sessionId.Value);
+        }
+
+        var pendingFees = await pendingFeesQuery.SumAsync(sf => (decimal?)(sf.FinalAmount - sf.PaidAmount)) ?? 0m;
 
         var stats = new DashboardStats
         {
@@ -295,14 +318,32 @@ public class DashboardController : ControllerBase
                 });
             }
 
-            // Mock stats calculation (implement actual logic)
+            var childIds = children.Select(s => s.Id).ToList();
+            var markedAttendance = await _context.Attendances
+                .Where(a => !a.IsDeleted && childIds.Contains(a.StudentId))
+                .CountAsync();
+            var presentAttendance = await _context.Attendances
+                .Where(a => !a.IsDeleted && childIds.Contains(a.StudentId) &&
+                    (a.Status == AttendanceStatus.Present ||
+                     a.Status == AttendanceStatus.Late ||
+                     a.Status == AttendanceStatus.HalfDay))
+                .CountAsync();
+            var pendingFees = await _context.StudentFees
+                .Where(sf => !sf.IsDeleted && childIds.Contains(sf.StudentId) &&
+                    (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid))
+                .SumAsync(sf => (decimal?)(sf.FinalAmount - sf.PaidAmount)) ?? 0m;
+            var totalRemarks = await _context.StudentRemarks
+                .CountAsync(r => !r.IsDeleted && childIds.Contains(r.StudentId));
+
             var stats = new
             {
                 totalChildren = children.Count,
                 activeChildren = children.Count(s => s.IsActive),
-                averageAttendance = 92, // Mock - calculate from actual attendance
-                totalPendingFees = children.Count * 2500, // Mock - calculate from actual fees
-                totalRemarks = 5 // Mock - calculate from actual remarks
+                averageAttendance = markedAttendance == 0
+                    ? 0
+                    : Math.Round((decimal)presentAttendance * 100m / markedAttendance, 2),
+                totalPendingFees = pendingFees,
+                totalRemarks
             };
 
             return Ok(new ApiResponse<object>
@@ -374,6 +415,6 @@ public class DashboardStats
     public int TotalClasses { get; set; }
     public int TotalTeachers { get; set; }
     public int TodayAttendance { get; set; }
-    public int PendingFees { get; set; }
+    public decimal PendingFees { get; set; }
 }
 

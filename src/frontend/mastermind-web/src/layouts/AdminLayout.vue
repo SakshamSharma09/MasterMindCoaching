@@ -4,7 +4,7 @@
     <div class="fixed inset-0 bg-premium-mesh pointer-events-none -z-10"></div>
     
     <!-- Mobile Header -->
-    <header class="lg:hidden fixed top-0 left-0 right-0 z-50 glass-navbar h-16 px-4 flex items-center justify-between">
+    <header class="mobile-safe-fixed-header lg:hidden fixed left-0 right-0 z-50 glass-navbar h-16 px-4 flex items-center justify-between">
       <button 
         @click="sidebarOpen = true"
         class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors"
@@ -49,7 +49,7 @@
       </div>
     </header>
 
-    <div v-if="notificationsOpen" class="lg:hidden fixed right-4 top-16 z-50 w-[calc(100vw-2rem)] rounded-2xl border border-surface-200 bg-white shadow-xl overflow-hidden">
+    <div v-if="notificationsOpen" class="mobile-safe-fixed-panel lg:hidden fixed right-4 z-50 w-[calc(100vw-2rem)] rounded-2xl border border-surface-200 bg-white shadow-xl overflow-hidden">
       <div class="flex items-center justify-between px-4 py-3 border-b border-surface-100">
         <div>
           <p class="text-sm font-semibold text-surface-900">Admin Reminders</p>
