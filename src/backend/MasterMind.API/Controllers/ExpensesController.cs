@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MasterMind.API.Services.Interfaces;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using System.Globalization;
 
 namespace MasterMind.API.Controllers;
 
@@ -48,7 +51,6 @@ public class ExpensesController : ControllerBase
             // Load data first, then filter/project in memory to avoid SQL translation issues
             var expensesList = await _context.Expenses
                 .Include(e => e.ProcessedByUser)
-                .Include(e => e.BudgetCategory)
                 .Where(e => !e.IsDeleted && (!sessionId.HasValue || e.SessionId == sessionId.Value))
                 .OrderByDescending(e => e.ExpenseDate)
                 .Take(100)
@@ -94,20 +96,7 @@ public class ExpensesController : ControllerBase
             var salaryRows = await _teacherSalaryService.GetObligationsAsync(sessionId);
             var salaries = salaryRows
                 .Where(s => s.Status != SalaryStatus.Cancelled)
-                .Select(s => new ExpenseDto
-                {
-                    Id = -s.Id,
-                    SalaryId = s.Id,
-                    Source = "TeacherSalary",
-                    Category = "Salary",
-                    Description = $"{s.Month} {s.Year} salary",
-                    Amount = s.NetSalary,
-                    PaidTo = s.Teacher.FullName,
-                    Date = (s.PaymentDate ?? s.CreatedAt).ToString("yyyy-MM-dd"),
-                    Status = s.Status.ToString(),
-                    PaymentMethod = s.PaymentMethod?.ToString(),
-                    IsRecurring = true
-                });
+                .Select(MapSalaryExpense);
             expenses.AddRange(salaries);
             expenses = expenses.OrderByDescending(e => e.Date).ToList();
 
@@ -363,6 +352,61 @@ public class ExpensesController : ControllerBase
         });
     }
 
+    [HttpGet("salaries/{id}/receipt")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> DownloadSalaryReceipt(int id)
+    {
+        var salary = await _context.TeacherSalaries
+            .Include(s => s.Teacher)
+            .Include(s => s.ProcessedByUser)
+            .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+        if (salary == null)
+        {
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Salary obligation not found" });
+        }
+        if (salary.Status != SalaryStatus.Paid)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "A receipt is available after the salary is marked as paid" });
+        }
+
+        var receiptNumber = SalaryReceiptNumber(salary);
+        var paymentDate = salary.PaymentDate ?? salary.UpdatedAt ?? salary.CreatedAt;
+        var processedBy = salary.ProcessedByUser == null
+            ? "Administrator"
+            : $"{salary.ProcessedByUser.FirstName} {salary.ProcessedByUser.LastName}".Trim();
+        var pdf = Document.Create(document =>
+        {
+            document.Page(page =>
+            {
+                page.Margin(45);
+                page.Header().Column(column =>
+                {
+                    column.Item().Text("MasterMind Coaching Classes").FontSize(20).Bold().FontColor(Colors.Blue.Darken3);
+                    column.Item().Text("Teacher Salary Receipt").FontSize(16).SemiBold();
+                });
+                page.Content().PaddingVertical(20).Column(column =>
+                {
+                    column.Spacing(10);
+                    column.Item().Text($"Receipt Number: {receiptNumber}").Bold();
+                    column.Item().Text($"Teacher: {salary.Teacher.FullName}");
+                    column.Item().Text($"Salary Period: {salary.Month} {salary.Year}");
+                    column.Item().Text($"Amount Paid: ₹{salary.NetSalary:N2}").FontSize(15).Bold();
+                    column.Item().Text($"Payment Date: {paymentDate:dd MMMM yyyy}");
+                    column.Item().Text($"Payment Method: {salary.PaymentMethod?.ToString() ?? "Not specified"}");
+                    if (!string.IsNullOrWhiteSpace(salary.TransactionId))
+                    {
+                        column.Item().Text($"Transaction / Reference: {salary.TransactionId}");
+                    }
+                    column.Item().Text($"Processed By: {processedBy}");
+                    column.Item().PaddingTop(18).Text("Status: PAID").Bold().FontColor(Colors.Green.Darken2);
+                });
+                page.Footer().AlignCenter().Text("This is a system-generated receipt.");
+            });
+        }).GeneratePdf();
+
+        return File(pdf, "application/pdf", $"Teacher-Salary-Receipt-{salary.Year}-{salary.Id}.pdf");
+    }
+
     /// <summary>
     /// Get expense categories
     /// </summary>
@@ -469,6 +513,43 @@ public class ExpensesController : ControllerBase
         var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         return int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
+
+    private static ExpenseDto MapSalaryExpense(TeacherSalary salary)
+    {
+        var dueDate = SalaryDueDate(salary);
+        var displayStatus = salary.Status == SalaryStatus.Pending && DateTime.Today > dueDate
+            ? "Overdue"
+            : salary.Status.ToString();
+        return new ExpenseDto
+        {
+            Id = -salary.Id,
+            SalaryId = salary.Id,
+            Source = "TeacherSalary",
+            Category = "Salary",
+            Description = $"{salary.Month} {salary.Year} salary",
+            Amount = salary.NetSalary,
+            PaidTo = salary.Teacher.FullName,
+            Date = (salary.PaymentDate ?? salary.CreatedAt).ToString("yyyy-MM-dd"),
+            DueDate = dueDate.ToString("yyyy-MM-dd"),
+            PaymentDate = salary.PaymentDate?.ToString("yyyy-MM-dd"),
+            ReceiptNumber = salary.Status == SalaryStatus.Paid ? SalaryReceiptNumber(salary) : null,
+            Status = displayStatus,
+            PaymentMethod = salary.PaymentMethod?.ToString(),
+            TransactionId = salary.TransactionId,
+            IsRecurring = true
+        };
+    }
+
+    private static DateTime SalaryDueDate(TeacherSalary salary)
+    {
+        var monthName = salary.Month.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        var month = DateTime.TryParseExact(monthName, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed.Month
+            : salary.CreatedAt.Month;
+        return new DateTime(salary.Year, month, DateTime.DaysInMonth(salary.Year, month));
+    }
+
+    private static string SalaryReceiptNumber(TeacherSalary salary) => $"SAL-{salary.Year}-{salary.Id:D5}";
 }
 
 // DTOs
@@ -480,9 +561,12 @@ public class ExpenseDto
     public decimal Amount { get; set; }
     public string PaidTo { get; set; } = string.Empty;
     public string Date { get; set; } = string.Empty;
+    public string? DueDate { get; set; }
+    public string? PaymentDate { get; set; }
     public string? ReceiptNumber { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? PaymentMethod { get; set; }
+    public string? TransactionId { get; set; }
     public string? VendorName { get; set; }
     public bool IsRecurring { get; set; }
     public string? ProcessedBy { get; set; }

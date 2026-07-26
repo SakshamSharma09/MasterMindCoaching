@@ -198,6 +198,13 @@ $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
 
 ## Database (Azure SQL)
 
+### Optional EF Include Fails Against Compatibility Database
+**Symptom**: The Expenses page is empty and `GET /api/expenses` returns 500 with `Invalid object name 'BudgetCategories'`.
+**Root Cause**: The production compatibility database has the active `Expenses` table but not the optional `BudgetCategories` table. An unused `.Include(e => e.BudgetCategory)` forces SQL Server to query the missing table.
+**Solution**: Remove unused navigation includes from active compatibility queries. Only include related tables whose values are actually returned, and validate the generated query against the deployed schema.
+**Files Affected**: `src/backend/MasterMind.API/Controllers/ExpensesController.cs`
+**Date Learned**: 2026-07-26
+
 ### DateTime Functions
 **Symptom**: `GETUTCDATE()` not recognized  
 **Root Cause**: EF Core default value syntax differs between SQL Server versions  

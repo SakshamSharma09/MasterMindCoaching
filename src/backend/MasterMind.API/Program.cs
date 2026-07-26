@@ -1290,6 +1290,25 @@ BEGIN
     ALTER TABLE dbo.Students ADD FatherName nvarchar(200) NULL;
 END
 
+;WITH LegacyParentNames AS
+(
+    SELECT
+        Id,
+        CleanName = LTRIM(RTRIM(ParentName)),
+        SecondSpace = CHARINDEX(' ', LTRIM(RTRIM(ParentName)), CHARINDEX(' ', LTRIM(RTRIM(ParentName))) + 1)
+    FROM dbo.Students
+    WHERE NULLIF(LTRIM(RTRIM(ISNULL(MotherName, ''))), '') IS NULL
+      AND NULLIF(LTRIM(RTRIM(ISNULL(FatherName, ''))), '') IS NULL
+      AND CHARINDEX(' ', LTRIM(RTRIM(ParentName)), CHARINDEX(' ', LTRIM(RTRIM(ParentName))) + 1) > 0
+)
+UPDATE s
+SET
+    MotherName = LEFT(l.CleanName, l.SecondSpace - 1),
+    FatherName = LTRIM(SUBSTRING(l.CleanName, l.SecondSpace + 1, 200)),
+    UpdatedAt = SYSUTCDATETIME()
+FROM dbo.Students s
+INNER JOIN LegacyParentNames l ON l.Id = s.Id;
+
 IF COL_LENGTH('dbo.Students', 'CurrentSchool') IS NULL
 BEGIN
     ALTER TABLE dbo.Students ADD CurrentSchool nvarchar(200) NULL;

@@ -114,6 +114,13 @@
       "category": "mobile",
       "section": "Android Release Build Must Use Production API Base URL Including /api",
       "severity": "critical"
+    },
+    {
+      "id": "optional-navigation-missing-table",
+      "symptoms": ["expenses 500", "Invalid object name BudgetCategories", "empty expense management", "optional navigation table missing"],
+      "category": "database",
+      "section": "Optional EF Include Fails Against Compatibility Database",
+      "severity": "high"
     }
   ]
 }

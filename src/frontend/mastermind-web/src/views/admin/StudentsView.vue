@@ -435,7 +435,8 @@
                 </div>
               </div>
               <p class="mt-2 text-xs leading-5 text-gray-500">The primary number is the parent's login identity. The parent adds their own recovery email from the invitation link.</p>
-              <div class="mt-4">
+              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Admission Date <span class="text-red-600" aria-hidden="true">*</span></label>
                 <input
                   v-model="form.admissionDate"
@@ -443,6 +444,17 @@
                   required
                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
                 />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Date of Birth <span class="text-red-600" aria-hidden="true">*</span></label>
+                  <input
+                    v-model="form.dateOfBirth"
+                    type="date"
+                    required
+                    :max="todayDateInput()"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+                  />
+                </div>
               </div>
               <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Class <span class="text-red-600" aria-hidden="true">*</span></label>
@@ -543,7 +555,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { formatClassForDropdown } from '@/utils/classUtils'
 import { classesService } from '@/services/classesService'
-import { studentsService, type Student, type CreateStudentRequest } from '@/services/studentsService'
+import { studentsService, resolveParentNames, type Student, type CreateStudentRequest } from '@/services/studentsService'
 import { apiService } from '@/services/apiService'
 import { API_ENDPOINTS } from '@/config/api'
 import { useSessionStore } from '@/stores/session'
@@ -730,6 +742,7 @@ const loadData = async () => {
     const studentsResponse = await studentsService.getStudents(1, 50, undefined, selectedSessionId)
     students.value = studentsResponse.data.map((student: any) => {
       const activeClass = student.studentClasses?.find((sc: any) => sc.isActive)
+      const parentNames = resolveParentNames(student.parentName, student.motherName, student.fatherName)
 
       return {
         id: student.id,
@@ -745,12 +758,12 @@ const loadData = async () => {
         classId: activeClass?.classId ?? activeClass?.class?.id ?? null,
         className: activeClass?.class?.name || 'Not Assigned',
         status: student.isActive ? 'Active' : 'Inactive',
-        motherName: student.motherName || '',
-        fatherName: student.fatherName || '',
+        motherName: parentNames.motherName,
+        fatherName: parentNames.fatherName,
         address: student.address,
         currentSchool: student.currentSchool || '',
         photo: student.profileImageUrl,
-        dateOfBirth: student.dateOfBirth,
+        dateOfBirth: student.dateOfBirth?.slice(0, 10) || '',
         gender: student.gender === 0 ? 'Male' : student.gender === 1 ? 'Female' : 'Other',
         whatsappNumber: student.parentMobile,
         textNumber: student.parentMobile,

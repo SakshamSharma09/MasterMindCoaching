@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeIndianMobile } from './phoneUtils'
 import { fileNameFromContentDisposition } from './fileDownload'
-import { buildStudentQueryParams, mapStudentPayload } from '@/services/studentsService'
+import { buildStudentQueryParams, mapStudentPayload, resolveParentNames } from '@/services/studentsService'
+import { buildAbsentWhatsAppMessage, resolveAttendanceParentGreeting } from './attendanceMessaging'
 
 describe('student and communication operational fixes', () => {
   it('keeps mother and father names independent and persists school/date/contact fields', () => {
@@ -16,7 +17,8 @@ describe('student and communication operational fixes', () => {
       status: 'Active',
       motherName: 'Sunita Sharma',
       fatherName: 'Rajesh Sharma',
-      currentSchool: 'Sample Public School'
+      currentSchool: 'Sample Public School',
+      dateOfBirth: '2011-08-14'
     })
 
     expect(payload.motherName).toBe('Sunita Sharma')
@@ -24,6 +26,39 @@ describe('student and communication operational fixes', () => {
     expect(payload.currentSchool).toBe('Sample Public School')
     expect(payload.parentEmail).toBe('parent@example.com')
     expect(payload.admissionDate.startsWith('2026-07-01')).toBe(true)
+    expect(payload.dateOfBirth.startsWith('2011-08-14')).toBe(true)
+  })
+
+  it('splits a legacy combined parent name into a two-word mother name and remaining father name', () => {
+    expect(resolveParentNames('Nisha Agarwal Vinod Agarwal')).toEqual({
+      motherName: 'Nisha Agarwal',
+      fatherName: 'Vinod Agarwal'
+    })
+    expect(resolveParentNames('Legacy Name', 'Explicit Mother', 'Explicit Father')).toEqual({
+      motherName: 'Explicit Mother',
+      fatherName: 'Explicit Father'
+    })
+  })
+
+  it('greets only the mother and creates a complete absence message', () => {
+    const record = {
+      id: 1,
+      studentId: 1,
+      studentName: 'Tanush Agarwal',
+      classId: 10,
+      className: 'Class 10 CBSE',
+      status: 'absent' as const,
+      checkInTime: '',
+      date: '2026-07-26',
+      parentName: 'Nisha Agarwal Vinod Agarwal',
+      motherName: 'Nisha Agarwal'
+    }
+    expect(resolveAttendanceParentGreeting(record)).toBe('Nisha Agarwal')
+    const message = buildAbsentWhatsAppMessage(record, '26 July 2026')
+    expect(message).toContain('Namaste Nisha Agarwal,')
+    expect(message).not.toContain('Vinod Agarwal')
+    expect(message).not.toContain('{{')
+    expect(message).toContain('3:00 PM to 6:00 PM')
   })
 
   it('adds India country code once', () => {

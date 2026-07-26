@@ -312,6 +312,8 @@ public class AttendanceController : ControllerBase
             CheckOutTime = entity.CheckOutTime,
             Remarks = entity.Remarks,
             ParentName = entity.Student.ParentName,
+            MotherName = ResolveParentNames(entity.Student).MotherName,
+            FatherName = ResolveParentNames(entity.Student).FatherName,
             ParentMobile = entity.Student.ParentMobile,
             StudentMobile = entity.Student.StudentMobile,
             IsMarked = true
@@ -398,12 +400,28 @@ public class AttendanceController : ControllerBase
                     CheckOutTime = null,
                     Remarks = null,
                     ParentName = sc.Student.ParentName,
+                    MotherName = ResolveParentNames(sc.Student).MotherName,
+                    FatherName = ResolveParentNames(sc.Student).FatherName,
                     ParentMobile = sc.Student.ParentMobile,
                     StudentMobile = sc.Student.StudentMobile,
                     IsMarked = false
                 };
             })
             .ToList();
+    }
+
+    private static (string? MotherName, string? FatherName) ResolveParentNames(Student student)
+    {
+        if (!string.IsNullOrWhiteSpace(student.MotherName) || !string.IsNullOrWhiteSpace(student.FatherName))
+        {
+            return (student.MotherName?.Trim(), student.FatherName?.Trim());
+        }
+
+        var parts = (student.ParentName ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length >= 3
+            ? (string.Join(' ', parts.Take(2)), string.Join(' ', parts.Skip(2)))
+            : (null, null);
     }
 
     public class AttendanceDto
@@ -419,6 +437,8 @@ public class AttendanceController : ControllerBase
         public TimeOnly? CheckOutTime { get; set; }
         public string? Remarks { get; set; }
         public string? ParentName { get; set; }
+        public string? MotherName { get; set; }
+        public string? FatherName { get; set; }
         public string? ParentMobile { get; set; }
         public string? StudentMobile { get; set; }
         public bool IsMarked { get; set; }

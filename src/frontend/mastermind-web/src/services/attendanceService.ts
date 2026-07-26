@@ -15,6 +15,8 @@ export interface AttendanceRecord {
   date: string
   remarks?: string
   parentName?: string
+  motherName?: string
+  fatherName?: string
   parentMobile?: string
   studentMobile?: string
   isMarked?: boolean
