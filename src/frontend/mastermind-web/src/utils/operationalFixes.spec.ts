@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeIndianMobile } from './phoneUtils'
 import { fileNameFromContentDisposition } from './fileDownload'
-import { buildStudentQueryParams, mapStudentPayload, resolveParentNames } from '@/services/studentsService'
+import { buildStudentQueryParams, mapStudentPayload, normalizeSchoolKey, resolveParentNames } from '@/services/studentsService'
 import { buildAbsentWhatsAppMessage, resolveAttendanceParentGreeting } from './attendanceMessaging'
+import { buildParentInvitationWhatsAppMessage } from './parentInvitation'
 
 describe('student and communication operational fixes', () => {
   it('keeps mother and father names independent and persists school/date/contact fields', () => {
@@ -59,6 +60,23 @@ describe('student and communication operational fixes', () => {
     expect(message).not.toContain('Vinod Agarwal')
     expect(message).not.toContain('{{')
     expect(message).toContain('3:00 PM to 6:00 PM')
+  })
+
+  it('groups equivalent school names regardless of spaces, punctuation, or case', () => {
+    expect(normalizeSchoolKey('Lotus')).toBe('lotus')
+    expect(normalizeSchoolKey('Lot us')).toBe('lotus')
+    expect(normalizeSchoolKey('LOT-US')).toBe('lotus')
+  })
+
+  it('builds a WhatsApp-first parent setup invitation', () => {
+    const message = buildParentInvitationWhatsAppMessage({
+      parentName: 'Nisha Agarwal',
+      studentName: 'Tanush Agarwal',
+      inviteUrl: 'https://example.test/accept-invitation?token=opaque'
+    })
+    expect(message).toContain('Namaste Nisha Agarwal,')
+    expect(message).toContain('set your password and recovery email')
+    expect(message).toContain('primary mobile number and password')
   })
 
   it('adds India country code once', () => {

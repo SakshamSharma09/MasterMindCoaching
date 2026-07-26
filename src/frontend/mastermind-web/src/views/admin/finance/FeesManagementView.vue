@@ -136,11 +136,18 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                     <input v-model="feeForm.startDate" :disabled="isEditingFee" type="date" :required="!isEditingFee" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
                   </div>
-                  <div>
+                  <div v-if="!isEditingFee">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Schedule End Date</label>
+                    <input v-model="feeForm.endDate" type="date" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                  </div>
+                  <div v-else>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                     <input v-model="feeForm.dueDate" type="date" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                   </div>
                 </div>
+                <p v-if="!isEditingFee && feeForm.feeCategory === 'Monthly'" class="text-xs text-gray-500">
+                  Monthly installments become due on the 1st. Future months stay hidden until their due date. The schedule stops at this date or when the student becomes inactive.
+                </p>
 
                 <button
                   type="button"
@@ -157,10 +164,6 @@
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Discount Amount</label>
                       <input v-model="feeForm.discountAmount" type="number" min="0" step="0.01" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                      <input v-model="feeForm.endDate" :disabled="isEditingFee" type="date" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Late Fee Per Day</label>
@@ -199,8 +202,10 @@ import { financeService, type Fee, type UpdateFeeRequest } from '@/services/fina
 import { studentsService } from '@/services/studentsService'
 import { classesService, type Class } from '@/services/classesService'
 import { useToast } from '@/composables/useToast'
+import { useSessionStore } from '@/stores/session'
 
 const toast = useToast()
+const sessionStore = useSessionStore()
 
 interface StudentItem {
   id: number
@@ -306,7 +311,7 @@ const loadFees = async () => {
 
 const loadStudents = async () => {
   try {
-    const result = await studentsService.getStudents(1, 1000)
+    const result = await studentsService.getStudents(1, 100, undefined, sessionStore.selectedSessionId ?? undefined)
     students.value = result.data
   } catch (error) {
     console.error('Error loading students:', error)
@@ -334,7 +339,9 @@ const openAddFeeModal = () => {
   isEditingFee.value = false
   feeForm.value = {
     id: 0, studentId: '', feeStructureId: '', feeCategory: 'Monthly',
-    amount: '', discountAmount: '', startDate: today(), endDate: '', dueDate: today(),
+    amount: '', discountAmount: '', startDate: today(),
+    endDate: sessionStore.selectedSession?.endDate?.slice(0, 10) || '',
+    dueDate: today(),
     lateFeePerDay: '', gracePeriodDays: '0', academicYear: '', remarks: ''
   }
   if (feeStructures.value.length > 0) {
@@ -415,9 +422,9 @@ const saveFee = async () => {
 const deleteFee = async (feeId: number) => {
   if (!confirm('Are you sure you want to delete this fee?')) return
   try {
-    await financeService.deleteFee(feeId)
+    const message = await financeService.deleteFee(feeId)
     await loadFees()
-    toast.success('Fee deleted', 'Fee has been removed.')
+    toast.success('Fee deleted', message)
   } catch (error: any) {
     console.error('Error deleting fee:', error)
     const apiMessage = error?.response?.data?.message

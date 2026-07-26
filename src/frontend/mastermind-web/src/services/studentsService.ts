@@ -20,6 +20,7 @@ export interface Student {
   parentEmail?: string
   currentSchool?: string
   isActive: boolean
+  parentOnboarded?: boolean
   classId?: number
   studentClasses?: StudentClass[]
 }
@@ -84,6 +85,9 @@ export const resolveParentNames = (
     fatherName: legacyParts.slice(2).join(' ')
   }
 }
+
+export const normalizeSchoolKey = (schoolName?: string): string =>
+  (schoolName || '').toLocaleLowerCase('en-IN').replace(/[^a-z0-9]/g, '')
 
 const toIsoDateOrToday = (value?: string): string => {
   if (!value) return new Date().toISOString()
@@ -276,13 +280,20 @@ export const studentsService = {
     await apiService.delete(API_ENDPOINTS.STUDENTS.DELETE(id.toString()))
   },
 
-  async createParentInvitation(id: number): Promise<{ message: string; inviteUrl: string; expiresAt: string; emailSent: boolean }> {
+  async createParentInvitation(id: number): Promise<{
+    message: string
+    inviteUrl: string
+    expiresAt: string
+    emailSent: boolean
+    primaryMobile: string
+  }> {
     const response = await apiService.post(`${API_ENDPOINTS.STUDENTS.LIST}/${id}/parent-invitation`)
     return {
       message: response.message || 'Parent invitation created',
       inviteUrl: response.data?.inviteUrl || '',
       expiresAt: response.data?.expiresAt || '',
-      emailSent: Boolean(response.data?.emailSent)
+      emailSent: Boolean(response.data?.emailSent),
+      primaryMobile: response.data?.primaryMobile || ''
     }
   },
 

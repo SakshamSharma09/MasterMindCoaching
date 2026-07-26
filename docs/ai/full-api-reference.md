@@ -193,7 +193,7 @@
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | GET | `/api/students/export` | Admin | Download all non-deleted student details across every session as `.xlsx` |
-| POST | `/api/students/{id}/parent-invitation` | Admin | Revoke any active invite and return a new 72-hour single-use link; email it only when the parent already has a recovery email |
+| POST | `/api/students/{id}/parent-invitation` | Admin | Until onboarding is complete, revoke any active invite and return a fresh 72-hour link plus the primary mobile for WhatsApp sharing; reject resend after the parent has set a password |
 | GET | `/api/auth/invitations/{token}` | Public | Validate an invitation and return masked account details |
 | POST | `/api/auth/invitations/accept` | Public | Store the parent-supplied recovery email and password, link siblings by primary mobile, and consume the invitation |
 | GET | `/api/account/security` | Parent | Get recovery email plus read-only primary/secondary mobiles |
@@ -205,6 +205,8 @@
 | GET | `/api/expenses/salaries/{id}/receipt` | Authenticated | Download a PDF receipt for a paid teacher salary obligation |
 
 Student create/update payloads persist `motherName`, `fatherName`, `dateOfBirth`, `currentSchool`, `parentMobile`, `secondaryParentMobile`, and `admissionDate` independently. `parentMobile` is required and is the parent account identity. Admin does not supply `parentEmail`; the parent supplies it while accepting the invitation. Attendance records expose the separate parent names for correctly addressed WhatsApp follow-ups.
+
+Monthly `POST /api/finance/fees` schedules installments on the first of each month through the academic-session end date (or an earlier supplied end date). Operational fee routes hide the recurring parent row and future installments. Missing installments are generated idempotently when Finance is opened, and student deactivation truncates unpaid future installments while retaining paid history. `DELETE /api/fees/{id}` stops a recurring schedule, deletes its unpaid installments, and retains paid installments; standalone fees with a payment return a clear conflict.
 
 ---
 

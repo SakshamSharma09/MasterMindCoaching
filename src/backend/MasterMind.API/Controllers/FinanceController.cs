@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using MasterMind.API.Services.Interfaces;
+using MasterMind.API.Utilities;
 
 namespace MasterMind.API.Controllers;
 
@@ -54,6 +55,8 @@ public class FinanceController : ControllerBase
                 .Select(s => (int?)s.Id)
                 .FirstOrDefaultAsync();
             await _teacherSalaryService.EnsureMonthlyObligationsAsync(activeSessionId);
+            var todaySummary = DateOnly.FromDateTime(DateTime.Today);
+            await EnsureMonthlyFeeInstallmentsAsync(todaySummary, activeSessionId);
 
             var totalStudents = await _context.Students
                 .CountAsync(s => !s.IsDeleted && s.IsActive &&
@@ -69,6 +72,7 @@ public class FinanceController : ControllerBase
             // Calculate pending payments
             var pendingPayments = await _context.StudentFees
                 .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
+                    !sf.IsRecurring && sf.DueDate <= todaySummary &&
                     (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid) &&
                     (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .SumAsync(sf => sf.FinalAmount - sf.PaidAmount);
@@ -97,16 +101,16 @@ public class FinanceController : ControllerBase
 
             var pendingStudents = await _context.StudentFees
                 .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
+                    !sf.IsRecurring && sf.DueDate <= todaySummary &&
                     (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid) &&
                     (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .Select(sf => sf.StudentId)
                 .Distinct()
                 .CountAsync();
 
-            var todaySummary = DateOnly.FromDateTime(DateTime.Today);
             var overdueStudents = await _context.StudentFees
                 .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
-                    sf.Status != FeeStatus.Paid && todaySummary > sf.DueDate &&
+                    !sf.IsRecurring && sf.Status != FeeStatus.Paid && todaySummary >= sf.DueDate &&
                     (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .Select(sf => sf.StudentId)
                 .Distinct()
@@ -381,10 +385,14 @@ public class FinanceController : ControllerBase
     {
         try
         {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            await EnsureMonthlyFeeInstallmentsAsync(today);
             var pendingPayments = await _context.StudentFees
                 .Include(sf => sf.Student)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid)
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted && !sf.IsRecurring &&
+                    sf.DueDate <= today &&
+                    (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid))
                 .Select(sf => new PendingPaymentDto
                 {
                     Id = sf.Id,
@@ -527,6 +535,8 @@ public class FinanceController : ControllerBase
         try
         {
             await EnsureFinanceFeeSchemaAsync();
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            await EnsureMonthlyFeeInstallmentsAsync(today);
 
             var feeRows = await _context.StudentFees
                 .AsNoTracking()
@@ -534,7 +544,8 @@ public class FinanceController : ControllerBase
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted)
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
+                    !sf.IsRecurring && sf.DueDate <= today)
                 .OrderByDescending(sf => sf.DueDate)
                 .ToListAsync();
 
@@ -554,7 +565,10 @@ public class FinanceController : ControllerBase
                     sf.PaidAmount,
                     BalanceAmount = sf.FinalAmount - sf.PaidAmount,
                     sf.DueDate,
-                    Status = sf.Status.ToString(),
+                    Status = sf.Status != FeeStatus.Paid && sf.Status != FeeStatus.Waived &&
+                        sf.Status != FeeStatus.Cancelled && today >= sf.DueDate
+                        ? FeeStatus.Overdue.ToString()
+                        : sf.Status.ToString(),
                     Description = sf.Remarks
                 };
             }).ToList();
@@ -591,6 +605,7 @@ public class FinanceController : ControllerBase
             await EnsureFinanceFeeSchemaAsync();
 
             var today = DateOnly.FromDateTime(DateTime.Today);
+            await EnsureMonthlyFeeInstallmentsAsync(today);
 
             var overdueFeeRows = await _context.StudentFees
                 .AsNoTracking()
@@ -598,9 +613,9 @@ public class FinanceController : ControllerBase
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted && !sf.IsRecurring &&
                            sf.Status != FeeStatus.Paid &&
-                           today > sf.DueDate)
+                           today >= sf.DueDate)
                 .OrderBy(sf => sf.DueDate)
                 .ToListAsync();
 
@@ -778,6 +793,7 @@ public class FinanceController : ControllerBase
 
             // Validate student exists
             var student = await _context.Students
+                .Include(s => s.Session)
                 .FirstOrDefaultAsync(s => s.Id == request.StudentId && !s.IsDeleted && s.IsActive);
             if (student == null)
             {
@@ -858,9 +874,18 @@ public class FinanceController : ControllerBase
     private async Task<object> CreateMonthlyFee(CreateFeeRequest request, Student student, FeeStructure feeStructure, DateOnly today)
     {
         var startDate = request.StartDate ?? today;
-        var dueDay = request.RecurringDayOfMonth ?? startDate.Day;
-        dueDay = Math.Clamp(dueDay, 1, 31);
-        var endDate = request.EndDate ?? startDate.AddMonths(12); // Default 12 months
+        const int dueDay = 1;
+        var sessionEndDate = student.Session == null
+            ? (DateOnly?)null
+            : DateOnly.FromDateTime(student.Session.EndDate);
+        var endDate = request.EndDate ?? sessionEndDate ?? startDate.AddMonths(12);
+        endDate = MonthlyFeeSchedule.EffectiveEndDate(
+            endDate,
+            student.InactiveDate.HasValue ? DateOnly.FromDateTime(student.InactiveDate.Value) : null);
+        if (endDate < startDate)
+        {
+            throw new InvalidOperationException("The fee start date must be within the student's active academic session.");
+        }
 
         // Create parent fee record for tracking
         var parentFee = new StudentFee
@@ -889,19 +914,8 @@ public class FinanceController : ControllerBase
 
         // Generate monthly fee instances for the specified period
         var monthlyFees = new List<object>();
-        var currentDate = startDate;
-        
-        while (currentDate <= endDate)
+        foreach (var dueDate in MonthlyFeeSchedule.DueDates(startDate, endDate, today))
         {
-            var dueDate = BuildMonthDueDate(currentDate.Year, currentDate.Month, dueDay);
-            
-            // Skip if due date is in the past for future months
-            if (dueDate < today && currentDate > today)
-            {
-                currentDate = currentDate.AddMonths(1);
-                continue;
-            }
-
             var monthlyFee = new StudentFee
             {
                 StudentId = request.StudentId,
@@ -918,7 +932,7 @@ public class FinanceController : ControllerBase
                 ParentFeeId = parentFee.Id,
                 LateFeePerDay = request.LateFeePerDay ?? feeStructure.LateFeePerDay,
                 GracePeriodDays = request.GracePeriodDays,
-                Month = currentDate.ToString("yyyy-MM"),
+                Month = dueDate.ToString("yyyy-MM"),
                 AcademicYear = request.AcademicYear ?? GetCurrentAcademicYear(),
                 Remarks = request.Remarks,
                 Status = dueDate <= today ? FeeStatus.Pending : FeeStatus.Pending
@@ -941,7 +955,6 @@ public class FinanceController : ControllerBase
             });
 
             _context.StudentFees.Add(monthlyFee);
-            currentDate = currentDate.AddMonths(1);
         }
 
         await _context.SaveChangesAsync();
@@ -969,6 +982,99 @@ public class FinanceController : ControllerBase
         var maxDay = DateTime.DaysInMonth(year, month);
         var safeDay = Math.Min(Math.Max(dueDay, 1), maxDay);
         return new DateOnly(year, month, safeDay);
+    }
+
+    private async Task EnsureMonthlyFeeInstallmentsAsync(DateOnly today, int? sessionId = null)
+    {
+        var parentQuery = _context.StudentFees
+            .Include(sf => sf.Student)
+                .ThenInclude(s => s.Session)
+            .Where(sf => !sf.IsDeleted && sf.IsRecurring && sf.FeeCategory == FeeCategory.Monthly &&
+                !sf.Student.IsDeleted &&
+                (!sessionId.HasValue || sf.Student.SessionId == sessionId.Value));
+        var parents = await parentQuery.ToListAsync();
+        if (parents.Count == 0) return;
+
+        var parentIds = parents.Select(p => p.Id).ToList();
+        var existingChildren = await _context.StudentFees
+            .Where(sf => !sf.IsDeleted && sf.ParentFeeId.HasValue && parentIds.Contains(sf.ParentFeeId.Value))
+            .ToListAsync();
+        var existingKeys = existingChildren
+            .Select(sf => (ParentId: sf.ParentFeeId!.Value, Month: sf.Month ?? sf.DueDate.ToString("yyyy-MM")))
+            .ToHashSet();
+        var changed = false;
+
+        foreach (var child in existingChildren.Where(sf =>
+                     sf.Status != FeeStatus.Paid && sf.Status != FeeStatus.Waived &&
+                     sf.Status != FeeStatus.Cancelled && sf.PaidAmount == 0))
+        {
+            var firstOfMonth = new DateOnly(child.DueDate.Year, child.DueDate.Month, 1);
+            if (child.DueDate != firstOfMonth)
+            {
+                child.DueDate = firstOfMonth;
+                child.RecurringDayOfMonth = 1;
+                child.UpdatedAt = DateTime.UtcNow;
+                changed = true;
+            }
+        }
+
+        foreach (var parent in parents)
+        {
+            var startDate = parent.StartDate ?? parent.DueDate;
+            var endDate = parent.EndDate ??
+                (parent.Student.Session == null
+                    ? startDate.AddMonths(12)
+                    : DateOnly.FromDateTime(parent.Student.Session.EndDate));
+            endDate = MonthlyFeeSchedule.EffectiveEndDate(
+                endDate,
+                parent.Student.InactiveDate.HasValue
+                    ? DateOnly.FromDateTime(parent.Student.InactiveDate.Value)
+                    : null);
+
+            if (parent.EndDate != endDate || parent.RecurringDayOfMonth != 1)
+            {
+                parent.EndDate = endDate;
+                parent.RecurringDayOfMonth = 1;
+                parent.UpdatedAt = DateTime.UtcNow;
+                changed = true;
+            }
+            foreach (var cursor in MonthlyFeeSchedule.DueDates(startDate, endDate, today))
+            {
+                var monthKey = cursor.ToString("yyyy-MM");
+                if (!existingKeys.Contains((parent.Id, monthKey)))
+                {
+                    _context.StudentFees.Add(new StudentFee
+                    {
+                        StudentId = parent.StudentId,
+                        FeeStructureId = parent.FeeStructureId,
+                        Amount = parent.Amount,
+                        DiscountAmount = parent.DiscountAmount,
+                        FinalAmount = parent.FinalAmount,
+                        DueDate = cursor,
+                        FeeCategory = FeeCategory.Monthly,
+                        StartDate = startDate,
+                        EndDate = endDate,
+                        RecurringDayOfMonth = 1,
+                        IsRecurring = false,
+                        ParentFeeId = parent.Id,
+                        LateFeePerDay = parent.LateFeePerDay,
+                        GracePeriodDays = parent.GracePeriodDays,
+                        Month = monthKey,
+                        AcademicYear = parent.AcademicYear,
+                        Remarks = parent.Remarks,
+                        Status = FeeStatus.Pending,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    existingKeys.Add((parent.Id, monthKey));
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            await _context.SaveChangesAsync();
+        }
     }
 
     private async Task<FeeStructure?> ResolveFeeStructureForCreateAsync(CreateFeeRequest request)

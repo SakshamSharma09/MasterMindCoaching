@@ -1314,6 +1314,11 @@ BEGIN
     ALTER TABLE dbo.Students ADD CurrentSchool nvarchar(200) NULL;
 END
 
+IF COL_LENGTH('dbo.Students', 'InactiveDate') IS NULL
+BEGIN
+    ALTER TABLE dbo.Students ADD InactiveDate datetime2 NULL;
+END
+
 IF COL_LENGTH('dbo.Students', 'SecondaryParentMobile') IS NULL
 BEGIN
     ALTER TABLE dbo.Students ADD SecondaryParentMobile nvarchar(20) NULL;

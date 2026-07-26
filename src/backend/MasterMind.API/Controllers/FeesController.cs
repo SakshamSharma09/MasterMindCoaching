@@ -38,13 +38,15 @@ public class FeesController : ControllerBase
     {
         try
         {
+            var today = DateOnly.FromDateTime(DateTime.Today);
             IQueryable<StudentFee> query = _context.StudentFees
                 .AsNoTracking()
                 .Include(sf => sf.Student)
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted);
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
+                    !sf.IsRecurring && sf.DueDate <= today);
 
             if (classId.HasValue)
             {
@@ -70,7 +72,10 @@ public class FeesController : ControllerBase
 
             if (statusFilter.HasValue)
             {
-                query = query.Where(sf => sf.Status == statusFilter.Value);
+                query = statusFilter.Value == FeeStatus.Overdue
+                    ? query.Where(sf => sf.Status != FeeStatus.Paid && sf.Status != FeeStatus.Waived &&
+                        sf.Status != FeeStatus.Cancelled && sf.DueDate <= today)
+                    : query.Where(sf => sf.Status == statusFilter.Value);
             }
 
             if (!string.IsNullOrEmpty(month))
@@ -95,7 +100,10 @@ public class FeesController : ControllerBase
                     FeeType = sf.FeeStructure?.Name ?? "N/A",
                     Amount = sf.FinalAmount,
                     DueDate = sf.DueDate.ToString("yyyy-MM-dd"),
-                    Status = sf.Status.ToString(),
+                    Status = sf.Status != FeeStatus.Paid && sf.Status != FeeStatus.Waived &&
+                        sf.Status != FeeStatus.Cancelled && today >= sf.DueDate
+                        ? FeeStatus.Overdue.ToString()
+                        : sf.Status.ToString(),
                     Description = sf.Remarks,
                     PaidAmount = sf.PaidAmount,
                     BalanceAmount = sf.BalanceAmount,
@@ -231,6 +239,8 @@ public class FeesController : ControllerBase
         {
             var studentFee = await _context.StudentFees
                 .Include(sf => sf.Payments)
+                .Include(sf => sf.RecurringFees)
+                    .ThenInclude(child => child.Payments)
                 .FirstOrDefaultAsync(sf => sf.Id == id && !sf.IsDeleted);
 
             if (studentFee == null)
@@ -242,13 +252,57 @@ public class FeesController : ControllerBase
                 });
             }
 
-            // Don't allow deletion if there are payments
+            var scheduleId = studentFee.IsRecurring ? studentFee.Id : studentFee.ParentFeeId;
+            if (scheduleId.HasValue)
+            {
+                var schedule = studentFee.Id == scheduleId.Value
+                    ? studentFee
+                    : await _context.StudentFees
+                        .Include(sf => sf.Payments)
+                        .Include(sf => sf.RecurringFees)
+                            .ThenInclude(child => child.Payments)
+                        .FirstOrDefaultAsync(sf => sf.Id == scheduleId.Value && !sf.IsDeleted);
+                if (schedule != null)
+                {
+                    if (schedule.Payments.Any(p => !p.IsDeleted))
+                    {
+                        return BadRequest(new ApiResponse<bool>
+                        {
+                            Success = false,
+                            Message = "This legacy recurring schedule has a payment recorded directly against it and must be retained. Contact support to repair the old payment mapping."
+                        });
+                    }
+
+                    var deletableFees = schedule.RecurringFees
+                        .Where(fee => !fee.IsDeleted && !fee.Payments.Any(p => !p.IsDeleted))
+                        .Append(schedule)
+                        .ToList();
+                    foreach (var fee in deletableFees)
+                    {
+                        fee.IsDeleted = true;
+                        fee.UpdatedAt = DateTime.UtcNow;
+                    }
+                    await _context.SaveChangesAsync();
+                    var retainedPaidCount = schedule.RecurringFees.Count(fee =>
+                        !fee.IsDeleted && fee.Payments.Any(p => !p.IsDeleted));
+
+                    return Ok(new ApiResponse<bool>
+                    {
+                        Success = true,
+                        Message = retainedPaidCount > 0
+                            ? $"Recurring fee stopped and unpaid installments deleted. {retainedPaidCount} paid installment(s) were retained as financial history."
+                            : "Recurring fee and all unpaid installments deleted successfully",
+                        Data = true
+                    });
+                }
+            }
+
             if (studentFee.Payments.Any(p => !p.IsDeleted))
             {
                 return BadRequest(new ApiResponse<bool>
                 {
                     Success = false,
-                    Message = "Cannot delete fee with existing payments"
+                    Message = "This fee cannot be deleted because it has a recorded payment. Paid financial history must be retained."
                 });
             }
 
@@ -293,14 +347,15 @@ public class FeesController : ControllerBase
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => sf.Status != FeeStatus.Paid)
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted && !sf.IsRecurring &&
+                    sf.Status != FeeStatus.Paid)
                 .OrderByDescending(sf => sf.DueDate)
                 .Take(200)
                 .ToListAsync();
 
             // Filter and project in memory to avoid SQL translation errors
             var overdueFees = studentFees
-                .Where(sf => today > sf.DueDate)
+                .Where(sf => today >= sf.DueDate)
                 .Select(sf => {
                     var studentClass = sf.Student?.StudentClasses?.FirstOrDefault();
                     return new OverdueFeeDto
@@ -355,7 +410,8 @@ public class FeesController : ControllerBase
             var today = DateOnly.FromDateTime(DateTime.Today);
             var query = _context.StudentFees
                 .Include(sf => sf.Student)
-                .Where(sf => sf.Status != FeeStatus.Paid && today > sf.DueDate);
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted && !sf.IsRecurring &&
+                    sf.Status != FeeStatus.Paid && today >= sf.DueDate);
 
             if (request.FeeIds != null && request.FeeIds.Any())
             {

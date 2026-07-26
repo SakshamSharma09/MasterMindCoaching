@@ -54,10 +54,10 @@ public class StudentFee : BaseEntity
             // Different overdue logic based on fee category
             return FeeCategory switch
             {
-                FeeCategory.Monthly => today > DueDate,
+                FeeCategory.Monthly => today >= DueDate,
                 FeeCategory.FullCourse => StartDate.HasValue && today > StartDate.Value,
-                FeeCategory.Additional => today > DueDate,
-                _ => today > DueDate
+                FeeCategory.Additional => today >= DueDate,
+                _ => today >= DueDate
             };
         }
     }
