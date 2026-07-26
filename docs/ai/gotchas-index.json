@@ -18,6 +18,13 @@
       "severity": "high"
     },
     {
+      "id": "ef-design-time-assembly-provider",
+      "symptoms": ["migration omits changes", "stale migration", "SQLite nvarchar max", "test database syntax error"],
+      "category": "backend",
+      "section": "EF Migration and Test Providers Must Match the Intended Assembly",
+      "severity": "high"
+    },
+    {
       "id": "authorize-attribute",
       "symptoms": ["401", "unauthorized", "authentication", "no auth required", "endpoint accessible"],
       "category": "backend",

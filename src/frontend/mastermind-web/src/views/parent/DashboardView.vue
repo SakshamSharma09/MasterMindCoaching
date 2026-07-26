@@ -133,12 +133,21 @@
         </transition-group>
       </div>
     </div>
+
+    <div class="mt-8 rounded-2xl border border-slate-200 bg-white/70 p-5 text-sm text-slate-600">
+      <p class="font-bold text-slate-900">Account and privacy</p>
+      <p class="mt-1">You can request deletion of your parent account and associated personal data.</p>
+      <button class="mt-3 font-bold text-red-600 hover:text-red-700" @click="requestDeletion">
+        Request account deletion
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { parentService, type ParentChild } from '@/services/parentService'
+import { authService } from '@/services/authService'
 
 // Reactive data
 const children = ref<ParentChild[]>([])
@@ -155,6 +164,16 @@ const currentChildStats = computed(() => {
 
 const recentActivities = ref<Array<{ id: string; title: string; description: string; date: string }>>([])
 const SELECTED_CHILD_KEY = 'mastermind-parent-selected-child'
+
+const requestDeletion = async () => {
+  if (!confirm('Send an account deletion request to MasterMind Coaching?')) return
+  try {
+    const response = await authService.requestAccountDeletion()
+    alert(response.message || 'Account deletion request recorded.')
+  } catch (requestError: any) {
+    alert(requestError.response?.data?.message || 'The deletion request could not be sent.')
+  }
+}
 
 // Load data
 const loadData = async () => {

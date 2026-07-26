@@ -186,6 +186,22 @@
 
 ---
 
+### Release 1.0.9 Account, Student, and Salary Endpoints
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/api/students/{id}/parent-invitation` | Admin | Revoke any active invite and email a new 72-hour single-use parent invitation |
+| GET | `/api/auth/invitations/{token}` | Public | Validate an invitation and return masked account details |
+| POST | `/api/auth/invitations/accept` | Public | Set the provisioned parent password and consume the invitation |
+| POST | `/api/account/deletion-request` | Authenticated | Request deletion for the current account |
+| POST | `/api/account/public-deletion-request` | Public | Request deletion using a registered email or mobile without exposing account existence |
+| GET | `/api/expenses` | Authenticated | Return general expenses and teacher salary obligations with `source`, `status`, and `salaryId` |
+| POST | `/api/expenses/salaries/{id}/pay` | Authenticated | Mark a teacher salary obligation paid |
+
+Student create/update payloads now persist `motherName`, `fatherName`, `currentSchool`, `studentEmail`, `parentEmail`, `parentMobile`, and `admissionDate` independently.
+
+---
+
 ## Authentication
 
 All protected endpoints require:
@@ -219,4 +235,4 @@ Authorization: Bearer <access_token>
 
 ---
 
-*Auto-generated baseline with manual updates through 2026-06-22 for AdminNotifications, TeacherPortal, AdminNotes, TemplateZone, AcademicPlanner, PaperGenerator, TeacherStats, and StudentRemarks.*
+*Auto-generated baseline with manual updates through 2026-07-26 for release 1.0.9 account invitations, deletion requests, salary obligations, expenses, and student fields.*

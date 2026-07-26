@@ -14,6 +14,22 @@
       </div>
     </section>
 
+    <section class="overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-sm">
+      <button
+        class="flex w-full items-center justify-between gap-4 p-5 text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary-100"
+        type="button"
+        aria-controls="paper-generator-panel"
+        :aria-expanded="openSections.paper"
+        @click="openSections.paper = !openSections.paper"
+      >
+        <span>
+          <span class="block text-lg font-semibold text-surface-950">Paper Generator</span>
+          <span class="mt-1 block text-sm font-normal text-surface-500">Upload source PDFs and create the paper and answer key.</span>
+        </span>
+        <span class="accordion-chevron" :class="{ 'rotate-180': openSections.paper }" aria-hidden="true">⌄</span>
+      </button>
+
+      <div v-show="openSections.paper" id="paper-generator-panel" class="space-y-6 border-t border-surface-100 p-5">
     <div class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
       <section class="rounded-2xl border border-surface-200 bg-white p-5 shadow-sm">
         <div class="flex items-start justify-between gap-4">
@@ -146,30 +162,10 @@
           {{ formError }}
         </div>
 
-        <div class="mt-5 grid gap-3 sm:grid-cols-2">
+        <div class="mt-5">
           <button class="btn-primary w-full" type="button" :disabled="generating || difficultyTotal !== 100" @click="generatePaper">
             {{ generating ? 'Generating paper...' : 'Generate Paper + Answer Key' }}
           </button>
-          <button class="btn-secondary w-full" type="button" :disabled="difficultyTotal !== 100" @click="generatePrompt">
-            Generate Prompt
-          </button>
-        </div>
-
-        <div v-if="generatedPrompt" class="mt-5 rounded-2xl border border-primary-100 bg-white p-4 shadow-sm">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 class="text-sm font-semibold text-surface-950">Ready-made prompt</h3>
-              <p class="mt-1 text-xs text-surface-500">Built from the selected class, blueprint, difficulty, and source documents.</p>
-            </div>
-            <button class="btn-secondary text-sm" type="button" @click="copyPrompt">
-              {{ promptCopied ? 'Copied' : 'Copy prompt' }}
-            </button>
-          </div>
-          <textarea
-            class="mt-4 min-h-64 w-full resize-y rounded-xl border border-surface-200 bg-surface-50 p-3 font-mono text-xs leading-5 text-surface-800 outline-none focus:border-primary-300 focus:ring-4 focus:ring-primary-100"
-            :value="generatedPrompt"
-            readonly
-          ></textarea>
         </div>
       </section>
     </div>
@@ -221,6 +217,106 @@
         </div>
       </div>
     </section>
+      </div>
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-sm">
+      <button
+        class="flex w-full items-center justify-between gap-4 p-5 text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary-100"
+        type="button"
+        aria-controls="paper-prompt-panel"
+        :aria-expanded="openSections.paperPrompt"
+        @click="openSections.paperPrompt = !openSections.paperPrompt"
+      >
+        <span>
+          <span class="block text-lg font-semibold text-surface-950">Paper Prompt Generator</span>
+          <span class="mt-1 block text-sm font-normal text-surface-500">Turn the paper settings above into a complete prompt for another AI tool.</span>
+        </span>
+        <span class="accordion-chevron" :class="{ 'rotate-180': openSections.paperPrompt }" aria-hidden="true">⌄</span>
+      </button>
+
+      <div v-show="openSections.paperPrompt" id="paper-prompt-panel" class="border-t border-surface-100 p-5">
+        <div class="rounded-xl border border-primary-100 bg-primary-50/60 p-4 text-sm text-surface-700">
+          Uses the class, subject, marks, question blueprint, difficulty, and selected PDF names from Paper Generator.
+          Every referenced table, passage, figure, or case must be included with its questions.
+        </div>
+        <div v-if="formError" class="mt-4 rounded-xl border border-error-100 bg-error-50 px-4 py-3 text-sm text-error-700">
+          {{ formError }}
+        </div>
+        <button class="btn-primary mt-4" type="button" :disabled="difficultyTotal !== 100" @click="generatePrompt">
+          Generate Paper Prompt
+        </button>
+
+        <div v-if="generatedPrompt" class="mt-5 rounded-2xl border border-primary-100 bg-white p-4 shadow-sm">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-surface-950">Ready-made prompt</h3>
+              <p class="mt-1 text-xs text-surface-500">Copy it or save it as a text file.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button class="btn-secondary text-sm" type="button" @click="copyPrompt">
+                {{ promptCopied ? 'Copied' : 'Copy prompt' }}
+              </button>
+              <button class="btn-secondary text-sm" type="button" @click="downloadPaperPrompt">Download .txt</button>
+            </div>
+          </div>
+          <textarea
+            class="mt-4 min-h-64 w-full resize-y rounded-xl border border-surface-200 bg-surface-50 p-3 font-mono text-xs leading-5 text-surface-800 outline-none focus:border-primary-300 focus:ring-4 focus:ring-primary-100"
+            :value="generatedPrompt"
+            readonly
+          ></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-sm">
+      <button
+        class="flex w-full items-center justify-between gap-4 p-5 text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary-100"
+        type="button"
+        aria-controls="notes-generator-panel"
+        :aria-expanded="openSections.notes"
+        @click="openSections.notes = !openSections.notes"
+      >
+        <span>
+          <span class="block text-lg font-semibold text-surface-950">Notes Generator</span>
+          <span class="mt-1 block text-sm font-normal text-surface-500">Create the master prompt used to turn attached chapters into branded revision notes.</span>
+        </span>
+        <span class="accordion-chevron" :class="{ 'rotate-180': openSections.notes }" aria-hidden="true">⌄</span>
+      </button>
+
+      <div v-show="openSections.notes" id="notes-generator-panel" class="border-t border-surface-100 p-5">
+        <div class="grid gap-4 md:grid-cols-2">
+          <label class="field-label">Institute name<input v-model.trim="notesForm.instituteName" class="input-field" /></label>
+          <label class="field-label">Institute address<input v-model.trim="notesForm.instituteAddress" class="input-field" /></label>
+          <label class="field-label md:col-span-2">Institute scope<input v-model.trim="notesForm.instituteScope" class="input-field" /></label>
+          <label class="field-label">Class<input v-model.trim="notesForm.className" class="input-field" placeholder="Class 9" /></label>
+          <label class="field-label">Subject<input v-model.trim="notesForm.subject" class="input-field" placeholder="Science" /></label>
+          <label class="field-label">Primary colour<input v-model="notesForm.primaryColor" class="input-field h-12" type="color" /></label>
+          <label class="field-label">Accent colour<input v-model="notesForm.accentColor" class="input-field h-12" type="color" /></label>
+          <label class="field-label">Maximum pages<input v-model.number="notesForm.maxPages" class="input-field" type="number" min="1" max="500" /></label>
+          <label class="field-label">
+            Questions per topic
+            <select v-model.number="notesForm.questionsPerTopic" class="input-field"><option :value="3">3</option><option :value="4">4</option></select>
+          </label>
+        </div>
+        <div v-if="notesError" class="mt-4 rounded-xl border border-error-100 bg-error-50 px-4 py-3 text-sm text-error-700">{{ notesError }}</div>
+        <button class="btn-primary mt-5" type="button" @click="generateNotesPrompt">Generate Notes Prompt</button>
+
+        <div v-if="generatedNotesPrompt" class="mt-5 rounded-2xl border border-primary-100 bg-white p-4 shadow-sm">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-surface-950">Notes master prompt</h3>
+              <p class="mt-1 text-xs text-surface-500">Attach the source chapters to your AI tool, then paste this prompt.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button class="btn-secondary text-sm" type="button" @click="copyNotesPrompt">{{ notesPromptCopied ? 'Copied' : 'Copy prompt' }}</button>
+              <button class="btn-secondary text-sm" type="button" @click="downloadNotesPrompt">Download .txt</button>
+            </div>
+          </div>
+          <textarea class="mt-4 min-h-72 w-full resize-y rounded-xl border border-surface-200 bg-surface-50 p-3 font-mono text-xs leading-5 text-surface-800 outline-none focus:border-primary-300 focus:ring-4 focus:ring-primary-100" :value="generatedNotesPrompt" readonly></textarea>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -228,6 +324,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import paperPromptTemplate from '@/prompts/paper-generator-template.txt?raw'
+import notesPromptTemplate from '@/prompts/notes-generator-template.txt?raw'
+import { saveOrShareBlob } from '@/utils/fileDownload'
 import {
   paperGeneratorService,
   type CreatePaperGenerationJobRequest,
@@ -249,6 +347,26 @@ const uploadError = ref('')
 const formError = ref('')
 const generatedPrompt = ref('')
 const promptCopied = ref(false)
+const generatedNotesPrompt = ref('')
+const notesPromptCopied = ref(false)
+const notesError = ref('')
+const openSections = reactive({
+  paper: true,
+  paperPrompt: false,
+  notes: false
+})
+
+const notesForm = reactive({
+  instituteName: 'MasterMind Coaching Classes',
+  instituteAddress: 'Road No. 5, VKIA, Jaipur',
+  instituteScope: 'School coaching, concept mastery, revision, and exam preparation',
+  className: '',
+  subject: '',
+  primaryColor: '#0A1D39',
+  accentColor: '#D9A12D',
+  maxPages: 40,
+  questionsPerTopic: 3
+})
 
 const form = reactive<CreatePaperGenerationJobRequest>({
   sessionId: null,
@@ -428,6 +546,62 @@ const copyPrompt = async () => {
   }, 1600)
 }
 
+const safePromptFilePart = (value: string, fallback: string) =>
+  value.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || fallback
+
+const downloadTextPrompt = (content: string, fileName: string) =>
+  saveOrShareBlob(new Blob([content], { type: 'text/plain;charset=utf-8' }), fileName)
+
+const downloadPaperPrompt = () =>
+  downloadTextPrompt(
+    generatedPrompt.value,
+    `${safePromptFilePart(form.className, 'class')}-${safePromptFilePart(form.subject, 'subject')}-paper-prompt.txt`
+  )
+
+const generateNotesPrompt = () => {
+  notesError.value = ''
+  if (!notesForm.instituteName.trim()) notesError.value = 'Institute name is required.'
+  else if (!notesForm.instituteAddress.trim()) notesError.value = 'Institute address is required.'
+  else if (!notesForm.instituteScope.trim()) notesError.value = 'Institute scope is required.'
+  else if (!notesForm.className.trim()) notesError.value = 'Class is required.'
+  else if (!notesForm.subject.trim()) notesError.value = 'Subject is required.'
+  else if (notesForm.maxPages < 1) notesError.value = 'Maximum pages must be at least 1.'
+  if (notesError.value) return
+
+  const variables: Record<string, string> = {
+    INSTITUTE_NAME: notesForm.instituteName,
+    INSTITUTE_ADDRESS: notesForm.instituteAddress,
+    INSTITUTE_SCOPE: notesForm.instituteScope,
+    CLASS_NAME: notesForm.className,
+    SUBJECT_NAME: notesForm.subject,
+    PRIMARY_COLOR: notesForm.primaryColor.toUpperCase(),
+    ACCENT_COLOR: notesForm.accentColor.toUpperCase(),
+    MAX_PAGES: String(notesForm.maxPages),
+    QUESTIONS_PER_TOPIC: String(notesForm.questionsPerTopic)
+  }
+
+  generatedNotesPrompt.value = Object.entries(variables).reduce(
+    (prompt, [key, value]) => prompt.replaceAll(`{${key}}`, value),
+    notesPromptTemplate
+  )
+  notesPromptCopied.value = false
+}
+
+const copyNotesPrompt = async () => {
+  if (!generatedNotesPrompt.value) return
+  await navigator.clipboard.writeText(generatedNotesPrompt.value)
+  notesPromptCopied.value = true
+  window.setTimeout(() => {
+    notesPromptCopied.value = false
+  }, 1600)
+}
+
+const downloadNotesPrompt = () =>
+  downloadTextPrompt(
+    generatedNotesPrompt.value,
+    `${safePromptFilePart(notesForm.className, 'class')}-${safePromptFilePart(notesForm.subject, 'subject')}-notes-prompt.txt`
+  )
+
 const generatePaper = async () => {
   formError.value = validateForm()
   if (formError.value) return
@@ -442,10 +616,15 @@ const generatePaper = async () => {
       totalMarks: form.totalMarks,
       durationMinutes: form.durationMinutes,
       mcqCount: form.mcqCount,
+      fibCount: form.fibCount,
+      trueFalseCount: form.trueFalseCount,
       oneMarkCount: form.oneMarkCount,
       twoMarkCount: form.twoMarkCount,
+      threeMarkCount: form.threeMarkCount,
+      fourMarkCount: form.fourMarkCount,
       fiveMarkCount: form.fiveMarkCount,
       caseStudyCount: form.caseStudyCount,
+      rtcCount: form.rtcCount,
       easyPercentage: form.easyPercentage,
       mediumPercentage: form.mediumPercentage,
       hardPercentage: form.hardPercentage,
@@ -538,5 +717,24 @@ onMounted(refreshAll)
 .input-field:focus {
   border-color: rgb(99 102 241);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+.accordion-chevron {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9999px;
+  background: rgb(248 250 252);
+  color: rgb(71 85 105);
+  font-size: 1.25rem;
+  transition: transform 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion-chevron {
+    transition: none;
+  }
 }
 </style>

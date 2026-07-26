@@ -80,6 +80,10 @@ public class OpenRouterPaperService : IOpenRouterPaperService
             Return only a JSON array. Each item must have: questionText, answerText, marks, questionType, difficulty.
             Allowed questionType values: Mcq, OneMark, TwoMark, FiveMark, CaseStudy.
             Allowed difficulty values: Easy, Medium, Hard.
+            Every question must be self-contained. If it refers to a passage, case, table, chart,
+            figure, diagram, dataset, extract, or options, include that complete context inside
+            questionText immediately before the question. Never write "table below", "case above",
+            "following passage", or similar language unless the referenced content is present.
             """;
 
         var payload = new
@@ -116,7 +120,8 @@ public class OpenRouterPaperService : IOpenRouterPaperService
         }) ?? new List<OpenRouterQuestion>();
 
         return parsed
-            .Where(q => !string.IsNullOrWhiteSpace(q.QuestionText))
+            .Where(q => !string.IsNullOrWhiteSpace(q.QuestionText) &&
+                !HasOrphanedContextReference(q.QuestionText))
             .Take(questionCount)
             .Select(q => new PaperExtractedQuestion
             {
@@ -133,6 +138,28 @@ public class OpenRouterPaperService : IOpenRouterPaperService
                 CreatedAt = DateTime.UtcNow
             })
             .ToList();
+    }
+
+    private static bool HasOrphanedContextReference(string question)
+    {
+        var normalized = question.ToLowerInvariant();
+        var referencePhrases = new[]
+        {
+            "table below", "table above", "following table",
+            "case below", "case above", "following case",
+            "passage below", "passage above", "following passage",
+            "figure below", "figure above", "following figure",
+            "chart below", "chart above", "following chart",
+            "diagram below", "diagram above", "following diagram"
+        };
+
+        if (!referencePhrases.Any(normalized.Contains))
+        {
+            return false;
+        }
+
+        // A context-bearing question has a clearly separated block before the instruction.
+        return !question.Contains('\n') && !question.Contains(':');
     }
 
     private static string StripCodeFence(string content)

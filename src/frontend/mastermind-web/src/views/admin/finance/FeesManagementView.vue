@@ -107,58 +107,74 @@
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                  <select v-model="feeForm.studentId" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                  <select v-model="feeForm.studentId" :disabled="isEditingFee" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
                     <option value="">Select Student</option>
                     <option v-for="student in students" :key="student.id" :value="student.id">{{ student.firstName }} {{ student.lastName }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Fee Category</label>
-                  <select v-model="feeForm.feeCategory" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                    <option value="Monthly">Monthly Fee</option>
-                    <option value="FullCourse">Full Course Fee</option>
-                    <option value="Additional">Additional/One-time Fee</option>
-                  </select>
-                </div>
-                <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Fee Type</label>
-                  <select v-model="feeForm.feeStructureId" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                  <select v-model="feeForm.feeStructureId" :disabled="isEditingFee" :required="!isEditingFee" @change="applyFeeStructureDefaults" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
                     <option value="">Select Fee Type</option>
                     <option v-for="structure in feeStructures" :key="structure.id" :value="String(structure.id)">
-                      {{ structure.name }}
+                      {{ structure.name }}{{ structure.frequency ? ` · ${structure.frequency}` : '' }}
                     </option>
                   </select>
                   <p v-if="feeStructures.length === 0" class="mt-1 text-xs text-amber-700">
-                    No fee structures were found. A compatible structure will be auto-generated on save.
+                    No active fee types are available. Add a fee structure before assigning a fee.
+                  </p>
+                  <p v-else-if="selectedFeeStructure && !isEditingFee" class="mt-1 text-xs text-gray-500">
+                    {{ selectedFeeStructure.frequency }}{{ selectedFeeStructure.academicYear ? ` · ${selectedFeeStructure.academicYear}` : '' }}
                   </p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                    <input v-model="feeForm.amount" type="number" required min="0" step="0.01" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Discount Amount</label>
-                    <input v-model="feeForm.discountAmount" type="number" min="0" step="0.01" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                  </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                  <input v-model="feeForm.amount" :disabled="isEditingFee" type="number" required min="0.01" step="0.01" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
                 </div>
-                <div v-if="feeForm.feeCategory === 'Monthly'" class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                    <input v-model="feeForm.startDate" type="date" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <input v-model="feeForm.startDate" :disabled="isEditingFee" type="date" :required="!isEditingFee" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                    <input v-model="feeForm.endDate" type="date" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                    <input v-model="feeForm.dueDate" type="date" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                   </div>
                 </div>
-                <div v-if="feeForm.feeCategory === 'Additional' || feeForm.feeCategory === 'FullCourse'">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                  <input v-model="feeForm.dueDate" type="date" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                  <textarea v-model="feeForm.remarks" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"></textarea>
+
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  :aria-expanded="showAdvancedFeeOptions"
+                  aria-controls="advanced-fee-options"
+                  @click="showAdvancedFeeOptions = !showAdvancedFeeOptions"
+                >
+                  <span>Advanced options</span>
+                  <span aria-hidden="true">{{ showAdvancedFeeOptions ? '−' : '+' }}</span>
+                </button>
+                <div v-if="showAdvancedFeeOptions" id="advanced-fee-options" class="space-y-4 rounded-lg border border-gray-200 p-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Discount Amount</label>
+                      <input v-model="feeForm.discountAmount" type="number" min="0" step="0.01" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                      <input v-model="feeForm.endDate" :disabled="isEditingFee" type="date" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Late Fee Per Day</label>
+                      <input v-model="feeForm.lateFeePerDay" :disabled="isEditingFee" type="number" min="0" step="0.01" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Grace Period (Days)</label>
+                      <input v-model="feeForm.gracePeriodDays" :disabled="isEditingFee" type="number" min="0" step="1" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                    <textarea v-model="feeForm.remarks" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"></textarea>
+                  </div>
                 </div>
               </div>
             </div>
@@ -195,6 +211,11 @@ interface StudentItem {
 interface FeeStructureItem {
   id: number
   name: string
+  type?: string
+  amount?: number
+  frequency?: string
+  academicYear?: string
+  lateFeePerDay?: number
 }
 
 const loading = ref(false)
@@ -204,6 +225,7 @@ const classes = ref<Class[]>([])
 const feeStructures = ref<FeeStructureItem[]>([])
 const showFeeModal = ref(false)
 const isEditingFee = ref(false)
+const showAdvancedFeeOptions = ref(false)
 
 const feeFilters = ref({ classId: '', status: '', month: '' })
 
@@ -217,8 +239,38 @@ const feeForm = ref({
   startDate: '',
   endDate: '',
   dueDate: '',
+  lateFeePerDay: '',
+  gracePeriodDays: '0',
+  academicYear: '',
   remarks: ''
 })
+
+const selectedFeeStructure = computed(() =>
+  feeStructures.value.find(structure => String(structure.id) === feeForm.value.feeStructureId)
+)
+
+const today = () => {
+  const value = new Date()
+  value.setMinutes(value.getMinutes() - value.getTimezoneOffset())
+  return value.toISOString().slice(0, 10)
+}
+
+const inferFeeCategory = (structure?: FeeStructureItem) => {
+  const frequency = structure?.frequency?.toLowerCase()
+  if (frequency === 'monthly') return 'Monthly'
+  const type = structure?.type?.toLowerCase()
+  if (type && type !== 'tuition') return 'Additional'
+  return 'FullCourse'
+}
+
+const applyFeeStructureDefaults = () => {
+  const structure = selectedFeeStructure.value
+  if (!structure) return
+  feeForm.value.amount = structure.amount?.toString() || ''
+  feeForm.value.feeCategory = inferFeeCategory(structure)
+  feeForm.value.academicYear = structure.academicYear || ''
+  feeForm.value.lateFeePerDay = structure.lateFeePerDay?.toString() || ''
+}
 
 const filteredFees = computed(() => {
   let filtered = fees.value
@@ -282,11 +334,14 @@ const openAddFeeModal = () => {
   isEditingFee.value = false
   feeForm.value = {
     id: 0, studentId: '', feeStructureId: '', feeCategory: 'Monthly',
-    amount: '', discountAmount: '', startDate: '', endDate: '', dueDate: '', remarks: ''
+    amount: '', discountAmount: '', startDate: today(), endDate: '', dueDate: today(),
+    lateFeePerDay: '', gracePeriodDays: '0', academicYear: '', remarks: ''
   }
   if (feeStructures.value.length > 0) {
     feeForm.value.feeStructureId = String(feeStructures.value[0].id)
+    applyFeeStructureDefaults()
   }
+  showAdvancedFeeOptions.value = false
   showFeeModal.value = true
 }
 
@@ -304,8 +359,12 @@ const editFee = (fee: Fee) => {
     startDate: '',
     endDate: '',
     dueDate: fee.dueDate,
+    lateFeePerDay: '',
+    gracePeriodDays: '0',
+    academicYear: '',
     remarks: fee.description || ''
   }
+  showAdvancedFeeOptions.value = Boolean(fee.description)
   showFeeModal.value = true
 }
 
@@ -334,6 +393,9 @@ const saveFee = async () => {
         startDate: feeForm.value.startDate || null,
         endDate: feeForm.value.endDate || null,
         dueDate: feeForm.value.dueDate || null,
+        lateFeePerDay: feeForm.value.lateFeePerDay ? parseFloat(feeForm.value.lateFeePerDay) : null,
+        gracePeriodDays: feeForm.value.gracePeriodDays ? parseInt(feeForm.value.gracePeriodDays) : 0,
+        academicYear: feeForm.value.academicYear,
         remarks: feeForm.value.remarks || null
       }
       await financeService.createFee(feeData)
@@ -356,9 +418,10 @@ const deleteFee = async (feeId: number) => {
     await financeService.deleteFee(feeId)
     await loadFees()
     toast.success('Fee deleted', 'Fee has been removed.')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting fee:', error)
-    toast.error('Failed to delete fee', 'Please try again.')
+    const apiMessage = error?.response?.data?.message
+    toast.error('Fee could not be deleted', apiMessage || 'Fees with recorded payments must be retained.')
   }
 }
 

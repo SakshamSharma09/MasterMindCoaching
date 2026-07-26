@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { API_BASE_URL, API_TIMEOUT, DEFAULT_HEADERS, getApiUrl } from '@/config/api'
+import { fileNameFromContentDisposition, saveOrShareBlob } from '@/utils/fileDownload'
 
 // Extended interface for custom config options
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
@@ -187,29 +188,10 @@ export const apiService = {
     const response = await apiClient.get(endpoint, {
       responseType: 'blob',
     })
-
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    
-    // Set filename if provided, otherwise get from Content-Disposition header
-    if (filename) {
-      link.setAttribute('download', filename)
-    } else {
-      const contentDisposition = response.headers['content-disposition']
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
-        if (filenameMatch) {
-          link.setAttribute('download', filenameMatch[1])
-        }
-      }
-    }
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    const resolvedFileName = filename
+      || fileNameFromContentDisposition(response.headers['content-disposition'], 'download')
+    const contentType = response.headers['content-type'] || 'application/octet-stream'
+    await saveOrShareBlob(new Blob([response.data], { type: contentType }), resolvedFileName)
   },
 
   // GET request without automatic redirect on 401

@@ -502,7 +502,7 @@
                 <!-- Status -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Status</label>
-                  <select v-model="markForm.status" required class="mt-1 input-primary">
+                  <select v-model="markForm.status" required class="mt-1 input-primary" @change="applyAttendanceTimeDefaults">
                     <option :value="0">Present</option>
                     <option :value="1">Absent</option>
                     <option :value="2">Late</option>
@@ -571,6 +571,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { formatClassForDropdown } from '@/utils/classUtils'
+import { normalizeIndianMobile } from '@/utils/phoneUtils'
 import { attendanceService, type AttendanceRecord, type AttendanceReport, ATTENDANCE_STATUS_MAP, ATTENDANCE_STATUS_REVERSE_MAP } from '@/services/attendanceService'
 import { classesService } from '@/services/classesService'
 import { studentsService, type Student } from '@/services/studentsService'
@@ -599,8 +600,8 @@ const markForm = ref({
   date: new Date().toISOString().split('T')[0],
   studentId: '',
   status: 0,
-  checkInTime: '',
-  checkOutTime: '',
+  checkInTime: '15:00',
+  checkOutTime: '18:00',
   remarks: ''
 })
 
@@ -732,14 +733,27 @@ const getStatusClass = (status: string) => {
   return classes[status] || classes.notmarked
 }
 
-const normalizePhone = (value?: string | null) => (value || '').replace(/\D/g, '')
+const formatAttendanceDate = (value: string) => {
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`)
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }).format(date)
+}
 
 const buildAbsentMessage = (record: AttendanceRecord) => {
-  return `Namaste ${record.parentName || 'Parent'}, ${record.studentName} was marked absent for ${record.className} on ${record.date}. Please contact MasterMind Coaching Classes if this needs correction.`
+  return [
+    `Namaste ${record.parentName || 'Parent'},`,
+    '',
+    `This is to inform you that ${record.studentName} was absent from ${record.className} on ${formatAttendanceDate(record.date)}.`,
+    'Class timing: 3:00 PM to 6:00 PM.',
+    'Please reply with the reason for absence or contact MasterMind Coaching Classes if this record needs correction.',
+    '',
+    '— MasterMind Coaching Classes'
+  ].join('\n')
 }
 
 const openAbsentWhatsApp = (record: AttendanceRecord) => {
-  const phone = normalizePhone(record.parentMobile || record.studentMobile)
+  const phone = normalizeIndianMobile(record.parentMobile || record.studentMobile)
   if (!phone) {
     alert(`No WhatsApp/mobile number found for ${record.studentName}.`)
     return
@@ -748,7 +762,7 @@ const openAbsentWhatsApp = (record: AttendanceRecord) => {
 }
 
 const openAbsentWhatsAppBatch = () => {
-  const targets = absentAttendance.value.filter(record => normalizePhone(record.parentMobile || record.studentMobile))
+  const targets = absentAttendance.value.filter(record => normalizeIndianMobile(record.parentMobile || record.studentMobile))
   if (targets.length === 0) {
     alert('No parent WhatsApp/mobile numbers found for the absent students.')
     return
@@ -772,8 +786,8 @@ const openMarkModal = () => {
     date: selectedDate.value,
     studentId: '',
     status: 0,
-    checkInTime: '',
-    checkOutTime: '',
+    checkInTime: '15:00',
+    checkOutTime: '18:00',
     remarks: ''
   }
   if (markForm.value.classId) {
@@ -798,6 +812,12 @@ const editAttendance = async (record: AttendanceRecord) => {
   markForm.value.remarks = record.remarks || ''
   
   showMarkModal.value = true
+}
+
+const applyAttendanceTimeDefaults = () => {
+  const hasClassTiming = [0, 2, 3].includes(markForm.value.status)
+  markForm.value.checkInTime = hasClassTiming ? '15:00' : ''
+  markForm.value.checkOutTime = hasClassTiming ? '18:00' : ''
 }
 
 const closeMarkModal = () => {
@@ -970,8 +990,8 @@ const saveBulkAttendance = async () => {
         classId: student.classId,
         date: bulkDate.value,
         status: status,
-        checkInTime: student.isPresent ? '09:00' : undefined,
-        checkOutTime: student.isPresent ? '15:00' : undefined,
+        checkInTime: student.isPresent ? '15:00' : undefined,
+        checkOutTime: student.isPresent ? '18:00' : undefined,
         remarks: student.isPresent ? 'Present' : 'Absent'
       }
       

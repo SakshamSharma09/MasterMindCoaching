@@ -57,6 +57,7 @@
               <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
               <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
               <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Paid To</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
               <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -72,12 +73,29 @@
               <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">₹{{ formatCurrency(expense.amount) }}</td>
               <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ expense.paidTo }}</td>
               <td class="whitespace-nowrap px-3 py-4 text-sm">
-                <button @click="editExpense(expense)" class="text-indigo-600 hover:text-indigo-900 mr-3 font-medium">Edit</button>
-                <button @click="deleteExpense(expense.id)" class="text-red-600 hover:text-red-900 font-medium">Delete</button>
+                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                  {{ expense.status || 'Pending' }}
+                </span>
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm">
+                <template v-if="expense.source === 'TeacherSalary'">
+                  <button
+                    v-if="expense.status !== 'Paid' && expense.salaryId"
+                    @click="markSalaryPaid(expense.salaryId)"
+                    class="font-medium text-emerald-600 hover:text-emerald-900"
+                  >
+                    Mark paid
+                  </button>
+                  <span v-else class="text-xs text-slate-400">Salary obligation</span>
+                </template>
+                <template v-else>
+                  <button @click="editExpense(expense)" class="text-indigo-600 hover:text-indigo-900 mr-3 font-medium">Edit</button>
+                  <button @click="deleteExpense(expense.id)" class="text-red-600 hover:text-red-900 font-medium">Delete</button>
+                </template>
               </td>
             </tr>
             <tr v-if="filteredExpenses.length === 0">
-              <td colspan="6" class="px-6 py-12 text-center text-sm text-gray-500">
+              <td colspan="7" class="px-6 py-12 text-center text-sm text-gray-500">
                 No expenses found matching your filters.
               </td>
             </tr>
@@ -260,6 +278,18 @@ const deleteExpense = async (expenseId: number) => {
   } catch (error) {
     console.error('Error deleting expense:', error)
     toast.error('Failed to delete expense', 'Please try again.')
+  }
+}
+
+const markSalaryPaid = async (salaryId: number) => {
+  if (!confirm('Mark this teacher salary as paid?')) return
+  try {
+    await financeService.markSalaryPaid(salaryId)
+    await loadExpenses()
+    toast.success('Salary paid', 'Teacher salary has been marked as paid.')
+  } catch (error) {
+    console.error('Error marking salary paid:', error)
+    toast.error('Failed to update salary', 'Please try again.')
   }
 }
 

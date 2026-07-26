@@ -9,7 +9,15 @@ export interface Student {
   lastName: string
   fullName: string
   admissionNumber?: string
+  admissionDate?: string
   studentMobile?: string
+  studentEmail?: string
+  parentName?: string
+  motherName?: string
+  fatherName?: string
+  parentMobile?: string
+  parentEmail?: string
+  currentSchool?: string
   isActive: boolean
   classId?: number
   studentClasses?: StudentClass[]
@@ -33,9 +41,13 @@ export interface CreateStudentRequest {
   lastName: string
   email: string
   phone: string
+  parentEmail: string
+  parentMobile: string
+  admissionDate: string
   classId?: number | null
   className?: string
   status: 'Active' | 'Inactive'
+  parentName?: string
   motherName?: string
   fatherName?: string
   address?: string
@@ -64,10 +76,9 @@ const toGenderEnum = (value?: 'Male' | 'Female' | 'Other'): number => {
   return 0
 }
 
-const mapStudentPayload = (studentData: Partial<CreateStudentRequest>, id?: number) => {
-  const parentFirst = (studentData.motherName || '').trim()
-  const parentLast = (studentData.fatherName || '').trim()
-  const parentName = `${parentFirst} ${parentLast}`.trim() || 'Parent'
+export const mapStudentPayload = (studentData: Partial<CreateStudentRequest>, id?: number) => {
+  const motherName = (studentData.motherName || '').trim()
+  const fatherName = (studentData.fatherName || '').trim()
 
   return {
     ...(id ? { id } : {}),
@@ -80,11 +91,14 @@ const mapStudentPayload = (studentData: Partial<CreateStudentRequest>, id?: numb
     studentEmail: studentData.email || '',
     profileImageUrl: studentData.photo || '',
     admissionNumber: studentData.rollNumber || '',
-    admissionDate: new Date().toISOString(),
+    admissionDate: toIsoDateOrToday(studentData.admissionDate),
     isActive: studentData.status !== 'Inactive',
-    parentName,
-    parentMobile: studentData.whatsappNumber || studentData.textNumber || studentData.phone || '',
-    parentEmail: '',
+    parentName: (studentData.parentName || '').trim(),
+    motherName,
+    fatherName,
+    currentSchool: (studentData.currentSchool || '').trim(),
+    parentMobile: studentData.parentMobile || studentData.whatsappNumber || studentData.textNumber || '',
+    parentEmail: (studentData.parentEmail || '').trim(),
     parentOccupation: ''
   }
 }
@@ -229,6 +243,11 @@ export const studentsService = {
     }
 
     await apiService.delete(API_ENDPOINTS.STUDENTS.DELETE(id.toString()))
+  },
+
+  async resendParentInvitation(id: number): Promise<string> {
+    const response = await apiService.post(`${API_ENDPOINTS.STUDENTS.LIST}/${id}/parent-invitation`)
+    return response.message || 'Parent invitation sent successfully'
   },
 
   async uploadStudentPhoto(studentId: number, file: File): Promise<{ blobName: string; url: string }> {

@@ -297,6 +297,18 @@
   padding-left: env(safe-area-inset-left, 0px);
 }
 
+.mobile-safe-fixed-header {
+  top: env(safe-area-inset-top, 0px);
+}
+
+.mobile-safe-fixed-panel {
+  top: calc(4rem + env(safe-area-inset-top, 0px));
+}
+
+.safe-sticky-header {
+  top: env(safe-area-inset-top, 0px);
+}
+
 /* Admin UX Refresh */
 @layer components {
   .admin-shell {

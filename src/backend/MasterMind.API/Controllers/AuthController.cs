@@ -1,8 +1,14 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.ComponentModel.DataAnnotations;
+using MasterMind.API.Data;
+using MasterMind.API.Models.Entities;
 using MasterMind.API.Models.DTOs.Auth;
 using MasterMind.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace MasterMind.API.Controllers;
 
@@ -19,12 +25,18 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
     private readonly IDeviceService _deviceService;
     private readonly ILogger<AuthController> _logger;
+    private readonly MasterMindDbContext _context;
 
-    public AuthController(IAuthService authService, IDeviceService deviceService, ILogger<AuthController> logger)
+    public AuthController(
+        IAuthService authService,
+        IDeviceService deviceService,
+        ILogger<AuthController> logger,
+        MasterMindDbContext context)
     {
         _authService = authService;
         _deviceService = deviceService;
         _logger = logger;
+        _context = context;
     }
 
     /// <summary>
@@ -172,6 +184,70 @@ public class AuthController : ControllerBase
         var result = await _authService.SetPasswordAsync(userId.Value, request);
         if (!result.Success) return BadRequest(result);
         return Ok(result);
+    }
+
+    [HttpGet("invitations/{token}")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<object>>> ValidateInvitation(string token)
+    {
+        var invitation = await FindValidInvitationAsync(token);
+        if (invitation == null)
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "This invitation is invalid, expired, or has already been used"
+            });
+        }
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Invitation is valid",
+            Data = new
+            {
+                invitation.ExpiresAt,
+                Mobile = MaskMobile(invitation.User.Mobile),
+                Name = $"{invitation.User.FirstName} {invitation.User.LastName}".Trim()
+            }
+        });
+    }
+
+    [HttpPost("invitations/accept")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<object>>> AcceptInvitation([FromBody] AcceptInvitationRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "Use a password of at least 8 characters" });
+        }
+
+        var invitation = await FindValidInvitationAsync(request.Token);
+        if (invitation == null)
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "This invitation is invalid, expired, or has already been used"
+            });
+        }
+
+        invitation.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        invitation.User.IsActive = true;
+        invitation.User.IsEmailVerified = true;
+        invitation.User.UpdatedAt = DateTime.UtcNow;
+        invitation.UsedAt = DateTime.UtcNow;
+        invitation.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Password set successfully. Sign in with your mobile number.",
+            Data = new { Mobile = invitation.User.Mobile }
+        });
     }
 
     /// <summary>
@@ -436,6 +512,27 @@ public class AuthController : ControllerBase
         return null;
     }
 
+    private async Task<AccountInvitation?> FindValidInvitationAsync(string? rawToken)
+    {
+        if (string.IsNullOrWhiteSpace(rawToken))
+        {
+            return null;
+        }
+
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken.Trim())));
+        var now = DateTime.UtcNow;
+        return await _context.AccountInvitations
+            .Include(i => i.User)
+            .FirstOrDefaultAsync(i => i.TokenHash == hash && i.UsedAt == null &&
+                i.RevokedAt == null && i.ExpiresAt > now && !i.IsDeleted && !i.User.IsDeleted);
+    }
+
+    private static string MaskMobile(string mobile)
+    {
+        var digits = new string((mobile ?? string.Empty).Where(char.IsDigit).ToArray());
+        return digits.Length <= 4 ? digits : $"{new string('•', digits.Length - 4)}{digits[^4..]}";
+    }
+
     private void WriteAuthCookies(AuthResponseDto result)
     {
         if (!result.Success || string.IsNullOrWhiteSpace(result.AccessToken) || string.IsNullOrWhiteSpace(result.RefreshToken))
@@ -489,4 +586,14 @@ public class TrustDeviceRequest
 public class RevokeDeviceRequest
 {
     public string DeviceId { get; set; } = string.Empty;
+}
+
+public class AcceptInvitationRequest
+{
+    [Required]
+    public string Token { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(8)]
+    public string Password { get; set; } = string.Empty;
 }

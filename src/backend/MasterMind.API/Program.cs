@@ -194,6 +194,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
+builder.Services.AddScoped<ITeacherSalaryService, TeacherSalaryService>();
 builder.Services.AddScoped<IPaperGenerationService, PaperGenerationService>();
 builder.Services.AddHttpClient<IOpenRouterPaperService, OpenRouterPaperService>(client =>
 {
@@ -563,6 +564,9 @@ try
                 ""AdmissionDate"" DATE,
                 ""IsActive"" BOOLEAN NOT NULL DEFAULT true,
                 ""ParentName"" VARCHAR(200) NOT NULL,
+                ""MotherName"" VARCHAR(200),
+                ""FatherName"" VARCHAR(200),
+                ""CurrentSchool"" VARCHAR(200),
                 ""ParentMobile"" VARCHAR(20) NOT NULL,
                 ""ParentEmail"" VARCHAR(255),
                 ""ParentOccupation"" VARCHAR(200),
@@ -1151,7 +1155,7 @@ static async Task SeedInitialDataAsync(MasterMindDbContext context)
         adminUser = new MasterMind.API.Models.Entities.User
         {
             Email = adminEmail,
-            Mobile = "9999999999",
+            Mobile = "9887258679",
             FirstName = "Admin",
             LastName = "User",
             IsActive = true,
@@ -1169,6 +1173,8 @@ static async Task SeedInitialDataAsync(MasterMindDbContext context)
     {
         adminUser.IsActive = true;
         adminUser.IsEmailVerified = true;
+        adminUser.Mobile = "9887258679";
+        adminUser.IsMobileVerified = true;
         if (string.IsNullOrWhiteSpace(adminUser.PasswordHash))
         {
             adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminDefaultPassword);

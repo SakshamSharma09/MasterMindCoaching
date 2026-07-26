@@ -132,10 +132,10 @@ export const paperGeneratorService = {
   },
 
   async downloadPaper(jobId: number): Promise<void> {
-    await apiService.download(`/paper-generator/jobs/${jobId}/paper`)
+    await apiService.download(`/paper-generator/jobs/${jobId}/paper`, `MasterMind-paper-${jobId}.pdf`)
   },
 
   async downloadAnswerKey(jobId: number): Promise<void> {
-    await apiService.download(`/paper-generator/jobs/${jobId}/answer-key`)
+    await apiService.download(`/paper-generator/jobs/${jobId}/answer-key`, `MasterMind-answer-key-${jobId}.pdf`)
   }
 }

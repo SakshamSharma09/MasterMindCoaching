@@ -109,6 +109,10 @@
           <h2 class="text-xl font-semibold text-slate-950">10. Your Choices</h2>
           <ul class="mt-3 list-disc space-y-2 pl-6">
             <li>You may request access, correction, or deletion of personal information maintained by the institute.</li>
+            <li>
+              Submit an account and data deletion request through our
+              <router-link to="/data-deletion" class="font-semibold text-indigo-700 underline">data deletion page</router-link>.
+            </li>
             <li>You may update your password from inside the app where the feature is available.</li>
             <li>You may contact the institute if your parent, teacher, or student mapping is incorrect.</li>
           </ul>

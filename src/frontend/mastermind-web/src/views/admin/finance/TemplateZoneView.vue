@@ -173,6 +173,7 @@
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { templateZoneService, type BirthdayReminder, type FeeReceiptLog, type FeeReminder, type MessageTemplate, type TemplatePreviewResponse } from '@/services/templateZoneService'
 import { studentsService } from '@/services/studentsService'
+import { saveOrShareBlob } from '@/utils/fileDownload'
 
 const WEBSITE_URL = 'https://victorious-glacier-0e6507000.6.azurestaticapps.net'
 const PASSWORD_SETUP_PATH = `${WEBSITE_URL}/change-password`
@@ -775,24 +776,10 @@ const downloadTemplateCard = async (card: TemplateCardData) => {
     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png', 0.96))
     if (!blob) throw new Error('Template image could not be created')
 
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.download = safeFileName
-    link.href = url
-    link.rel = 'noopener'
-    link.style.display = 'none'
-    document.body.appendChild(link)
-    link.click()
-    window.setTimeout(() => {
-      URL.revokeObjectURL(url)
-      link.remove()
-    }, 1200)
+    await saveOrShareBlob(blob, safeFileName)
   } catch (error) {
     console.error('Template download failed:', error)
-    const previewWindow = window.open(canvas.toDataURL('image/png'), '_blank', 'noopener,noreferrer')
-    if (!previewWindow) {
-      alert('Your browser blocked the image download. Please allow pop-ups for this site and try again.')
-    }
+    alert('The template could not be saved. Please try again.')
   }
 }
 

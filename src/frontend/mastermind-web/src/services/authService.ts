@@ -148,6 +148,22 @@ export const authService = {
     return response
   },
 
+  async validateInvitation(token: string): Promise<any> {
+    return apiService.get(`/auth/invitations/${encodeURIComponent(token)}`)
+  },
+
+  async acceptInvitation(token: string, password: string): Promise<any> {
+    return apiService.post('/auth/invitations/accept', { token, password })
+  },
+
+  async requestAccountDeletion(reason = ''): Promise<any> {
+    return apiService.post('/account/deletion-request', { reason })
+  },
+
+  async requestPublicAccountDeletion(emailOrMobile: string, reason = ''): Promise<any> {
+    return apiService.post('/account/public-deletion-request', { emailOrMobile, reason })
+  },
+
   // Refresh access token
   async refreshToken(refreshToken: string): Promise<AuthResponse> {
     if (USE_MOCK_API) {

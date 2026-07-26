@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using MasterMind.API.Services.Interfaces;
 
 namespace MasterMind.API.Controllers;
 
@@ -15,6 +16,7 @@ public class FinanceController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly ILogger<FinanceController> _logger;
+    private readonly ITeacherSalaryService _teacherSalaryService;
     private static readonly Dictionary<int, (string Name, FeeType Type)> LegacyFeeStructureCatalog = new()
     {
         [1] = ("Tuition Fee", FeeType.Tuition),
@@ -26,10 +28,14 @@ public class FinanceController : ControllerBase
         [7] = ("Other Fee", FeeType.Other)
     };
 
-    public FinanceController(MasterMindDbContext context, ILogger<FinanceController> logger)
+    public FinanceController(
+        MasterMindDbContext context,
+        ILogger<FinanceController> logger,
+        ITeacherSalaryService teacherSalaryService)
     {
         _context = context;
         _logger = logger;
+        _teacherSalaryService = teacherSalaryService;
     }
 
     /// <summary>
@@ -47,6 +53,7 @@ public class FinanceController : ControllerBase
                 .Where(s => s.IsActive && !s.IsDeleted)
                 .Select(s => (int?)s.Id)
                 .FirstOrDefaultAsync();
+            await _teacherSalaryService.EnsureMonthlyObligationsAsync(activeSessionId);
 
             var totalStudents = await _context.Students
                 .CountAsync(s => !s.IsDeleted && s.IsActive &&
@@ -54,36 +61,43 @@ public class FinanceController : ControllerBase
 
             // Calculate total revenue from payments
             var totalRevenue = await _context.Payments
-                .Where(p => p.Status == PaymentStatus.Completed &&
+                .Where(p => !p.IsDeleted && p.Status == PaymentStatus.Completed &&
+                    !p.StudentFee.IsDeleted &&
                     (!activeSessionId.HasValue || p.StudentFee.Student.SessionId == activeSessionId))
                 .SumAsync(p => (decimal)p.Amount);
 
             // Calculate pending payments
             var pendingPayments = await _context.StudentFees
-                .Where(sf => (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid) &&
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
+                    (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid) &&
                     (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .SumAsync(sf => sf.FinalAmount - sf.PaidAmount);
 
             // Calculate total expenses (teacher salaries + other expenses)
             var totalSalaries = await _context.TeacherSalaries
-                .Where(ts => ts.Status == SalaryStatus.Paid)
+                .Where(ts => !ts.IsDeleted && !ts.Teacher.IsDeleted &&
+                    ts.Status != SalaryStatus.Cancelled &&
+                    (!activeSessionId.HasValue || ts.Teacher.SessionId == activeSessionId))
                 .SumAsync(ts => ts.NetSalary);
-
-            // For now, we'll use salaries as the main expense component
-            // In a real system, you'd have other expense tables
-            var totalExpenses = totalSalaries;
+            var generalExpenses = await _context.Expenses
+                .Where(e => !e.IsDeleted &&
+                    e.Status != ExpenseStatus.Cancelled && e.Status != ExpenseStatus.Rejected &&
+                    (!activeSessionId.HasValue || e.SessionId == activeSessionId))
+                .SumAsync(e => (decimal?)e.Amount) ?? 0m;
+            var totalExpenses = totalSalaries + generalExpenses;
 
             var netProfit = totalRevenue - totalExpenses;
 
             var paidStudents = await _context.StudentFees
-                .Where(sf => sf.Status == FeeStatus.Paid &&
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted && sf.Status == FeeStatus.Paid &&
                     (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .Select(sf => sf.StudentId)
                 .Distinct()
                 .CountAsync();
 
             var pendingStudents = await _context.StudentFees
-                .Where(sf => (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid) &&
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
+                    (sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid) &&
                     (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .Select(sf => sf.StudentId)
                 .Distinct()
@@ -91,7 +105,8 @@ public class FinanceController : ControllerBase
 
             var todaySummary = DateOnly.FromDateTime(DateTime.Today);
             var overdueStudents = await _context.StudentFees
-                .Where(sf => sf.Status != FeeStatus.Paid && todaySummary > sf.DueDate &&
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
+                    sf.Status != FeeStatus.Paid && todaySummary > sf.DueDate &&
                     (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
                 .Select(sf => sf.StudentId)
                 .Distinct()
@@ -519,7 +534,7 @@ public class FinanceController : ControllerBase
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => !sf.IsDeleted)
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted)
                 .OrderByDescending(sf => sf.DueDate)
                 .ToListAsync();
 
@@ -583,7 +598,7 @@ public class FinanceController : ControllerBase
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
-                .Where(sf => !sf.IsDeleted &&
+                .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
                            sf.Status != FeeStatus.Paid &&
                            today > sf.DueDate)
                 .OrderBy(sf => sf.DueDate)
@@ -762,7 +777,8 @@ public class FinanceController : ControllerBase
             }
 
             // Validate student exists
-            var student = await _context.Students.FindAsync(request.StudentId);
+            var student = await _context.Students
+                .FirstOrDefaultAsync(s => s.Id == request.StudentId && !s.IsDeleted && s.IsActive);
             if (student == null)
             {
                 return BadRequest(new ApiResponse<object>
