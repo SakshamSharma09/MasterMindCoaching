@@ -201,8 +201,8 @@ const helperTitle = computed(() => {
 })
 const helperText = computed(() => {
   if (loginMode.value === 'admin-password') return 'Use the official institute email and your current admin password.'
-  if (loginMode.value === 'mobile-password') return 'Use the mobile number saved by admin. If you have not set a password yet, login once with email OTP.'
-  return 'We send OTP only to the email saved by admin for the teacher or parent account.'
+  if (loginMode.value === 'mobile-password') return 'Use the primary mobile number saved by admin and the password you created from your invitation link.'
+  return 'We send OTP to the recovery email saved by the parent or teacher.'
 })
 
 const isSubmitDisabled = computed(() =>
@@ -239,7 +239,7 @@ const handleSubmit = async () => {
   try {
     if (loginMode.value === 'email-otp') {
       if (!form.identifier.includes('@')) {
-        throw new Error('Please enter the email address saved by admin.')
+        throw new Error('Please enter your recovery email address.')
       }
 
       await authStore.requestOtp(form.identifier.trim(), 'email')

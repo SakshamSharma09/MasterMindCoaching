@@ -36,6 +36,22 @@ describe('student and communication operational fixes', () => {
     expect(params.get('sessionId')).toBe('2')
   })
 
+  it('supports mobile-first parent onboarding without an admin-entered email', () => {
+    const payload = mapStudentPayload({
+      firstName: 'Asha',
+      lastName: 'Sharma',
+      parentMobile: '9887258679',
+      secondaryParentMobile: '9876543210',
+      parentEmail: '',
+      admissionDate: '2026-07-26',
+      status: 'Active'
+    })
+
+    expect(payload.parentMobile).toBe('9887258679')
+    expect(payload.secondaryParentMobile).toBe('9876543210')
+    expect(payload.parentEmail).toBe('')
+  })
+
   it('extracts UTF-8 download filenames', () => {
     expect(fileNameFromContentDisposition("attachment; filename*=UTF-8''Fee%20Receipt.pdf"))
       .toBe('Fee Receipt.pdf')

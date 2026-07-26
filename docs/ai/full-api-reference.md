@@ -190,15 +190,18 @@
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | `/api/students/{id}/parent-invitation` | Admin | Revoke any active invite and email a new 72-hour single-use parent invitation |
+| GET | `/api/students/export` | Admin | Download all non-deleted student details across every session as `.xlsx` |
+| POST | `/api/students/{id}/parent-invitation` | Admin | Revoke any active invite and return a new 72-hour single-use link; email it only when the parent already has a recovery email |
 | GET | `/api/auth/invitations/{token}` | Public | Validate an invitation and return masked account details |
-| POST | `/api/auth/invitations/accept` | Public | Set the provisioned parent password and consume the invitation |
+| POST | `/api/auth/invitations/accept` | Public | Store the parent-supplied recovery email and password, link siblings by primary mobile, and consume the invitation |
+| GET | `/api/account/security` | Parent | Get recovery email plus read-only primary/secondary mobiles |
+| PUT | `/api/account/security/email` | Parent | Change the parent-controlled recovery email; primary mobile remains Admin-controlled |
 | POST | `/api/account/deletion-request` | Authenticated | Request deletion for the current account |
 | POST | `/api/account/public-deletion-request` | Public | Request deletion using a registered email or mobile without exposing account existence |
 | GET | `/api/expenses` | Authenticated | Return general expenses and teacher salary obligations with `source`, `status`, and `salaryId` |
 | POST | `/api/expenses/salaries/{id}/pay` | Authenticated | Mark a teacher salary obligation paid |
 
-Student create/update payloads now persist `motherName`, `fatherName`, `currentSchool`, `studentEmail`, `parentEmail`, `parentMobile`, and `admissionDate` independently.
+Student create/update payloads persist `motherName`, `fatherName`, `currentSchool`, `parentMobile`, `secondaryParentMobile`, and `admissionDate` independently. `parentMobile` is required and is the parent account identity. Admin does not supply `parentEmail`; the parent supplies it while accepting the invitation.
 
 ---
 

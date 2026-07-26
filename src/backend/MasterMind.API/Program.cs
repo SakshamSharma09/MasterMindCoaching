@@ -451,6 +451,7 @@ try
                 ""Id"" SERIAL PRIMARY KEY,
                 ""Email"" VARCHAR(255),
                 ""Mobile"" VARCHAR(20),
+                ""SecondaryMobile"" VARCHAR(20),
                 ""FirstName"" VARCHAR(100) NOT NULL,
                 ""LastName"" VARCHAR(100) NOT NULL,
                 ""PasswordHash"" VARCHAR(500),
@@ -570,6 +571,7 @@ try
                 ""FatherName"" VARCHAR(200),
                 ""CurrentSchool"" VARCHAR(200),
                 ""ParentMobile"" VARCHAR(20) NOT NULL,
+                ""SecondaryParentMobile"" VARCHAR(20),
                 ""ParentEmail"" VARCHAR(255),
                 ""ParentOccupation"" VARCHAR(200),
                 ""ParentUserId"" INTEGER,
@@ -1291,6 +1293,16 @@ END
 IF COL_LENGTH('dbo.Students', 'CurrentSchool') IS NULL
 BEGIN
     ALTER TABLE dbo.Students ADD CurrentSchool nvarchar(200) NULL;
+END
+
+IF COL_LENGTH('dbo.Students', 'SecondaryParentMobile') IS NULL
+BEGIN
+    ALTER TABLE dbo.Students ADD SecondaryParentMobile nvarchar(20) NULL;
+END
+
+IF COL_LENGTH('dbo.Users', 'SecondaryMobile') IS NULL
+BEGIN
+    ALTER TABLE dbo.Users ADD SecondaryMobile nvarchar(20) NULL;
 END
 
 IF OBJECT_ID('dbo.TeacherSalaries', 'U') IS NOT NULL

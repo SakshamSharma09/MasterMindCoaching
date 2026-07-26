@@ -28,6 +28,9 @@ namespace MasterMind.API.Models
         [StringLength(20)]
         public string ParentMobile { get; set; } = "";
 
+        [StringLength(20)]
+        public string SecondaryParentMobile { get; set; } = "";
+
         [StringLength(200)]
         public string ParentName { get; set; } = "";
 

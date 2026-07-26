@@ -16,6 +16,7 @@ export interface Student {
   motherName?: string
   fatherName?: string
   parentMobile?: string
+  secondaryParentMobile?: string
   parentEmail?: string
   currentSchool?: string
   isActive: boolean
@@ -43,6 +44,7 @@ export interface CreateStudentRequest {
   phone: string
   parentEmail: string
   parentMobile: string
+  secondaryParentMobile?: string
   admissionDate: string
   classId?: number | null
   className?: string
@@ -98,6 +100,7 @@ export const mapStudentPayload = (studentData: Partial<CreateStudentRequest>, id
     fatherName,
     currentSchool: (studentData.currentSchool || '').trim(),
     parentMobile: studentData.parentMobile || studentData.whatsappNumber || studentData.textNumber || '',
+    secondaryParentMobile: studentData.secondaryParentMobile || '',
     parentEmail: (studentData.parentEmail || '').trim(),
     parentOccupation: ''
   }
@@ -253,9 +256,21 @@ export const studentsService = {
     await apiService.delete(API_ENDPOINTS.STUDENTS.DELETE(id.toString()))
   },
 
-  async resendParentInvitation(id: number): Promise<string> {
+  async createParentInvitation(id: number): Promise<{ message: string; inviteUrl: string; expiresAt: string; emailSent: boolean }> {
     const response = await apiService.post(`${API_ENDPOINTS.STUDENTS.LIST}/${id}/parent-invitation`)
-    return response.message || 'Parent invitation sent successfully'
+    return {
+      message: response.message || 'Parent invitation created',
+      inviteUrl: response.data?.inviteUrl || '',
+      expiresAt: response.data?.expiresAt || '',
+      emailSent: Boolean(response.data?.emailSent)
+    }
+  },
+
+  async downloadAllStudents(): Promise<void> {
+    await apiService.download(
+      `${API_ENDPOINTS.STUDENTS.LIST}/export`,
+      `MasterMind-All-Students-${new Date().toISOString().slice(0, 10)}.xlsx`
+    )
   },
 
   async uploadStudentPhoto(studentId: number, file: File): Promise<{ blobName: string; url: string }> {

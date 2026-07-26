@@ -26,17 +26,23 @@ public class AuthController : ControllerBase
     private readonly IDeviceService _deviceService;
     private readonly ILogger<AuthController> _logger;
     private readonly MasterMindDbContext _context;
+    private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
 
     public AuthController(
         IAuthService authService,
         IDeviceService deviceService,
         ILogger<AuthController> logger,
-        MasterMindDbContext context)
+        MasterMindDbContext context,
+        IEmailService emailService,
+        IConfiguration configuration)
     {
         _authService = authService;
         _deviceService = deviceService;
         _logger = logger;
         _context = context;
+        _emailService = emailService;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -234,13 +240,56 @@ public class AuthController : ControllerBase
             });
         }
 
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var emailInUse = await _context.Users.AnyAsync(u =>
+            !u.IsDeleted && u.Id != invitation.UserId && u.Email.ToLower() == normalizedEmail);
+        if (emailInUse)
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "This email is already linked to another account"
+            });
+        }
+
         invitation.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        invitation.User.Email = normalizedEmail;
         invitation.User.IsActive = true;
-        invitation.User.IsEmailVerified = true;
+        invitation.User.IsEmailVerified = false;
         invitation.User.UpdatedAt = DateTime.UtcNow;
         invitation.UsedAt = DateTime.UtcNow;
         invitation.UpdatedAt = DateTime.UtcNow;
+
+        var normalizedMobile = NormalizeMobile(invitation.User.Mobile);
+        var students = await _context.Students
+            .Where(s => !s.IsDeleted && s.ParentUserId == invitation.UserId)
+            .ToListAsync();
+        var sameMobileStudents = (await _context.Students
+                .Where(s => !s.IsDeleted && s.ParentUserId != invitation.UserId)
+                .ToListAsync())
+            .Where(s => NormalizeMobile(s.ParentMobile) == normalizedMobile);
+        foreach (var student in students.Concat(sameMobileStudents))
+        {
+            student.ParentUserId = invitation.UserId;
+            student.ParentEmail = normalizedEmail;
+            student.UpdatedAt = DateTime.UtcNow;
+        }
+
         await _context.SaveChangesAsync();
+
+        var frontendBaseUrl = (_configuration["Frontend:BaseUrl"] ??
+            "https://victorious-glacier-0e6507000.6.azurestaticapps.net").TrimEnd('/');
+        var loginUrl = $"{frontendBaseUrl}/login?mobile={Uri.EscapeDataString(invitation.User.Mobile)}";
+        await _emailService.SendEmailAsync(
+            normalizedEmail,
+            "Your MasterMind Coaching parent account is ready",
+            $"""
+            <p>Namaste,</p>
+            <p>Your parent account password has been set successfully.</p>
+            <p><a href="{loginUrl}">Open MasterMind Coaching and sign in</a> using your registered mobile number.</p>
+            <p>This email can also be used for secure OTP access and password recovery.</p>
+            <p>— MasterMind Coaching Classes</p>
+            """);
 
         return Ok(new ApiResponse<object>
         {
@@ -533,6 +582,14 @@ public class AuthController : ControllerBase
         return digits.Length <= 4 ? digits : $"{new string('•', digits.Length - 4)}{digits[^4..]}";
     }
 
+    private static string NormalizeMobile(string? mobile)
+    {
+        var digits = new string((mobile ?? string.Empty).Where(char.IsDigit).ToArray());
+        return digits.Length == 12 && digits.StartsWith("91", StringComparison.Ordinal)
+            ? digits[2..]
+            : digits;
+    }
+
     private void WriteAuthCookies(AuthResponseDto result)
     {
         if (!result.Success || string.IsNullOrWhiteSpace(result.AccessToken) || string.IsNullOrWhiteSpace(result.RefreshToken))
@@ -596,4 +653,8 @@ public class AcceptInvitationRequest
     [Required]
     [MinLength(8)]
     public string Password { get; set; } = string.Empty;
+
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
 }

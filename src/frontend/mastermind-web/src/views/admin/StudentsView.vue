@@ -28,6 +28,12 @@
         </div>
         <div class="flex flex-col sm:flex-row gap-3">
           <button
+            @click="downloadAllStudents"
+            class="rounded-xl border border-white/40 bg-white/15 px-5 py-3 font-semibold text-white transition hover:bg-white/25"
+          >
+            Download All Students (Excel)
+          </button>
+          <button
             @click="showAddModal = true"
             class="bg-white text-indigo-600 px-5 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
@@ -289,7 +295,8 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ student.phone }}</div>
-                <div class="text-xs text-gray-500">{{ student.parentMobile || 'No parent mobile' }}</div>
+                <div class="text-xs text-gray-500">Primary: {{ student.parentMobile || 'No parent mobile' }}</div>
+                <div v-if="student.secondaryParentMobile" class="text-xs text-gray-400">Secondary: {{ student.secondaryParentMobile }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-col space-y-1">
@@ -326,11 +333,10 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
-                  v-if="student.parentEmail"
-                  @click="resendInvitation(student.id)"
+                  @click="copyInvitation(student.id)"
                   class="mr-3 font-medium text-emerald-600 transition-colors duration-150 hover:text-emerald-900"
                 >
-                  Invite
+                  Copy Invite
                 </button>
                 <button 
                   @click="editStudent(student)" 
@@ -398,14 +404,6 @@
                 </div>
               </div>
               <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Student Email</label>
-                <input
-                  v-model="form.email"
-                  type="email"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
-                />
-              </div>
-              <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Student Mobile</label>
                 <input
                   v-model="form.phone"
@@ -415,25 +413,28 @@
               </div>
               <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Parent Email <span class="text-red-600" aria-hidden="true">*</span></label>
-                  <input
-                    v-model="form.parentEmail"
-                    type="email"
-                    required
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Parent Mobile <span class="text-red-600" aria-hidden="true">*</span></label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Primary Parent Mobile <span class="text-red-600" aria-hidden="true">*</span></label>
                   <input
                     v-model="form.parentMobile"
                     type="tel"
                     required
                     inputmode="numeric"
+                    maxlength="14"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Secondary Parent Mobile</label>
+                  <input
+                    v-model="form.secondaryParentMobile"
+                    type="tel"
+                    inputmode="numeric"
+                    maxlength="14"
                     class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
                   />
                 </div>
               </div>
+              <p class="mt-2 text-xs leading-5 text-gray-500">The primary number is the parent's login identity. The parent adds their own recovery email from the invitation link.</p>
               <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Admission Date <span class="text-red-600" aria-hidden="true">*</span></label>
                 <input
@@ -562,6 +563,7 @@ interface ExtendedStudent extends Student {
   parentName: string
   parentEmail: string
   parentMobile: string
+  secondaryParentMobile: string
   admissionDate: string
   classId?: number | null
   className: string
@@ -608,6 +610,7 @@ const form = ref<CreateStudentRequest>({
   phone: '',
   parentEmail: '',
   parentMobile: '',
+  secondaryParentMobile: '',
   admissionDate: todayDateInput(),
   classId: null,
   className: '',
@@ -737,6 +740,7 @@ const loadData = async () => {
         parentName: student.parentName || '',
         parentEmail: student.parentEmail || '',
         parentMobile: student.parentMobile || '',
+        secondaryParentMobile: student.secondaryParentMobile || '',
         admissionDate: student.admissionDate?.slice(0, 10) || '',
         classId: activeClass?.classId ?? activeClass?.class?.id ?? null,
         className: activeClass?.class?.name || 'Not Assigned',
@@ -785,6 +789,7 @@ const resetForm = () => {
     phone: '',
     parentEmail: '',
     parentMobile: '',
+    secondaryParentMobile: '',
     admissionDate: todayDateInput(),
     classId: null,
     className: '',
@@ -841,6 +846,7 @@ const editStudent = (student: ExtendedStudent) => {
     phone: student.phone,
     parentEmail: student.parentEmail,
     parentMobile: student.parentMobile,
+    secondaryParentMobile: student.secondaryParentMobile,
     admissionDate: student.admissionDate,
     classId: student.classId ?? null,
     className: student.className,
@@ -928,12 +934,22 @@ const deleteStudent = async (id: number) => {
   }
 }
 
-const resendInvitation = async (id: number) => {
+const copyInvitation = async (id: number) => {
   try {
-    const message = await studentsService.resendParentInvitation(id)
-    alert(message)
+    const invitation = await studentsService.createParentInvitation(id)
+    if (!invitation.inviteUrl) throw new Error('The invite link was not returned.')
+    await navigator.clipboard.writeText(invitation.inviteUrl)
+    alert(`${invitation.message}\n\nThe link has been copied and expires in 72 hours.`)
   } catch (error: any) {
-    alert(error.response?.data?.message || 'Parent invitation could not be sent. Please try again.')
+    alert(error.response?.data?.message || error.message || 'Parent invitation could not be created. Please try again.')
+  }
+}
+
+const downloadAllStudents = async () => {
+  try {
+    await studentsService.downloadAllStudents()
+  } catch (error: any) {
+    alert(error.response?.data?.message || error.message || 'Student Excel export could not be downloaded.')
   }
 }
 

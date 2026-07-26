@@ -1,6 +1,7 @@
 using MasterMind.API.Data;
 using MasterMind.API.Models.Entities;
 using MasterMind.API.Services.Interfaces;
+using MasterMind.API.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -131,6 +132,65 @@ public class StudentsController : ControllerBase
     }
 
     /// <summary>
+    /// Download every non-deleted student record across all academic sessions as an Excel workbook.
+    /// </summary>
+    [HttpGet("export")]
+    [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    public async Task<IActionResult> ExportStudents()
+    {
+        var students = await _context.Students
+            .AsNoTracking()
+            .Where(s => !s.IsDeleted)
+            .Include(s => s.Session)
+            .Include(s => s.StudentClasses)
+                .ThenInclude(sc => sc.Class)
+            .OrderBy(s => s.SessionId)
+            .ThenBy(s => s.FirstName)
+            .ThenBy(s => s.LastName)
+            .ToListAsync();
+
+        var headers = new[]
+        {
+            "Student ID", "Admission Number", "First Name", "Last Name", "Date of Birth", "Gender",
+            "Student Mobile", "Student Email", "Mother Name", "Father Name", "Legacy Parent Name",
+            "Primary Parent Mobile", "Secondary Parent Mobile", "Parent Recovery Email", "Current School",
+            "Address", "City", "State", "PIN Code", "Admission Date", "Status", "Academic Session",
+            "Classes", "Created At"
+        };
+        var rows = students.Select(s => (IReadOnlyList<string?>)new string?[]
+        {
+            s.Id.ToString(),
+            s.AdmissionNumber,
+            s.FirstName,
+            s.LastName,
+            s.DateOfBirth.ToString("yyyy-MM-dd"),
+            s.Gender.ToString(),
+            s.StudentMobile,
+            s.StudentEmail,
+            s.MotherName,
+            s.FatherName,
+            s.ParentName,
+            s.ParentMobile,
+            s.SecondaryParentMobile,
+            s.ParentEmail,
+            s.CurrentSchool,
+            s.Address,
+            s.City,
+            s.State,
+            s.PinCode,
+            s.AdmissionDate.ToString("yyyy-MM-dd"),
+            s.IsActive ? "Active" : "Inactive",
+            s.Session?.Name,
+            string.Join(", ", s.StudentClasses.Where(sc => sc.IsActive).Select(sc => sc.Class.Name).Distinct()),
+            s.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+        });
+
+        var workbook = SimpleExcelWorkbook.Create(headers, rows);
+        var fileName = $"MasterMind-All-Students-{DateTime.Today:yyyy-MM-dd}.xlsx";
+        return File(workbook, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
+
+    /// <summary>
     /// Get a specific student by ID
     /// </summary>
     /// <param name="id">Student ID</param>
@@ -183,12 +243,13 @@ public class StudentsController : ControllerBase
             });
         }
 
-        if (string.IsNullOrWhiteSpace(student.ParentEmail))
+        var parentMobileError = NormalizeAndValidateParentMobiles(student);
+        if (parentMobileError != null)
         {
             return BadRequest(new ApiResponse<object>
             {
                 Success = false,
-                Message = "Parent email is required"
+                Message = parentMobileError
             });
         }
 
@@ -209,16 +270,13 @@ public class StudentsController : ControllerBase
         _context.Students.Add(student);
         await _context.SaveChangesAsync();
         await LinkParentUserAsync(student);
-        var invitationSent = await SendParentInvitationAsync(student);
 
         return CreatedAtAction(nameof(GetStudent),
             new { id = student.Id },
             new ApiResponse<Student>
             {
                 Success = true,
-                Message = invitationSent
-                    ? "Student created and parent invitation sent successfully"
-                    : "Student created. Parent invitation could not be sent; use Resend invitation.",
+                Message = "Student created successfully. Use Copy invite link to share parent access.",
                 Data = student
             });
     }
@@ -257,6 +315,16 @@ public class StudentsController : ControllerBase
             });
         }
 
+        var parentMobileError = NormalizeAndValidateParentMobiles(student);
+        if (parentMobileError != null)
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = parentMobileError
+            });
+        }
+
         // Update fields
         existingStudent.FirstName = student.FirstName;
         existingStudent.LastName = student.LastName;
@@ -278,6 +346,7 @@ public class StudentsController : ControllerBase
         existingStudent.FatherName = student.FatherName;
         existingStudent.CurrentSchool = student.CurrentSchool;
         existingStudent.ParentMobile = student.ParentMobile;
+        existingStudent.SecondaryParentMobile = student.SecondaryParentMobile;
         existingStudent.ParentEmail = student.ParentEmail;
         existingStudent.ParentOccupation = student.ParentOccupation;
         existingStudent.UpdatedAt = DateTime.UtcNow;
@@ -629,26 +698,21 @@ public class StudentsController : ControllerBase
             return NotFound(new ApiResponse<object> { Success = false, Message = "Student not found" });
         }
 
-        if (string.IsNullOrWhiteSpace(student.ParentEmail))
-        {
-            return BadRequest(new ApiResponse<object> { Success = false, Message = "Add a parent email before sending an invitation" });
-        }
-
         await LinkParentUserAsync(student);
-        var sent = await SendParentInvitationAsync(student);
-        if (!sent)
-        {
-            return StatusCode(503, new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Invitation was created, but email delivery failed. Please try again."
-            });
-        }
+        var invitation = await CreateParentInvitationAsync(student);
 
         return Ok(new ApiResponse<object>
         {
             Success = true,
-            Message = "Parent invitation sent successfully"
+            Message = invitation.EmailSent
+                ? "A fresh invite link was created and emailed. You can also copy and share it."
+                : "A fresh invite link was created. Copy and share it with the parent.",
+            Data = new
+            {
+                invitation.InviteUrl,
+                invitation.ExpiresAt,
+                invitation.EmailSent
+            }
         });
     }
 
@@ -675,19 +739,20 @@ public class StudentsController : ControllerBase
 
     private async Task LinkParentUserAsync(Student student)
     {
-        if (string.IsNullOrWhiteSpace(student.ParentEmail))
+        var normalizedMobile = NormalizeMobile(student.ParentMobile);
+        if (string.IsNullOrWhiteSpace(normalizedMobile))
         {
             return;
         }
 
-        var normalizedEmail = student.ParentEmail.Trim().ToLowerInvariant();
-        var normalizedMobile = NormalizeMobile(student.ParentMobile);
         var users = await _context.Users
             .Where(u => !u.IsDeleted)
             .ToListAsync();
-        var user = users.FirstOrDefault(u =>
-            u.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase) ||
-            (!string.IsNullOrWhiteSpace(normalizedMobile) && NormalizeMobile(u.Mobile) == normalizedMobile));
+        var user = users
+            .Where(u => !string.IsNullOrWhiteSpace(u.Mobile) && NormalizeMobile(u.Mobile) == normalizedMobile)
+            .OrderByDescending(u => u.UpdatedAt ?? u.CreatedAt)
+            .ThenByDescending(u => u.Id)
+            .FirstOrDefault();
 
         if (user == null)
         {
@@ -697,23 +762,40 @@ public class StudentsController : ControllerBase
             var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
             user = new User
             {
-                Email = normalizedEmail,
+                Email = BuildParentPlaceholderEmail(normalizedMobile),
                 Mobile = normalizedMobile,
+                SecondaryMobile = student.SecondaryParentMobile,
                 FirstName = nameParts.FirstOrDefault() ?? "Parent",
                 LastName = nameParts.Length > 1 ? nameParts[1] : string.Empty,
                 IsActive = true,
                 IsEmailVerified = false,
-                IsMobileVerified = !string.IsNullOrWhiteSpace(normalizedMobile),
+                IsMobileVerified = true,
                 CreatedAt = DateTime.UtcNow
             };
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
         }
-
-        if (student.ParentUserId != user.Id)
+        else
         {
-            student.ParentUserId = user.Id;
-            student.UpdatedAt = DateTime.UtcNow;
+            user.Mobile = normalizedMobile;
+            user.SecondaryMobile = student.SecondaryParentMobile;
+            user.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var siblings = (await _context.Students
+                .Where(s => !s.IsDeleted)
+                .ToListAsync())
+            .Where(s => NormalizeMobile(s.ParentMobile) == normalizedMobile)
+            .ToList();
+        foreach (var sibling in siblings)
+        {
+            sibling.ParentUserId = user.Id;
+            sibling.SecondaryParentMobile ??= student.SecondaryParentMobile;
+            if (!IsPlaceholderEmail(user.Email))
+            {
+                sibling.ParentEmail = user.Email;
+            }
+            sibling.UpdatedAt = DateTime.UtcNow;
         }
 
         var parentRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Parent");
@@ -730,11 +812,11 @@ public class StudentsController : ControllerBase
         await _context.SaveChangesAsync();
     }
 
-    private async Task<bool> SendParentInvitationAsync(Student student)
+    private async Task<ParentInvitationResult> CreateParentInvitationAsync(Student student)
     {
-        if (!student.ParentUserId.HasValue || string.IsNullOrWhiteSpace(student.ParentEmail))
+        if (!student.ParentUserId.HasValue)
         {
-            return false;
+            throw new InvalidOperationException("The parent account could not be linked to this student.");
         }
 
         var now = DateTime.UtcNow;
@@ -750,12 +832,13 @@ public class StudentsController : ControllerBase
 
         var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
+        var expiresAt = now.AddHours(72);
         _context.AccountInvitations.Add(new AccountInvitation
         {
             UserId = student.ParentUserId.Value,
             StudentId = student.Id,
             TokenHash = tokenHash,
-            ExpiresAt = now.AddHours(72),
+            ExpiresAt = expiresAt,
             CreatedByUserId = GetCurrentUserId(),
             CreatedAt = now
         });
@@ -772,10 +855,16 @@ public class StudentsController : ControllerBase
             <p>This private, single-use link expires in 72 hours. After setting the password, sign in with your mobile number.</p>
             <p>— MasterMind Coaching Classes</p>
             """;
-        return await _emailService.SendEmailAsync(
-            student.ParentEmail.Trim(),
-            "Set your MasterMind Coaching parent password",
-            body);
+        var emailSent = false;
+        if (!string.IsNullOrWhiteSpace(student.ParentEmail) && !IsPlaceholderEmail(student.ParentEmail))
+        {
+            emailSent = await _emailService.SendEmailAsync(
+                student.ParentEmail.Trim(),
+                "Set your MasterMind Coaching parent password",
+                body);
+        }
+
+        return new ParentInvitationResult(inviteUrl, expiresAt, emailSent);
     }
 
     private int? GetCurrentUserId()
@@ -794,6 +883,39 @@ public class StudentsController : ControllerBase
 
         return digits;
     }
+
+    private static string? NormalizeAndValidateParentMobiles(Student student)
+    {
+        var primary = NormalizeMobile(student.ParentMobile);
+        if (primary.Length != 10)
+        {
+            return "A valid 10-digit primary parent mobile number is required";
+        }
+
+        student.ParentMobile = primary;
+        var secondary = NormalizeMobile(student.SecondaryParentMobile);
+        if (!string.IsNullOrWhiteSpace(secondary) && secondary.Length != 10)
+        {
+            return "Secondary parent mobile must be a valid 10-digit number";
+        }
+
+        if (secondary == primary)
+        {
+            return "Secondary parent mobile must be different from the primary mobile";
+        }
+
+        student.SecondaryParentMobile = string.IsNullOrWhiteSpace(secondary) ? null : secondary;
+        return null;
+    }
+
+    private static string BuildParentPlaceholderEmail(string mobile) =>
+        $"parent_{mobile}@placeholder.mastermind.local";
+
+    private static bool IsPlaceholderEmail(string? email) =>
+        string.IsNullOrWhiteSpace(email) ||
+        email.EndsWith("@placeholder.mastermind.local", StringComparison.OrdinalIgnoreCase);
+
+    private sealed record ParentInvitationResult(string InviteUrl, DateTime ExpiresAt, bool EmailSent);
 }
 
 // DTOs for API responses

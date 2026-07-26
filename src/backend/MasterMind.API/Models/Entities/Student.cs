@@ -27,6 +27,7 @@ public class Student : BaseEntity
     public string? FatherName { get; set; }
     public string? CurrentSchool { get; set; }
     public string ParentMobile { get; set; } = string.Empty;
+    public string? SecondaryParentMobile { get; set; }
     public string? ParentEmail { get; set; }
     public string? ParentOccupation { get; set; }
     public int? ParentUserId { get; set; }

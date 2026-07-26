@@ -4,7 +4,7 @@
       <p class="text-sm font-bold uppercase tracking-[0.18em] text-[#6049e8]">Parent invitation</p>
       <h1 class="mt-2 text-3xl font-black text-slate-950">Set your password</h1>
       <p class="mt-3 text-sm leading-6 text-slate-600">
-        Create a password once, then use your registered mobile number for future logins.
+        Add your own recovery email and create a password once. Your registered mobile number remains your primary login.
       </p>
 
       <div v-if="checking" class="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
@@ -16,6 +16,12 @@
           Account: <strong>{{ invitationName }}</strong><br>
           Mobile: <strong>{{ maskedMobile }}</strong>
         </p>
+        <div>
+          <label for="recovery-email" class="mb-2 block text-sm font-bold text-slate-700">Your recovery email</label>
+          <input id="recovery-email" v-model.trim="email" type="email" required autocomplete="email"
+            class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 outline-none focus:border-[#6049e8] focus:ring-4 focus:ring-[#6049e8]/10">
+          <p class="mt-2 text-xs leading-5 text-slate-500">You control this email. It will be used for email OTP access and account recovery.</p>
+        </div>
         <div>
           <label for="new-password" class="mb-2 block text-sm font-bold text-slate-700">New password</label>
           <input id="new-password" v-model="password" type="password" minlength="8" required autocomplete="new-password"
@@ -52,6 +58,7 @@ const valid = ref(false)
 const saving = ref(false)
 const password = ref('')
 const confirmPassword = ref('')
+const email = ref('')
 const maskedMobile = ref('')
 const invitationName = ref('Parent')
 const error = ref('')
@@ -82,7 +89,7 @@ const accept = async () => {
   }
   saving.value = true
   try {
-    const response = await authService.acceptInvitation(token, password.value)
+    const response = await authService.acceptInvitation(token, email.value, password.value)
     await router.replace({ name: 'Login', query: { mobile: response.data?.mobile || '', invited: '1' } })
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Password could not be set.'

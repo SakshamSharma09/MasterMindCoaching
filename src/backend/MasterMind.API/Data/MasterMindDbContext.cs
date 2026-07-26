@@ -134,6 +134,7 @@ namespace MasterMind.API.Data
                 entity.Property(e => e.StudentEmail).HasMaxLength(255);
                 entity.Property(e => e.StudentMobile).HasMaxLength(20);
                 entity.Property(e => e.ParentMobile).HasMaxLength(20);
+                entity.Property(e => e.SecondaryParentMobile).HasMaxLength(20);
                 entity.Property(e => e.Address).HasMaxLength(500);
                 entity.Property(e => e.City).HasMaxLength(100);
                 entity.Property(e => e.State).HasMaxLength(100);
@@ -154,6 +155,13 @@ namespace MasterMind.API.Data
                     .WithMany(session => session.Students)
                     .HasForeignKey(s => s.SessionId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Mobile).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.SecondaryMobile).HasMaxLength(20);
             });
 
             // Class configuration
