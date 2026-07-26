@@ -1417,22 +1417,34 @@ BEGIN
     WHERE students.IsDeleted = 0
       AND (students.SessionId IS NULL OR students.SessionId <> ranked.SessionId);
 
-    UPDATE students
-    SET SessionId = NULL
-    FROM dbo.Students students
-    WHERE students.IsDeleted = 0
-      AND NOT EXISTS
-      (
-          SELECT 1
-          FROM dbo.StudentClasses sc
-          INNER JOIN dbo.Classes c ON c.Id = sc.ClassId
-          WHERE sc.StudentId = students.Id
-            AND c.IsDeleted = 0
-            AND c.SessionId IS NOT NULL
-      );
-
     INSERT INTO dbo.ApplicationDataRepairs (RepairKey, AppliedAt)
     VALUES ('20260726-student-session-assignments', sysutcdatetime());
+END
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM dbo.ApplicationDataRepairs
+    WHERE RepairKey = '20260726-student-session-admission-recovery'
+)
+BEGIN
+    UPDATE students
+    SET SessionId = matchingSession.Id
+    FROM dbo.Students students
+    CROSS APPLY
+    (
+        SELECT MIN(s.Id) AS Id
+        FROM dbo.Sessions s
+        WHERE s.IsDeleted = 0
+          AND CAST(students.AdmissionDate AS date)
+              BETWEEN CAST(s.StartDate AS date) AND CAST(s.EndDate AS date)
+        HAVING COUNT(*) = 1
+    ) matchingSession
+    WHERE students.IsDeleted = 0
+      AND students.SessionId IS NULL;
+
+    INSERT INTO dbo.ApplicationDataRepairs (RepairKey, AppliedAt)
+    VALUES ('20260726-student-session-admission-recovery', sysutcdatetime());
 END
 
 IF COL_LENGTH('dbo.Classes', 'IsActive') IS NULL
