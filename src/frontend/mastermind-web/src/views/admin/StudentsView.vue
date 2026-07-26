@@ -376,9 +376,10 @@
           </div>
           <form @submit.prevent="submitForm">
             <div class="bg-white px-6 py-5">
+              <p class="mb-4 text-xs text-gray-500"><span class="text-red-600">*</span> Required fields</p>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">First Name <span class="text-red-600" aria-hidden="true">*</span></label>
                   <input
                     v-model="form.firstName"
                     type="text"
@@ -387,7 +388,7 @@
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Last Name <span class="text-red-600" aria-hidden="true">*</span></label>
                   <input
                     v-model="form.lastName"
                     type="text"
@@ -414,7 +415,7 @@
               </div>
               <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Parent Email</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Parent Email <span class="text-red-600" aria-hidden="true">*</span></label>
                   <input
                     v-model="form.parentEmail"
                     type="email"
@@ -423,7 +424,7 @@
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Parent Mobile</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Parent Mobile <span class="text-red-600" aria-hidden="true">*</span></label>
                   <input
                     v-model="form.parentMobile"
                     type="tel"
@@ -434,7 +435,7 @@
                 </div>
               </div>
               <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Admission Date</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Admission Date <span class="text-red-600" aria-hidden="true">*</span></label>
                 <input
                   v-model="form.admissionDate"
                   type="date"
@@ -443,7 +444,7 @@
                 />
               </div>
               <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Class <span class="text-red-600" aria-hidden="true">*</span></label>
                 <select v-model.number="form.classId" required class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200">
                   <option value="">Select Class</option>
                   <option v-for="cls in classes" :key="cls.id" :value="cls.id">
@@ -501,7 +502,7 @@
                 </div>
               </div>
               <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status <span class="text-red-600" aria-hidden="true">*</span></label>
                 <select v-model="form.status" required class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200">
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>

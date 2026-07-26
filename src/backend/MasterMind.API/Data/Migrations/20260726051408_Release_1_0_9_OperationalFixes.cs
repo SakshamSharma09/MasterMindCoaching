@@ -11,160 +11,70 @@ namespace MasterMind.API.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_TeacherSalaries_Teachers_TeacherId",
-                table: "TeacherSalaries");
+            // Production originated from EnsureCreated and has known schema drift. Keep this
+            // release migration idempotent so existing records are never replaced or backfilled.
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('dbo.Students', 'CurrentSchool') IS NULL
+                    ALTER TABLE dbo.Students ADD CurrentSchool nvarchar(200) NULL;
+                IF COL_LENGTH('dbo.Students', 'FatherName') IS NULL
+                    ALTER TABLE dbo.Students ADD FatherName nvarchar(200) NULL;
+                IF COL_LENGTH('dbo.Students', 'MotherName') IS NULL
+                    ALTER TABLE dbo.Students ADD MotherName nvarchar(200) NULL;
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_TeacherSalaries_Users_ProcessedByUserId",
-                table: "TeacherSalaries");
+                IF OBJECT_ID('dbo.TeacherSalaries', 'U') IS NOT NULL
+                   AND COL_LENGTH('dbo.TeacherSalaries', 'ObligationKey') IS NULL
+                    ALTER TABLE dbo.TeacherSalaries ADD ObligationKey nvarchar(80) NULL;
 
-            migrationBuilder.AddColumn<string>(
-                name: "ObligationKey",
-                table: "TeacherSalaries",
-                type: "nvarchar(80)",
-                maxLength: 80,
-                nullable: true);
+                IF OBJECT_ID('dbo.AccountDeletionRequests', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE dbo.AccountDeletionRequests
+                    (
+                        Id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_AccountDeletionRequests PRIMARY KEY,
+                        UserId int NULL,
+                        EmailOrMobile nvarchar(255) NOT NULL,
+                        Reason nvarchar(1000) NULL,
+                        Status nvarchar(40) NOT NULL,
+                        CompletedAt datetime2 NULL,
+                        CreatedAt datetime2 NOT NULL,
+                        UpdatedAt datetime2 NULL,
+                        IsDeleted bit NOT NULL
+                    );
+                END
 
-            migrationBuilder.AddColumn<string>(
-                name: "CurrentSchool",
-                table: "Students",
-                type: "nvarchar(200)",
-                maxLength: 200,
-                nullable: true);
+                IF OBJECT_ID('dbo.AccountInvitations', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE dbo.AccountInvitations
+                    (
+                        Id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_AccountInvitations PRIMARY KEY,
+                        UserId int NOT NULL,
+                        StudentId int NULL,
+                        TokenHash nvarchar(64) NOT NULL,
+                        ExpiresAt datetime2 NOT NULL,
+                        UsedAt datetime2 NULL,
+                        RevokedAt datetime2 NULL,
+                        CreatedByUserId int NULL,
+                        CreatedAt datetime2 NOT NULL,
+                        UpdatedAt datetime2 NULL,
+                        IsDeleted bit NOT NULL
+                    );
+                END
 
-            migrationBuilder.AddColumn<string>(
-                name: "FatherName",
-                table: "Students",
-                type: "nvarchar(200)",
-                maxLength: 200,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "MotherName",
-                table: "Students",
-                type: "nvarchar(200)",
-                maxLength: 200,
-                nullable: true);
-
-            migrationBuilder.CreateTable(
-                name: "AccountDeletionRequests",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<int>(type: "int", nullable: true),
-                    EmailOrMobile = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    Reason = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(40)", maxLength: 40, nullable: false),
-                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AccountDeletionRequests", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AccountDeletionRequests_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "AccountInvitations",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<int>(type: "int", nullable: false),
-                    StudentId = table.Column<int>(type: "int", nullable: true),
-                    TokenHash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UsedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    RevokedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedByUserId = table.Column<int>(type: "int", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AccountInvitations", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AccountInvitations_Students_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "Students",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_AccountInvitations_Users_CreatedByUserId",
-                        column: x => x.CreatedByUserId,
-                        principalTable: "Users",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_AccountInvitations_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TeacherSalaries_ObligationKey",
-                table: "TeacherSalaries",
-                column: "ObligationKey",
-                unique: true,
-                filter: "[ObligationKey] IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AccountDeletionRequests_Status_CreatedAt",
-                table: "AccountDeletionRequests",
-                columns: new[] { "Status", "CreatedAt" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AccountDeletionRequests_UserId",
-                table: "AccountDeletionRequests",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AccountInvitations_CreatedByUserId",
-                table: "AccountInvitations",
-                column: "CreatedByUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AccountInvitations_StudentId",
-                table: "AccountInvitations",
-                column: "StudentId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AccountInvitations_TokenHash",
-                table: "AccountInvitations",
-                column: "TokenHash",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AccountInvitations_UserId_ExpiresAt",
-                table: "AccountInvitations",
-                columns: new[] { "UserId", "ExpiresAt" });
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_TeacherSalaries_Teachers_TeacherId",
-                table: "TeacherSalaries",
-                column: "TeacherId",
-                principalTable: "Teachers",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_TeacherSalaries_Users_ProcessedByUserId",
-                table: "TeacherSalaries",
-                column: "ProcessedByUserId",
-                principalTable: "Users",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.SetNull);
+                IF OBJECT_ID('dbo.TeacherSalaries', 'U') IS NOT NULL
+                   AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TeacherSalaries_ObligationKey' AND object_id = OBJECT_ID('dbo.TeacherSalaries'))
+                    CREATE UNIQUE INDEX IX_TeacherSalaries_ObligationKey ON dbo.TeacherSalaries(ObligationKey) WHERE ObligationKey IS NOT NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountDeletionRequests_Status_CreatedAt' AND object_id = OBJECT_ID('dbo.AccountDeletionRequests'))
+                    CREATE INDEX IX_AccountDeletionRequests_Status_CreatedAt ON dbo.AccountDeletionRequests(Status, CreatedAt);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountDeletionRequests_UserId' AND object_id = OBJECT_ID('dbo.AccountDeletionRequests'))
+                    CREATE INDEX IX_AccountDeletionRequests_UserId ON dbo.AccountDeletionRequests(UserId);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountInvitations_CreatedByUserId' AND object_id = OBJECT_ID('dbo.AccountInvitations'))
+                    CREATE INDEX IX_AccountInvitations_CreatedByUserId ON dbo.AccountInvitations(CreatedByUserId);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountInvitations_StudentId' AND object_id = OBJECT_ID('dbo.AccountInvitations'))
+                    CREATE INDEX IX_AccountInvitations_StudentId ON dbo.AccountInvitations(StudentId);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountInvitations_TokenHash' AND object_id = OBJECT_ID('dbo.AccountInvitations'))
+                    CREATE UNIQUE INDEX IX_AccountInvitations_TokenHash ON dbo.AccountInvitations(TokenHash);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccountInvitations_UserId_ExpiresAt' AND object_id = OBJECT_ID('dbo.AccountInvitations'))
+                    CREATE INDEX IX_AccountInvitations_UserId_ExpiresAt ON dbo.AccountInvitations(UserId, ExpiresAt);
+                """);
         }
 
         /// <inheritdoc />

@@ -46,7 +46,7 @@ var result = data.Select(x => new Dto {
 ### EF Migration and Test Providers Must Match the Intended Assembly
 **Symptom**: A newly scaffolded migration omits current model changes, or an EF test fails while creating SQLite tables with SQL Server-specific column types such as `nvarchar(max)`.
 **Root Cause**: `dotnet ef --no-build` can load a stale Debug assembly while the current model was built in Release, and this project contains SQL Server-specific model types that SQLite cannot create.
-**Solution**: Build the same configuration passed to `dotnet ef` before scaffolding (`--configuration Release --no-build`). For service tests that do not validate relational SQL, use EF Core InMemory; reserve SQL Server for migration validation.
+**Solution**: Build the same configuration passed to `dotnet ef` before scaffolding (`--configuration Release --no-build`). When the startup project exposes multiple contexts, pass `--context MasterMindDbContext`; set a non-secret SQL Server-shaped validation connection string so script generation uses the intended provider. For service tests that do not validate relational SQL, use EF Core InMemory; reserve SQL Server for migration validation.
 **Files Affected**: `Data/Migrations/`, `MasterMind.API.Tests`
 **Date Learned**: 2026-07-26
 

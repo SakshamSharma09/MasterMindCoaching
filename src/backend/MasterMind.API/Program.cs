@@ -66,7 +66,8 @@ else if (!string.IsNullOrEmpty(azureConnectionString) && azureConnectionString.C
     Log.Information("Using Azure SQL Database");
     builder.Services.AddDbContext<MasterMindDbContext>(options =>
     {
-        options.UseSqlServer(azureConnectionString);
+        options.UseSqlServer(azureConnectionString, sql =>
+            sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null));
         options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
     });
 }
@@ -76,7 +77,8 @@ else if (!string.IsNullOrEmpty(azureConnectionString) && azureConnectionString.C
     Log.Information("Using SQL Server connection string");
     builder.Services.AddDbContext<MasterMindDbContext>(options =>
     {
-        options.UseSqlServer(azureConnectionString);
+        options.UseSqlServer(azureConnectionString, sql =>
+            sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null));
         options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
     });
 }
@@ -1241,9 +1243,60 @@ static async Task SeedInitialDataAsync(MasterMindDbContext context)
 static async Task EnsureSqlServerSchemaCompatibilityAsync(MasterMindDbContext context)
 {
     await context.Database.ExecuteSqlRawAsync(@"
+IF OBJECT_ID('dbo.Expenses', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Expenses
+    (
+        Id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_Expenses PRIMARY KEY,
+        Category nvarchar(max) NOT NULL,
+        Description nvarchar(max) NOT NULL,
+        Amount decimal(18,2) NOT NULL,
+        PaidTo nvarchar(max) NOT NULL,
+        ExpenseDate datetime2 NOT NULL,
+        ReceiptNumber nvarchar(max) NULL,
+        InvoiceNumber nvarchar(max) NULL,
+        Status int NOT NULL,
+        PaymentMethod int NULL,
+        TransactionId nvarchar(max) NULL,
+        Remarks nvarchar(max) NULL,
+        ProcessedByUserId int NULL,
+        VendorName nvarchar(max) NULL,
+        VendorContact nvarchar(max) NULL,
+        IsRecurring bit NOT NULL CONSTRAINT DF_Expenses_IsRecurring DEFAULT(0),
+        RecurrencePattern nvarchar(max) NULL,
+        NextDueDate datetime2 NULL,
+        BudgetCategoryId int NULL,
+        SessionId int NULL,
+        CreatedAt datetime2 NOT NULL CONSTRAINT DF_Expenses_CreatedAt DEFAULT(sysutcdatetime()),
+        UpdatedAt datetime2 NULL,
+        IsDeleted bit NOT NULL CONSTRAINT DF_Expenses_IsDeleted DEFAULT(0)
+    );
+END
+
 IF COL_LENGTH('dbo.Students', 'PhotoBlobName') IS NULL
 BEGIN
     ALTER TABLE dbo.Students ADD PhotoBlobName nvarchar(260) NULL;
+END
+
+IF COL_LENGTH('dbo.Students', 'MotherName') IS NULL
+BEGIN
+    ALTER TABLE dbo.Students ADD MotherName nvarchar(200) NULL;
+END
+
+IF COL_LENGTH('dbo.Students', 'FatherName') IS NULL
+BEGIN
+    ALTER TABLE dbo.Students ADD FatherName nvarchar(200) NULL;
+END
+
+IF COL_LENGTH('dbo.Students', 'CurrentSchool') IS NULL
+BEGIN
+    ALTER TABLE dbo.Students ADD CurrentSchool nvarchar(200) NULL;
+END
+
+IF OBJECT_ID('dbo.TeacherSalaries', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.TeacherSalaries', 'ObligationKey') IS NULL
+BEGIN
+    ALTER TABLE dbo.TeacherSalaries ADD ObligationKey nvarchar(80) NULL;
 END
 
 IF COL_LENGTH('dbo.Students', 'SessionId') IS NULL
@@ -1266,7 +1319,8 @@ BEGIN
     ALTER TABLE dbo.Leads ADD SessionId int NULL;
 END
 
-IF COL_LENGTH('dbo.Expenses', 'SessionId') IS NULL
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.Expenses', 'SessionId') IS NULL
 BEGIN
     ALTER TABLE dbo.Expenses ADD SessionId int NULL;
 END
@@ -1279,7 +1333,10 @@ BEGIN
     UPDATE dbo.Classes SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
     UPDATE dbo.Teachers SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
     UPDATE dbo.Leads SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
-    UPDATE dbo.Expenses SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
+    IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+    BEGIN
+        UPDATE dbo.Expenses SET SessionId = @ActiveSessionId WHERE SessionId IS NULL;
+    END
 END
 
 IF COL_LENGTH('dbo.Classes', 'IsActive') IS NULL
