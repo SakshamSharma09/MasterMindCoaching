@@ -47,7 +47,7 @@
     },
     {
       "id": "session-filter-data-hidden",
-      "symptoms": ["students missing", "classes missing", "leads missing", "saved data not showing", "data disappeared", "stale selectedSessionId", "null SessionId", "all sessions shown", "session filter ignored"],
+      "symptoms": ["students missing", "classes missing", "leads missing", "saved data not showing", "data disappeared", "students cleared after session repair", "stale selectedSessionId", "null SessionId", "all sessions shown", "session filter ignored"],
       "category": "backend",
       "section": "Session Filters Can Hide Existing Data",
       "severity": "critical"
