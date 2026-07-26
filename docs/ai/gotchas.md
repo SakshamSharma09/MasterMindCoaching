@@ -101,11 +101,11 @@ public class StudentsController : ControllerBase
 ---
 
 ### Session Filters Can Hide Existing Data
-**Symptom**: Students, classes, teachers, leads, attendance-linked screens, or dashboard counts appear empty even though data still exists in Azure SQL.  
-**Root Cause**: Most admin list endpoints filter by `SessionId`. Legacy rows with `NULL SessionId`, or a stale `selectedSessionId` persisted in browser storage, can make valid records invisible.  
-**Solution**: Backfill legacy `NULL SessionId` rows to the active session during SQL Server startup compatibility checks, validate incoming `sessionId` query values, and make the frontend session store replace stale selected IDs with the active session.  
+**Symptom**: Students, classes, teachers, leads, attendance-linked screens, or dashboard counts appear empty, or selecting one session shows records from every academic session.
+**Root Cause**: Admin list endpoints filter by `SessionId`, but a stale selected ID can hide valid data. Broadly backfilling every legacy `NULL Student.SessionId` to the active session is also unsafe because it collapses historical students into the current session.
+**Solution**: Validate incoming session IDs and make the frontend replace stale selections. For Students, reconstruct session ownership from the most recent active class enrollment and leave genuinely unmapped/ambiguous legacy students unassigned for manual review; never bulk-assign all students to the active session. Pass the selected session explicitly when listing or creating students, and synchronize `Student.SessionId` when mapping a class. On legacy databases with empty EF migration history, run the repair through the compatibility path behind a durable one-time repair marker.
 **Files Affected**: `Program.cs`, `StudentsController.cs`, `ClassesController.cs`, `TeachersController.cs`, `LeadsController.cs`, `src/frontend/mastermind-web/src/stores/session.ts`  
-**Date Learned**: 2026-06-26
+**Date Learned**: 2026-07-26
 
 ---
 

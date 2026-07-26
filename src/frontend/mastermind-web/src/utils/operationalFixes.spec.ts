@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeIndianMobile } from './phoneUtils'
 import { fileNameFromContentDisposition } from './fileDownload'
-import { mapStudentPayload } from '@/services/studentsService'
+import { buildStudentQueryParams, mapStudentPayload } from '@/services/studentsService'
 
 describe('student and communication operational fixes', () => {
   it('keeps mother and father names independent and persists school/date/contact fields', () => {
@@ -29,6 +29,11 @@ describe('student and communication operational fixes', () => {
   it('adds India country code once', () => {
     expect(normalizeIndianMobile('98872 58679')).toBe('919887258679')
     expect(normalizeIndianMobile('+91 98872 58679')).toBe('919887258679')
+  })
+
+  it('includes the selected academic session in student list requests', () => {
+    const params = buildStudentQueryParams(1, 50, undefined, 2)
+    expect(params.get('sessionId')).toBe('2')
   })
 
   it('extracts UTF-8 download filenames', () => {
