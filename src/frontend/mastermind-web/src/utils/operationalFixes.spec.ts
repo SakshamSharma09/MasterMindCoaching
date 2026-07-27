@@ -4,8 +4,25 @@ import { fileNameFromContentDisposition } from './fileDownload'
 import { buildStudentQueryParams, mapStudentPayload, normalizeSchoolKey, resolveParentNames } from '@/services/studentsService'
 import { buildAbsentWhatsAppMessage, resolveAttendanceParentGreeting } from './attendanceMessaging'
 import { buildParentInvitationWhatsAppMessage } from './parentInvitation'
+import { matchesDuePeriod } from './datePeriod'
+import { tokenExpiryTime } from './sessionExpiry'
 
 describe('student and communication operational fixes', () => {
+  it('filters overdue, current-month, and next-month due dates', () => {
+    const now = new Date(2026, 6, 27)
+    expect(matchesDuePeriod('2026-07-15', 'thisMonth', 'Pending', now)).toBe(true)
+    expect(matchesDuePeriod('2026-08-15', 'nextMonth', 'Pending', now)).toBe(true)
+    expect(matchesDuePeriod('2026-06-15', 'overdue', 'Overdue', now)).toBe(true)
+  })
+
+  it('reads JWT expiry for proactive session logout', () => {
+    const payload = btoa(JSON.stringify({ exp: 2_000_000_000 }))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')
+    expect(tokenExpiryTime(`header.${payload}.signature`)).toBe(2_000_000_000_000)
+  })
+
   it('keeps mother and father names independent and persists school/date/contact fields', () => {
     const payload = mapStudentPayload({
       firstName: 'Asha',

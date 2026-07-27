@@ -198,12 +198,12 @@ $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
 
 ## Database (Azure SQL)
 
-### Recurring Fee Parent Rows and Future Installments Must Stay Operationally Hidden
-**Symptom**: Adding one monthly fee immediately lists a recurring parent record plus every future month, creates apparent duplicates, and makes deletion behavior unclear.
-**Root Cause**: The recurring schedule row and all generated child installments were returned by the same operational query. Future child rows were materialized and displayed before their due month.
-**Solution**: Treat the recurring row as internal schedule metadata, show only non-recurring installments due on or before today, generate missing due months idempotently on Finance access, and delete an unpaid recurring family together while blocking any family with payments.
+### Recurring Fee Parent Rows Must Stay Hidden and Families Need Simple Deletion Queries
+**Symptom**: Adding one monthly fee lists an internal recurring parent record, monthly renewals use the wrong day, or deleting an unpaid installment still returns an error.
+**Root Cause**: The recurring schedule row was returned by operational queries, monthly dates were normalized to the first instead of the configured start day, and a deep `RecurringFees -> Payments` include made deletion fragile against compatibility databases.
+**Solution**: Keep recurring parent rows internal, generate installments idempotently on the configured start day (clamped to the month's last day), expose only installments through the end of next month for due-period filtering, and delete recurring families with separate simple fee/payment queries. Stop the schedule and delete unpaid children while retaining paid installments.
 **Files Affected**: `src/backend/MasterMind.API/Controllers/FinanceController.cs`, `src/backend/MasterMind.API/Controllers/FeesController.cs`
-**Date Learned**: 2026-07-26
+**Date Learned**: 2026-07-27
 
 ### Optional EF Include Fails Against Compatibility Database
 **Symptom**: The Expenses page is empty and `GET /api/expenses` returns 500 with `Invalid object name 'BudgetCategories'`.

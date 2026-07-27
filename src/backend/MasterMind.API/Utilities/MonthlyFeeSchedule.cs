@@ -17,11 +17,15 @@ public static class MonthlyFeeSchedule
         DateOnly throughDate)
     {
         var dates = new List<DateOnly>();
-        var cursor = new DateOnly(startDate.Year, startDate.Month, 1);
+        var cursor = startDate;
         while (cursor <= endDate && cursor <= throughDate)
         {
             dates.Add(cursor);
-            cursor = cursor.AddMonths(1);
+            var nextMonth = new DateOnly(cursor.Year, cursor.Month, 1).AddMonths(1);
+            cursor = new DateOnly(
+                nextMonth.Year,
+                nextMonth.Month,
+                Math.Min(startDate.Day, DateTime.DaysInMonth(nextMonth.Year, nextMonth.Month)));
         }
         return dates;
     }

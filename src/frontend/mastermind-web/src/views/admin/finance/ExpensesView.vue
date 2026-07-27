@@ -16,7 +16,7 @@
 
     <!-- Expense Filters -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
           <select v-model="expenseFilters.category" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
@@ -31,6 +31,15 @@
           </select>
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Due Period</label>
+          <select v-model="expenseFilters.duePeriod" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+            <option value="">All Due Dates</option>
+            <option value="overdue">Overdue</option>
+            <option value="thisMonth">Due This Month</option>
+            <option value="nextMonth">Due Next Month</option>
+          </select>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
           <input v-model="expenseFilters.startDate" type="date" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
         </div>
@@ -39,7 +48,7 @@
           <input v-model="expenseFilters.endDate" type="date" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
         </div>
         <div class="flex items-end">
-          <button @click="expenseFilters = { category: '', startDate: '', endDate: '' }" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+          <button @click="expenseFilters = { category: '', duePeriod: '', startDate: '', endDate: '' }" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
             Clear Filters
           </button>
         </div>
@@ -218,6 +227,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { financeService, type Expense, type CreateExpenseDto, type UpdateExpenseDto } from '@/services/financeService'
 import { useToast } from '@/composables/useToast'
+import { matchesDuePeriod, type DuePeriod } from '@/utils/datePeriod'
 
 const toast = useToast()
 
@@ -234,7 +244,12 @@ const salaryPaymentForm = ref({
   remarks: ''
 })
 
-const expenseFilters = ref({ category: '', startDate: '', endDate: '' })
+const expenseFilters = ref<{ category: string; duePeriod: DuePeriod; startDate: string; endDate: string }>({
+  category: '',
+  duePeriod: '',
+  startDate: '',
+  endDate: ''
+})
 
 const expenseForm = ref({
   id: 0,
@@ -250,6 +265,11 @@ const filteredExpenses = computed(() => {
   let filtered = expenses.value
   if (expenseFilters.value.category) {
     filtered = filtered.filter(e => e.category === expenseFilters.value.category)
+  }
+  if (expenseFilters.value.duePeriod) {
+    filtered = filtered.filter(e =>
+      matchesDuePeriod(e.dueDate || e.date, expenseFilters.value.duePeriod, e.status)
+    )
   }
   if (expenseFilters.value.startDate) {
     filtered = filtered.filter(e => e.date >= expenseFilters.value.startDate)

@@ -16,7 +16,7 @@
 
     <!-- Fee Filters -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
           <select v-model="feeFilters.classId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
@@ -34,11 +34,20 @@
           </select>
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Due Period</label>
+          <select v-model="feeFilters.duePeriod" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+            <option value="">All Due Dates</option>
+            <option value="overdue">Overdue</option>
+            <option value="thisMonth">Due This Month</option>
+            <option value="nextMonth">Due Next Month</option>
+          </select>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Month</label>
           <input v-model="feeFilters.month" type="month" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
         </div>
         <div class="flex items-end">
-          <button @click="feeFilters = { classId: '', status: '', month: '' }" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+          <button @click="feeFilters = { classId: '', status: '', duePeriod: '', month: '' }" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
             Clear Filters
           </button>
         </div>
@@ -203,6 +212,7 @@ import { studentsService } from '@/services/studentsService'
 import { classesService, type Class } from '@/services/classesService'
 import { useToast } from '@/composables/useToast'
 import { useSessionStore } from '@/stores/session'
+import { matchesDuePeriod, type DuePeriod } from '@/utils/datePeriod'
 
 const toast = useToast()
 const sessionStore = useSessionStore()
@@ -232,7 +242,12 @@ const showFeeModal = ref(false)
 const isEditingFee = ref(false)
 const showAdvancedFeeOptions = ref(false)
 
-const feeFilters = ref({ classId: '', status: '', month: '' })
+const feeFilters = ref<{ classId: string; status: string; duePeriod: DuePeriod; month: string }>({
+  classId: '',
+  status: '',
+  duePeriod: '',
+  month: ''
+})
 
 const feeForm = ref({
   id: 0,
@@ -284,6 +299,11 @@ const filteredFees = computed(() => {
   }
   if (feeFilters.value.status) {
     filtered = filtered.filter(fee => fee.status === feeFilters.value.status)
+  }
+  if (feeFilters.value.duePeriod) {
+    filtered = filtered.filter(fee =>
+      matchesDuePeriod(fee.dueDate, feeFilters.value.duePeriod, fee.status)
+    )
   }
   if (feeFilters.value.month) {
     const [year, month] = feeFilters.value.month.split('-')

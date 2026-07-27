@@ -206,7 +206,7 @@
 
 Student create/update payloads persist `motherName`, `fatherName`, `dateOfBirth`, `currentSchool`, `parentMobile`, `secondaryParentMobile`, and `admissionDate` independently. `parentMobile` is required and is the parent account identity. Admin does not supply `parentEmail`; the parent supplies it while accepting the invitation. Attendance records expose the separate parent names for correctly addressed WhatsApp follow-ups.
 
-Monthly `POST /api/finance/fees` schedules installments on the first of each month through the academic-session end date (or an earlier supplied end date). Operational fee routes hide the recurring parent row and future installments. Missing installments are generated idempotently when Finance is opened, and student deactivation truncates unpaid future installments while retaining paid history. `DELETE /api/fees/{id}` stops a recurring schedule, deletes its unpaid installments, and retains paid installments; standalone fees with a payment return a clear conflict.
+Monthly `POST /api/finance/fees` schedules installments on the configured start day each month (clamped to the month's last day) through the academic-session end date or an earlier supplied end date. Operational fee routes hide the recurring parent row and expose installments through the end of next month for due-period filtering. Missing installments are generated idempotently when Finance is opened, and student deactivation truncates unpaid future installments while retaining paid history. `DELETE /api/fees/{id}` stops a recurring schedule, deletes its unpaid installments, and retains paid installments; standalone fees with a payment return a clear conflict.
 
 ---
 

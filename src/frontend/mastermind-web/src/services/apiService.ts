@@ -2,6 +2,7 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { API_BASE_URL, API_TIMEOUT, DEFAULT_HEADERS, getApiUrl } from '@/config/api'
 import { fileNameFromContentDisposition, saveOrShareBlob } from '@/utils/fileDownload'
+import { expireSession } from '@/utils/sessionExpiry'
 
 // Extended interface for custom config options
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
@@ -78,22 +79,13 @@ apiClient.interceptors.response.use(
     return response
   },
   (error) => {
-    // Check if this call should bypass automatic redirect
-    const bypassRedirect = (error.config as ExtendedAxiosRequestConfig)?.bypassRedirect
-    
     // Handle common errors
     if (error.response) {
       const { status, data } = error.response
       
       switch (status) {
         case 401:
-          // Unauthorized - clear auth data and redirect to login
-          localStorage.removeItem('mastermind-auth')
-          
-          // Only redirect if not bypassed
-          if (!bypassRedirect && window.location.pathname !== '/login') {
-            window.location.href = '/login'
-          }
+          expireSession()
           break
           
         case 403:

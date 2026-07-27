@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types/auth'
 import { authService } from '@/services/authService'
+import { cancelSessionExpiry, scheduleSessionExpiry } from '@/utils/sessionExpiry'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -20,6 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
   const setTokens = (access: string, refresh: string) => {
     accessToken.value = access
     refreshToken.value = refresh
+    scheduleSessionExpiry(access)
   }
 
   const setUser = (userData: User | any) => {
@@ -31,6 +33,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const clearAuth = () => {
+    cancelSessionExpiry()
     user.value = null
     accessToken.value = null
     refreshToken.value = null
@@ -128,6 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const initializeAuth = async () => {
     if (accessToken.value && user.value) {
+      scheduleSessionExpiry(accessToken.value)
       try {
         await getCurrentUser()
       } catch (err) {

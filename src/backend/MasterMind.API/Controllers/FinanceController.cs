@@ -536,7 +536,10 @@ public class FinanceController : ControllerBase
         {
             await EnsureFinanceFeeSchemaAsync();
             var today = DateOnly.FromDateTime(DateTime.Today);
-            await EnsureMonthlyFeeInstallmentsAsync(today);
+            var nextMonthEnd = new DateOnly(today.Year, today.Month, 1)
+                .AddMonths(2)
+                .AddDays(-1);
+            await EnsureMonthlyFeeInstallmentsAsync(nextMonthEnd);
 
             var feeRows = await _context.StudentFees
                 .AsNoTracking()
@@ -545,7 +548,7 @@ public class FinanceController : ControllerBase
                         .ThenInclude(sc => sc.Class)
                 .Include(sf => sf.FeeStructure)
                 .Where(sf => !sf.IsDeleted && !sf.Student.IsDeleted &&
-                    !sf.IsRecurring && sf.DueDate <= today)
+                    !sf.IsRecurring && sf.DueDate <= nextMonthEnd)
                 .OrderByDescending(sf => sf.DueDate)
                 .ToListAsync();
 
@@ -874,7 +877,7 @@ public class FinanceController : ControllerBase
     private async Task<object> CreateMonthlyFee(CreateFeeRequest request, Student student, FeeStructure feeStructure, DateOnly today)
     {
         var startDate = request.StartDate ?? today;
-        const int dueDay = 1;
+        var dueDay = startDate.Day;
         var sessionEndDate = student.Session == null
             ? (DateOnly?)null
             : DateOnly.FromDateTime(student.Session.EndDate);
@@ -895,7 +898,7 @@ public class FinanceController : ControllerBase
             Amount = request.Amount,
             DiscountAmount = request.DiscountAmount,
             FinalAmount = request.Amount - (request.DiscountAmount ?? 0),
-            DueDate = BuildMonthDueDate(startDate.Year, startDate.Month, dueDay),
+            DueDate = startDate,
             FeeCategory = FeeCategory.Monthly,
             StartDate = startDate,
             EndDate = endDate,
@@ -1004,23 +1007,10 @@ public class FinanceController : ControllerBase
             .ToHashSet();
         var changed = false;
 
-        foreach (var child in existingChildren.Where(sf =>
-                     sf.Status != FeeStatus.Paid && sf.Status != FeeStatus.Waived &&
-                     sf.Status != FeeStatus.Cancelled && sf.PaidAmount == 0))
-        {
-            var firstOfMonth = new DateOnly(child.DueDate.Year, child.DueDate.Month, 1);
-            if (child.DueDate != firstOfMonth)
-            {
-                child.DueDate = firstOfMonth;
-                child.RecurringDayOfMonth = 1;
-                child.UpdatedAt = DateTime.UtcNow;
-                changed = true;
-            }
-        }
-
         foreach (var parent in parents)
         {
             var startDate = parent.StartDate ?? parent.DueDate;
+            var dueDay = startDate.Day;
             var endDate = parent.EndDate ??
                 (parent.Student.Session == null
                     ? startDate.AddMonths(12)
@@ -1031,13 +1021,31 @@ public class FinanceController : ControllerBase
                     ? DateOnly.FromDateTime(parent.Student.InactiveDate.Value)
                     : null);
 
-            if (parent.EndDate != endDate || parent.RecurringDayOfMonth != 1)
+            if (parent.EndDate != endDate || parent.RecurringDayOfMonth != dueDay ||
+                parent.DueDate != startDate)
             {
                 parent.EndDate = endDate;
-                parent.RecurringDayOfMonth = 1;
+                parent.DueDate = startDate;
+                parent.RecurringDayOfMonth = dueDay;
                 parent.UpdatedAt = DateTime.UtcNow;
                 changed = true;
             }
+
+            foreach (var child in existingChildren.Where(sf =>
+                         sf.ParentFeeId == parent.Id &&
+                         sf.Status != FeeStatus.Paid && sf.Status != FeeStatus.Waived &&
+                         sf.Status != FeeStatus.Cancelled && sf.PaidAmount == 0))
+            {
+                var expectedDueDate = BuildMonthDueDate(child.DueDate.Year, child.DueDate.Month, dueDay);
+                if (child.DueDate != expectedDueDate || child.RecurringDayOfMonth != dueDay)
+                {
+                    child.DueDate = expectedDueDate;
+                    child.RecurringDayOfMonth = dueDay;
+                    child.UpdatedAt = DateTime.UtcNow;
+                    changed = true;
+                }
+            }
+
             foreach (var cursor in MonthlyFeeSchedule.DueDates(startDate, endDate, today))
             {
                 var monthKey = cursor.ToString("yyyy-MM");
@@ -1054,7 +1062,7 @@ public class FinanceController : ControllerBase
                         FeeCategory = FeeCategory.Monthly,
                         StartDate = startDate,
                         EndDate = endDate,
-                        RecurringDayOfMonth = 1,
+                        RecurringDayOfMonth = dueDay,
                         IsRecurring = false,
                         ParentFeeId = parent.Id,
                         LateFeePerDay = parent.LateFeePerDay,
