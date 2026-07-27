@@ -128,6 +128,13 @@
       "category": "backend",
       "section": "Recurring Fee Parent Rows Must Stay Hidden and Families Need Simple Deletion Queries",
       "severity": "high"
+    },
+    {
+      "id": "parent-invitation-schema-email-failure",
+      "symptoms": ["copy invite 500", "parent invitation 500", "AccountInvitations missing", "invite email failure"],
+      "category": "backend",
+      "section": "Parent Invitation Must Survive Schema Drift and Email Failure",
+      "severity": "high"
     }
   ]
 }

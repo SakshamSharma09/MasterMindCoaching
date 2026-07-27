@@ -193,7 +193,7 @@
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | GET | `/api/students/export` | Admin | Download all non-deleted student details across every session as `.xlsx` |
-| POST | `/api/students/{id}/parent-invitation` | Admin | Until onboarding is complete, revoke any active invite and return a fresh 72-hour link plus the primary mobile for WhatsApp sharing; reject resend after the parent has set a password |
+| POST | `/api/students/{id}/parent-invitation` | Admin | Until onboarding is complete, revoke any active invite and return a fresh 72-hour link plus the primary mobile for WhatsApp sharing; email delivery failure returns `EmailSent = false` without losing the WhatsApp link; reject resend after the parent has set a password |
 | GET | `/api/auth/invitations/{token}` | Public | Validate an invitation and return masked account details |
 | POST | `/api/auth/invitations/accept` | Public | Store the parent-supplied recovery email and password, link siblings by primary mobile, and consume the invitation |
 | GET | `/api/account/security` | Parent | Get recovery email plus read-only primary/secondary mobiles |

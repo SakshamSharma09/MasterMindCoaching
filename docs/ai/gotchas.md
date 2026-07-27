@@ -212,6 +212,13 @@ $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
 **Files Affected**: `src/backend/MasterMind.API/Controllers/ExpensesController.cs`
 **Date Learned**: 2026-07-26
 
+### Parent Invitation Must Survive Schema Drift and Email Failure
+**Symptom**: `POST /api/students/{id}/parent-invitation` returns 500 when an admin clicks Copy Invite.
+**Root Cause**: Older production databases can have migration history without the `AccountInvitations` table, and an SMTP exception after the invitation is saved can incorrectly turn a valid WhatsApp invite into a failed request.
+**Solution**: Create the invitation table and indexes through the idempotent SQL Server compatibility path. Save the hashed invitation token before attempting email, catch delivery exceptions, log them, and still return the WhatsApp invite URL with `EmailSent = false`.
+**Files Affected**: `src/backend/MasterMind.API/Program.cs`, `src/backend/MasterMind.API/Controllers/StudentsController.cs`
+**Date Learned**: 2026-07-27
+
 ### DateTime Functions
 **Symptom**: `GETUTCDATE()` not recognized  
 **Root Cause**: EF Core default value syntax differs between SQL Server versions  
