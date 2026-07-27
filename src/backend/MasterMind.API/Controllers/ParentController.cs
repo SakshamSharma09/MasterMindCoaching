@@ -9,7 +9,7 @@ namespace MasterMind.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Parent")]
 public class ParentController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
@@ -143,7 +143,7 @@ public class ParentController : ControllerBase
                 : Math.Round((decimal)presentAttendanceCount * 100m / attendanceRecords.Count, 2);
 
             var childFees = await _context.StudentFees
-                .Where(sf => !sf.IsDeleted && children.Contains(sf.StudentId))
+                .Where(sf => !sf.IsDeleted && !sf.IsRecurring && children.Contains(sf.StudentId))
                 .Select(sf => new { sf.FinalAmount, sf.PaidAmount })
                 .ToListAsync();
 
@@ -307,7 +307,7 @@ public class ParentController : ControllerBase
             }
 
             var studentFees = await _context.StudentFees
-                .Where(sf => !sf.IsDeleted && sf.StudentId == childId)
+                .Where(sf => !sf.IsDeleted && !sf.IsRecurring && sf.StudentId == childId)
                 .OrderBy(sf => sf.DueDate)
                 .ToListAsync();
 

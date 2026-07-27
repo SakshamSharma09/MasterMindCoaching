@@ -50,6 +50,9 @@
             <dl>
               <dt class="stat-label">Attendance</dt>
               <dd class="stat-value text-green-600">{{ currentChildStats.attendance }}%</dd>
+              <dd class="mt-1 text-xs text-gray-500">
+                {{ currentChildStats.presentCount }} present · {{ currentChildStats.absentCount }} absent
+              </dd>
             </dl>
           </div>
         </div>
@@ -66,6 +69,7 @@
             <dl>
               <dt class="stat-label">Average Grade</dt>
               <dd class="stat-value text-blue-600">{{ currentChildStats.averageGrade }}</dd>
+              <dd class="mt-1 text-xs text-gray-500">{{ currentChildStats.testsCount }} recorded tests</dd>
             </dl>
           </div>
         </div>
@@ -82,6 +86,9 @@
             <dl>
               <dt class="stat-label">Pending Fees</dt>
               <dd class="stat-value text-amber-600">₹{{ currentChildStats.pendingFees }}</dd>
+              <dd class="mt-1 text-xs text-gray-500">
+                {{ currentChildStats.nextDueDate ? `Next due ${currentChildStats.nextDueDate}` : 'No upcoming dues' }}
+              </dd>
             </dl>
           </div>
         </div>
@@ -98,6 +105,7 @@
             <dl>
               <dt class="stat-label">Remarks</dt>
               <dd class="stat-value text-mastermind-600">{{ currentChildStats.remarksCount }}</dd>
+              <dd class="mt-1 text-xs text-gray-500">Visible teacher feedback</dd>
             </dl>
           </div>
         </div>
@@ -113,6 +121,9 @@
         </h3>
       </div>
       <div class="space-y-4">
+        <p v-if="recentActivities.length === 0" class="p-4 text-sm text-gray-500">
+          No attendance, fee, test, or teacher activity has been recorded yet.
+        </p>
         <transition-group name="activity" tag="div">
           <div v-for="(activity, index) in recentActivities" :key="activity.id" 
                class="flex items-start space-x-4 p-4 rounded-xl hover:bg-white/30 transition-all duration-300"
@@ -157,9 +168,20 @@ const loading = ref(true)
 const error = ref('')
 
 // Current child stats
+const emptyStats = () => ({
+  attendance: 0,
+  averageGrade: 'N/A',
+  pendingFees: 0,
+  remarksCount: 0,
+  presentCount: 0,
+  absentCount: 0,
+  testsCount: 0,
+  nextDueDate: ''
+})
+
 const currentChildStats = computed(() => {
-  if (!selectedChild.value) return { attendance: 0, averageGrade: 'N/A', pendingFees: 0, remarksCount: 0 }
-  return childStats.value[selectedChild.value] || { attendance: 0, averageGrade: 'N/A', pendingFees: 0, remarksCount: 0 }
+  if (!selectedChild.value) return emptyStats()
+  return childStats.value[selectedChild.value] || emptyStats()
 })
 
 const recentActivities = ref<Array<{ id: string; title: string; description: string; date: string }>>([])
@@ -194,13 +216,33 @@ const loadData = async () => {
       // Load stats for each child
       for (const child of children.value) {
         try {
-          const [attendanceData, feesData, performanceData] = await Promise.all([
+          const [attendanceResult, feesResult, performanceResult] = await Promise.allSettled([
             parentService.getChildAttendance(child.id),
             parentService.getChildFees(child.id),
             parentService.getChildPerformance(child.id)
           ])
+
+          const attendanceData = attendanceResult.status === 'fulfilled'
+            ? attendanceResult.value
+            : { percentage: 0, present: 0, absent: 0, late: 0, records: [] }
+          const feesData = feesResult.status === 'fulfilled'
+            ? feesResult.value
+            : { pendingFees: 0, nextDueDate: '', paymentHistory: [] }
+          const performanceData = performanceResult.status === 'fulfilled'
+            ? performanceResult.value
+            : { averageGrade: 'N/A', recentTests: [], recentRemarks: [] }
+
+          if ([attendanceResult, feesResult, performanceResult].some(result => result.status === 'rejected')) {
+            console.warn(`Some dashboard data could not be loaded for child ${child.id}`)
+          }
           
           const childRecentActivities = [
+            ...((attendanceData.records || []).slice(0, 3).map((record, index) => ({
+              id: `${child.id}-attendance-${index}`,
+              title: `Attendance: ${record.status}`,
+              description: record.subject || child.className,
+              date: record.date
+            }))),
             ...((performanceData.recentTests || []).slice(0, 2).map((test, index) => ({
               id: `${child.id}-test-${index}`,
               title: `${test.subject} Test`,
@@ -225,18 +267,17 @@ const loadData = async () => {
             attendance: attendanceData.percentage,
             averageGrade: performanceData.averageGrade,
             pendingFees: feesData.pendingFees,
-            remarksCount: performanceData.recentRemarks?.length || 0
+            remarksCount: performanceData.recentRemarks?.length || 0,
+            presentCount: attendanceData.present,
+            absentCount: attendanceData.absent,
+            testsCount: performanceData.recentTests?.length || 0,
+            nextDueDate: feesData.nextDueDate
           }
 
           recentActivities.value.push(...childRecentActivities)
         } catch (childError) {
           console.error(`Error loading data for child ${child.id}:`, childError)
-          childStats.value[child.id] = {
-            attendance: 0,
-            averageGrade: 'N/A',
-            pendingFees: 0,
-            remarksCount: 0
-          }
+          childStats.value[child.id] = emptyStats()
         }
       }
 

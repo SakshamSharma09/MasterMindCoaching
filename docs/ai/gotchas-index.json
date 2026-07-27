@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-05-05",
+  "lastUpdated": "2026-07-27",
   "description": "Quick lookup index for AI gotchas - match symptoms to solutions",
   "gotchas": [
     {
@@ -135,6 +135,13 @@
       "category": "backend",
       "section": "Parent Invitation Must Survive Schema Drift and Email Failure",
       "severity": "high"
+    },
+    {
+      "id": "parent-invitation-role-session-isolation",
+      "symptoms": ["parent redirected to admin", "parent has admin access", "parent dashboard zero", "parent attendance not synced", "parent mobile matches admin"],
+      "category": "authentication",
+      "section": "Parent Invitation Must Not Reuse a Privileged Browser Session or Account",
+      "severity": "critical"
     }
   ]
 }

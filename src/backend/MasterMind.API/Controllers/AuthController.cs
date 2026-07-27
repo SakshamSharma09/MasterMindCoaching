@@ -280,16 +280,23 @@ public class AuthController : ControllerBase
         var frontendBaseUrl = (_configuration["Frontend:BaseUrl"] ??
             "https://victorious-glacier-0e6507000.6.azurestaticapps.net").TrimEnd('/');
         var loginUrl = $"{frontendBaseUrl}/login?mobile={Uri.EscapeDataString(invitation.User.Mobile)}";
-        await _emailService.SendEmailAsync(
-            normalizedEmail,
-            "Your MasterMind Coaching parent account is ready",
-            $"""
-            <p>Namaste,</p>
-            <p>Your parent account password has been set successfully.</p>
-            <p><a href="{loginUrl}">Open MasterMind Coaching and sign in</a> using your registered mobile number.</p>
-            <p>This email can also be used for secure OTP access and password recovery.</p>
-            <p>— MasterMind Coaching Classes</p>
-            """);
+        try
+        {
+            await _emailService.SendEmailAsync(
+                normalizedEmail,
+                "Your MasterMind Coaching parent account is ready",
+                $"""
+                <p>Namaste,</p>
+                <p>Your parent account password has been set successfully.</p>
+                <p><a href="{loginUrl}">Open MasterMind Coaching and sign in</a> using your registered mobile number.</p>
+                <p>This email can also be used for secure OTP access and password recovery.</p>
+                <p>— MasterMind Coaching Classes</p>
+                """);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Parent account {UserId} was activated, but confirmation email failed", invitation.UserId);
+        }
 
         return Ok(new ApiResponse<object>
         {
@@ -572,8 +579,11 @@ public class AuthController : ControllerBase
         var now = DateTime.UtcNow;
         return await _context.AccountInvitations
             .Include(i => i.User)
+                .ThenInclude(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(i => i.TokenHash == hash && i.UsedAt == null &&
-                i.RevokedAt == null && i.ExpiresAt > now && !i.IsDeleted && !i.User.IsDeleted);
+                i.RevokedAt == null && i.ExpiresAt > now && !i.IsDeleted && !i.User.IsDeleted &&
+                !i.User.UserRoles.Any(ur => ur.Role.Name == "Admin" || ur.Role.Name == "Teacher"));
     }
 
     private static string MaskMobile(string mobile)

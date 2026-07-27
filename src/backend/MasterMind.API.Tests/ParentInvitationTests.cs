@@ -57,6 +57,54 @@ public class ParentInvitationTests
         Assert.NotNull(student.ParentUserId);
     }
 
+    [Fact]
+    public async Task InvitationRejectsMobileBelongingToPrivilegedUser()
+    {
+        var options = new DbContextOptionsBuilder<MasterMindDbContext>()
+            .UseInMemoryDatabase($"parent-invitation-privileged-{Guid.NewGuid()}")
+            .Options;
+        await using var context = new MasterMindDbContext(options);
+        var adminRole = new Role { Name = "Admin" };
+        var parentRole = new Role { Name = "Parent" };
+        var admin = new User
+        {
+            FirstName = "Admin",
+            LastName = "User",
+            Email = "admin@example.com",
+            Mobile = "9887258679"
+        };
+        context.AddRange(adminRole, parentRole, admin);
+        await context.SaveChangesAsync();
+        context.UserRoles.Add(new UserRole
+        {
+            UserId = admin.Id,
+            RoleId = adminRole.Id
+        });
+        var student = new Student
+        {
+            FirstName = "Invite",
+            LastName = "Student",
+            DateOfBirth = new DateTime(2012, 1, 1),
+            ParentName = "Test Parent",
+            ParentMobile = "9887258679"
+        };
+        context.Students.Add(student);
+        await context.SaveChangesAsync();
+
+        var controller = new StudentsController(
+            context,
+            NullLogger<StudentsController>.Instance,
+            new NoOpBlobStorageService(),
+            new ThrowingEmailService(),
+            new ConfigurationBuilder().AddInMemoryCollection().Build());
+
+        var response = await controller.ResendParentInvitation(student.Id);
+
+        Assert.IsType<BadRequestObjectResult>(response.Result);
+        Assert.Empty(context.AccountInvitations);
+        Assert.Null(student.ParentUserId);
+    }
+
     private sealed class ThrowingEmailService : IEmailService
     {
         public Task<bool> SendOtpEmailAsync(string email, string otp) =>

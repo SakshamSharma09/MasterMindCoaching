@@ -100,6 +100,8 @@
 | GET | `/api/parent/children/{childId}/attendance` | GetChildAttendance |
 | GET | `/api/parent/children/{childId}/fees` | GetChildFees |
 | GET | `/api/parent/children/{childId}/performance` | GetChildPerformance |
+
+All `/api/parent/*` routes require the `Parent` role. Parent dashboard clients load attendance, fees, and performance independently so one unavailable optional dataset does not hide the others. Recurring schedule-control fee rows are excluded from parent totals.
 | GET | `/api/student-remarks` | GetRemarks |
 | POST | `/api/student-remarks` | CreateRemark |
 | GET | `/api/teacher-portal/classes` | GetMyClasses |

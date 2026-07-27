@@ -297,7 +297,18 @@ public class StudentsController : ControllerBase
 
         _context.Students.Add(student);
         await _context.SaveChangesAsync();
-        await LinkParentUserAsync(student);
+        try
+        {
+            await LinkParentUserAsync(student);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
 
         return CreatedAtAction(nameof(GetStudent),
             new { id = student.Id },
@@ -771,7 +782,18 @@ public class StudentsController : ControllerBase
             return NotFound(new ApiResponse<object> { Success = false, Message = "Student not found" });
         }
 
-        await LinkParentUserAsync(student);
+        try
+        {
+            await LinkParentUserAsync(student);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
         var parentUser = student.ParentUserId.HasValue
             ? await _context.Users.AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == student.ParentUserId.Value && !u.IsDeleted)
@@ -832,6 +854,8 @@ public class StudentsController : ControllerBase
         }
 
         var users = await _context.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
             .Where(u => !u.IsDeleted)
             .ToListAsync();
         var user = users
@@ -863,6 +887,11 @@ public class StudentsController : ControllerBase
         }
         else
         {
+            if (user.UserRoles.Any(ur => ur.Role.Name == "Admin" || ur.Role.Name == "Teacher"))
+            {
+                throw new InvalidOperationException(
+                    "This mobile number belongs to an Admin or Teacher account. Use a separate primary parent mobile number.");
+            }
             user.Mobile = normalizedMobile;
             user.SecondaryMobile = student.SecondaryParentMobile;
             user.UpdatedAt = DateTime.UtcNow;
