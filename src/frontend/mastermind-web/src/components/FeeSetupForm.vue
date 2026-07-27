@@ -230,8 +230,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { financeService, type FeeStructure, type Student, type SetupStudentFeeRequest, type StudentFeeSetup } from '@/services/financeService'
+import { financeService, type FeeStructure, type Student } from '@/services/financeService'
+import { studentsService } from '@/services/studentsService'
 import { useToast } from '@/composables/useToast'
+import { useSessionStore } from '@/stores/session'
 
 const emit = defineEmits<{
   success: []
@@ -239,6 +241,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const sessionStore = useSessionStore()
 
 // Reactive data
 const students = ref<Student[]>([])
@@ -281,14 +284,28 @@ const isFormValid = computed(() => {
 // Methods
 const loadStudents = async () => {
   try {
-    // Mock data - in real app, this would come from students API
-    students.value = [
-      { id: 1, name: 'John Doe', class: 'Class 10', email: 'john@example.com', mobile: '9876543210', parentName: 'Parent Name' },
-      { id: 2, name: 'Jane Smith', class: 'Class 9', email: 'jane@example.com', mobile: '9876543211', parentName: 'Parent Name' },
-      { id: 3, name: 'Bob Johnson', class: 'Class 11', email: 'bob@example.com', mobile: '9876543212', parentName: 'Parent Name' }
-    ]
+    const result = await studentsService.getStudents(
+      1,
+      100,
+      undefined,
+      sessionStore.selectedSessionId ?? undefined
+    )
+    students.value = result.data.map((student: any) => {
+      const activeClass = student.studentClasses?.find((item: any) => item.isActive)
+        || student.studentClasses?.[0]
+      return {
+        id: student.id,
+        name: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+        class: activeClass?.class?.name || 'Not Assigned',
+        email: student.studentEmail || '',
+        mobile: student.parentMobile || student.studentMobile || '',
+        parentName: student.motherName || student.fatherName || student.parentName || ''
+      }
+    })
   } catch (error) {
     console.error('Error loading students:', error)
+    students.value = []
+    toast.error('Students unavailable', 'Could not load current-session students.')
   }
 }
 
@@ -321,7 +338,7 @@ const calculateEndDate = () => {
   if (form.value.startDate && form.value.numberOfMonths) {
     const start = new Date(form.value.startDate)
     const end = new Date(start)
-    end.setMonth(end.getMonth() + parseInt(form.value.numberOfMonths.toString()))
+    end.setMonth(end.getMonth() + Math.max(parseInt(form.value.numberOfMonths.toString()) - 1, 0))
     form.value.endDate = end.toISOString().split('T')[0]
   }
 }
@@ -336,20 +353,28 @@ const submitForm = async () => {
 
   isSubmitting.value = true
   try {
-    const requestData: SetupStudentFeeRequest = {
+    const selectedStudent = students.value.find(student => student.id === parseInt(form.value.studentId))
+    const numberOfMonths = parseInt(form.value.numberOfMonths.toString())
+    await financeService.createFee({
       studentId: parseInt(form.value.studentId),
       feeStructureId: parseInt(form.value.feeStructureId),
+      feeCategory: form.value.feeType === 'monthly'
+        ? 'Monthly'
+        : form.value.feeType === 'fullcourse' ? 'FullCourse' : 'Additional',
+      amount: selectedFeeStructure.value?.amount || 0,
       startDate: form.value.startDate,
       endDate: form.value.endDate || undefined,
       dueDate: form.value.dueDate || form.value.endDate,
-      numberOfMonths: form.value.feeType === 'monthly' ? parseInt(form.value.numberOfMonths.toString()) : undefined,
       academicYear: form.value.academicYear
-    }
-
-    const result = await financeService.setupStudentFee(requestData)
+    })
     
-    // Show success message
-    toast.success('Fee setup completed', `${result.studentName} — ${result.feeType} — ₹${formatCurrency(result.totalAmount)}`)
+    const totalAmount = form.value.feeType === 'monthly'
+      ? (selectedFeeStructure.value?.amount || 0) * numberOfMonths
+      : selectedFeeStructure.value?.amount || 0
+    toast.success(
+      'Fee setup completed',
+      `${selectedStudent?.name || 'Student'} — ${form.value.feeType} — ₹${formatCurrency(totalAmount)}`
+    )
     
     emit('success')
   } catch (error) {
@@ -374,6 +399,9 @@ watch(() => form.value.startDate, calculateEndDate)
 
 // Lifecycle
 onMounted(() => {
+  if (sessionStore.selectedSession?.academicYear) {
+    form.value.academicYear = sessionStore.selectedSession.academicYear
+  }
   loadStudents()
   loadFeeStructures()
 })

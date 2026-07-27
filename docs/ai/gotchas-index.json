@@ -124,9 +124,9 @@
     },
     {
       "id": "recurring-fee-parent-future-rows",
-      "symptoms": ["all future fees visible", "duplicate monthly fee", "recurring parent fee listed", "fee deletion error", "future installment"],
+      "symptoms": ["all future fees visible", "duplicate monthly fee", "recurring parent fee listed", "fee deletion error", "monthly fee wrong day", "future installment"],
       "category": "backend",
-      "section": "Recurring Fee Parent Rows and Future Installments Must Stay Operationally Hidden",
+      "section": "Recurring Fee Parent Rows Must Stay Hidden and Families Need Simple Deletion Queries",
       "severity": "high"
     }
   ]

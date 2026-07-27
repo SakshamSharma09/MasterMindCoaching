@@ -238,9 +238,6 @@ public class FeesController : ControllerBase
         try
         {
             var studentFee = await _context.StudentFees
-                .Include(sf => sf.Payments)
-                .Include(sf => sf.RecurringFees)
-                    .ThenInclude(child => child.Payments)
                 .FirstOrDefaultAsync(sf => sf.Id == id && !sf.IsDeleted);
 
             if (studentFee == null)
@@ -255,49 +252,46 @@ public class FeesController : ControllerBase
             var scheduleId = studentFee.IsRecurring ? studentFee.Id : studentFee.ParentFeeId;
             if (scheduleId.HasValue)
             {
-                var schedule = studentFee.Id == scheduleId.Value
-                    ? studentFee
-                    : await _context.StudentFees
-                        .Include(sf => sf.Payments)
-                        .Include(sf => sf.RecurringFees)
-                            .ThenInclude(child => child.Payments)
-                        .FirstOrDefaultAsync(sf => sf.Id == scheduleId.Value && !sf.IsDeleted);
-                if (schedule != null)
+                var family = await _context.StudentFees
+                    .Where(sf => sf.Id == scheduleId.Value || sf.ParentFeeId == scheduleId.Value)
+                    .ToListAsync();
+                var familyIds = family.Select(sf => sf.Id).ToList();
+                var paidFeeIds = await _context.Payments
+                    .Where(payment => !payment.IsDeleted && familyIds.Contains(payment.StudentFeeId))
+                    .Select(payment => payment.StudentFeeId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (paidFeeIds.Contains(scheduleId.Value))
                 {
-                    if (schedule.Payments.Any(p => !p.IsDeleted))
+                    return BadRequest(new ApiResponse<bool>
                     {
-                        return BadRequest(new ApiResponse<bool>
-                        {
-                            Success = false,
-                            Message = "This legacy recurring schedule has a payment recorded directly against it and must be retained. Contact support to repair the old payment mapping."
-                        });
-                    }
-
-                    var deletableFees = schedule.RecurringFees
-                        .Where(fee => !fee.IsDeleted && !fee.Payments.Any(p => !p.IsDeleted))
-                        .Append(schedule)
-                        .ToList();
-                    foreach (var fee in deletableFees)
-                    {
-                        fee.IsDeleted = true;
-                        fee.UpdatedAt = DateTime.UtcNow;
-                    }
-                    await _context.SaveChangesAsync();
-                    var retainedPaidCount = schedule.RecurringFees.Count(fee =>
-                        !fee.IsDeleted && fee.Payments.Any(p => !p.IsDeleted));
-
-                    return Ok(new ApiResponse<bool>
-                    {
-                        Success = true,
-                        Message = retainedPaidCount > 0
-                            ? $"Recurring fee stopped and unpaid installments deleted. {retainedPaidCount} paid installment(s) were retained as financial history."
-                            : "Recurring fee and all unpaid installments deleted successfully",
-                        Data = true
+                        Success = false,
+                        Message = "This legacy recurring schedule has a payment recorded directly against it and must be retained. Contact support to repair the old payment mapping."
                     });
                 }
+
+                foreach (var fee in family.Where(fee =>
+                             fee.Id == scheduleId.Value || !paidFeeIds.Contains(fee.Id)))
+                {
+                    fee.IsDeleted = true;
+                    fee.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+                var retainedPaidCount = family.Count(fee =>
+                    fee.Id != scheduleId.Value && paidFeeIds.Contains(fee.Id));
+                return Ok(new ApiResponse<bool>
+                {
+                    Success = true,
+                    Message = retainedPaidCount > 0
+                        ? $"Recurring fee stopped and unpaid installments deleted. {retainedPaidCount} paid installment(s) were retained as financial history."
+                        : "Recurring fee and all unpaid installments deleted successfully",
+                    Data = true
+                });
             }
 
-            if (studentFee.Payments.Any(p => !p.IsDeleted))
+            if (await _context.Payments.AnyAsync(p => p.StudentFeeId == id && !p.IsDeleted))
             {
                 return BadRequest(new ApiResponse<bool>
                 {
