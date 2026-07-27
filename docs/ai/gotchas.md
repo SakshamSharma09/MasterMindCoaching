@@ -219,6 +219,13 @@ $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
 **Files Affected**: `src/backend/MasterMind.API/Program.cs`, `src/backend/MasterMind.API/Controllers/StudentsController.cs`
 **Date Learned**: 2026-07-27
 
+### Parent Invitation Must Not Reuse a Privileged Browser Session or Account
+**Symptom**: After accepting a parent invitation, the browser opens the Admin dashboard, or the parent dashboard shows every KPI as zero even though attendance exists.
+**Root Cause**: The public invitation page retained an already-authenticated Admin session, parent mobile linking could reuse an Admin/Teacher user, and `Promise.all` discarded valid attendance and fee data when one optional parent endpoint failed.
+**Solution**: Clear the existing browser authentication state after invitation acceptance, reject invitation linking/validation for Admin or Teacher users, restrict parent endpoints to the Parent role, and load each parent dashboard dataset independently with visible attendance counts and recent activity.
+**Files Affected**: `AuthController.cs`, `StudentsController.cs`, `ParentController.cs`, `AcceptInvitationView.vue`, `parent/DashboardView.vue`
+**Date Learned**: 2026-07-27
+
 ### DateTime Functions
 **Symptom**: `GETUTCDATE()` not recognized  
 **Root Cause**: EF Core default value syntax differs between SQL Server versions  

@@ -49,9 +49,11 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authService } from '@/services/authService'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const token = String(route.query.token || '')
 const checking = ref(true)
 const valid = ref(false)
@@ -90,6 +92,7 @@ const accept = async () => {
   saving.value = true
   try {
     const response = await authService.acceptInvitation(token, email.value, password.value)
+    authStore.clearAuth()
     await router.replace({ name: 'Login', query: { mobile: response.data?.mobile || '', invited: '1' } })
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Password could not be set.'
