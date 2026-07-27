@@ -1329,6 +1329,46 @@ BEGIN
     ALTER TABLE dbo.Users ADD SecondaryMobile nvarchar(20) NULL;
 END
 
+IF OBJECT_ID('dbo.AccountInvitations', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.AccountInvitations
+    (
+        Id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_AccountInvitations PRIMARY KEY,
+        UserId int NOT NULL,
+        StudentId int NULL,
+        TokenHash nvarchar(64) NOT NULL,
+        ExpiresAt datetime2 NOT NULL,
+        UsedAt datetime2 NULL,
+        RevokedAt datetime2 NULL,
+        CreatedByUserId int NULL,
+        CreatedAt datetime2 NOT NULL CONSTRAINT DF_AccountInvitations_CreatedAt DEFAULT(sysutcdatetime()),
+        UpdatedAt datetime2 NULL,
+        IsDeleted bit NOT NULL CONSTRAINT DF_AccountInvitations_IsDeleted DEFAULT(0)
+    );
+END
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_AccountInvitations_TokenHash'
+      AND object_id = OBJECT_ID('dbo.AccountInvitations')
+)
+BEGIN
+    CREATE UNIQUE INDEX IX_AccountInvitations_TokenHash
+        ON dbo.AccountInvitations(TokenHash);
+END
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_AccountInvitations_UserId_ExpiresAt'
+      AND object_id = OBJECT_ID('dbo.AccountInvitations')
+)
+BEGIN
+    CREATE INDEX IX_AccountInvitations_UserId_ExpiresAt
+        ON dbo.AccountInvitations(UserId, ExpiresAt);
+END
+
 IF OBJECT_ID('dbo.TeacherSalaries', 'U') IS NOT NULL
    AND COL_LENGTH('dbo.TeacherSalaries', 'ObligationKey') IS NULL
 BEGIN

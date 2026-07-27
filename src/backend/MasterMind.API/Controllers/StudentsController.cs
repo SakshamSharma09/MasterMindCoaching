@@ -944,10 +944,20 @@ public class StudentsController : ControllerBase
         var emailSent = false;
         if (!string.IsNullOrWhiteSpace(student.ParentEmail) && !IsPlaceholderEmail(student.ParentEmail))
         {
-            emailSent = await _emailService.SendEmailAsync(
-                student.ParentEmail.Trim(),
-                "Set your MasterMind Coaching parent password",
-                body);
+            try
+            {
+                emailSent = await _emailService.SendEmailAsync(
+                    student.ParentEmail.Trim(),
+                    "Set your MasterMind Coaching parent password",
+                    body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Parent invitation {InvitationUserId} was created, but email delivery failed",
+                    student.ParentUserId.Value);
+            }
         }
 
         return new ParentInvitationResult(inviteUrl, expiresAt, emailSent);
