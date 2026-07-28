@@ -197,6 +197,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddScoped<ITeacherSalaryService, TeacherSalaryService>();
+builder.Services.AddScoped<IRecurringObligationService, RecurringObligationService>();
+builder.Services.AddHostedService<RecurringObligationWorker>();
 builder.Services.AddScoped<IPaperGenerationService, PaperGenerationService>();
 builder.Services.AddHttpClient<IOpenRouterPaperService, OpenRouterPaperService>(client =>
 {

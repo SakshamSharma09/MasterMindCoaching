@@ -572,6 +572,95 @@ public class FeesController : ControllerBase
         }
     }
 
+    [HttpPost("structures")]
+    [ProducesResponseType(typeof(ApiResponse<FeeStructureDto>), StatusCodes.Status201Created)]
+    public async Task<ActionResult<ApiResponse<FeeStructureDto>>> CreateFeeStructure(
+        [FromBody] SaveFeeStructureRequest request)
+    {
+        if (!Enum.TryParse<FeeFrequency>(request.Frequency, true, out var frequency) ||
+            !Enum.TryParse<FeeType>(request.Type, true, out var type))
+        {
+            return BadRequest(new ApiResponse<FeeStructureDto>
+            {
+                Success = false,
+                Message = "Invalid fee type or frequency"
+            });
+        }
+        var structure = new FeeStructure
+        {
+            Name = request.Name.Trim(),
+            Type = type,
+            Category = frequency == FeeFrequency.OneTime ? FeeCategory.Additional : FeeCategory.Monthly,
+            Amount = request.Amount,
+            Frequency = frequency,
+            ClassId = request.ClassId,
+            Description = request.Description?.Trim(),
+            AcademicYear = request.AcademicYear?.Trim() ?? GetCurrentAcademicYear(),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.FeeStructures.Add(structure);
+        await _context.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetFeeStructures), new ApiResponse<FeeStructureDto>
+        {
+            Success = true,
+            Message = "Fee plan created",
+            Data = MapStructure(structure)
+        });
+    }
+
+    [HttpPut("structures/{id}")]
+    public async Task<ActionResult<ApiResponse<FeeStructureDto>>> UpdateFeeStructure(
+        int id,
+        [FromBody] SaveFeeStructureRequest request)
+    {
+        var structure = await _context.FeeStructures.FirstOrDefaultAsync(f => f.Id == id && !f.IsDeleted);
+        if (structure == null) return NotFound();
+        if (!Enum.TryParse<FeeFrequency>(request.Frequency, true, out var frequency) ||
+            !Enum.TryParse<FeeType>(request.Type, true, out var type))
+            return BadRequest(new ApiResponse<FeeStructureDto> { Success = false, Message = "Invalid fee type or frequency" });
+
+        structure.Name = request.Name.Trim();
+        structure.Type = type;
+        structure.Category = frequency == FeeFrequency.OneTime ? FeeCategory.Additional : FeeCategory.Monthly;
+        structure.Amount = request.Amount;
+        structure.Frequency = frequency;
+        structure.ClassId = request.ClassId;
+        structure.Description = request.Description?.Trim();
+        structure.AcademicYear = request.AcademicYear?.Trim() ?? structure.AcademicYear;
+        structure.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return Ok(new ApiResponse<FeeStructureDto>
+        {
+            Success = true,
+            Message = "Fee plan updated",
+            Data = MapStructure(structure)
+        });
+    }
+
+    [HttpDelete("structures/{id}")]
+    public async Task<ActionResult<ApiResponse<bool>>> ArchiveFeeStructure(int id)
+    {
+        var structure = await _context.FeeStructures.FirstOrDefaultAsync(f => f.Id == id && !f.IsDeleted);
+        if (structure == null) return NotFound();
+        structure.IsActive = false;
+        structure.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return Ok(new ApiResponse<bool> { Success = true, Message = "Fee plan archived", Data = true });
+    }
+
+    private static FeeStructureDto MapStructure(FeeStructure fs) => new()
+    {
+        Id = fs.Id,
+        Name = fs.Name,
+        Type = fs.Type.ToString(),
+        Amount = fs.Amount,
+        Frequency = fs.Frequency.ToString(),
+        ClassId = fs.ClassId,
+        Description = fs.Description,
+        AcademicYear = fs.AcademicYear
+    };
+
     private string GetCurrentAcademicYear()
     {
         // Simple logic - in real implementation, this would be more sophisticated
@@ -645,4 +734,15 @@ public class FeeStructureDto
     public string? ClassName { get; set; }
     public string? Description { get; set; }
     public string AcademicYear { get; set; } = string.Empty;
+}
+
+public class SaveFeeStructureRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = nameof(FeeType.Tuition);
+    public decimal Amount { get; set; }
+    public string Frequency { get; set; } = nameof(FeeFrequency.Monthly);
+    public int? ClassId { get; set; }
+    public string? Description { get; set; }
+    public string? AcademicYear { get; set; }
 }

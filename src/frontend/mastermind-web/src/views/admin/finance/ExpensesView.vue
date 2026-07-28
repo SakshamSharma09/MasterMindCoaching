@@ -107,8 +107,10 @@
                   </button>
                 </template>
                 <template v-else>
-                  <button @click="editExpense(expense)" class="text-indigo-600 hover:text-indigo-900 mr-3 font-medium">Edit</button>
-                  <button @click="deleteExpense(expense.id)" class="text-red-600 hover:text-red-900 font-medium">Delete</button>
+                  <button v-if="expense.status !== 'Paid'" @click="openSalaryPaymentModal(expense)" class="mr-3 font-medium text-emerald-600 hover:text-emerald-900">Mark paid</button>
+                  <button v-else @click="downloadExpenseReceipt(expense.id)" class="mr-3 font-medium text-indigo-600 hover:text-indigo-900">Download receipt</button>
+                  <button v-if="expense.status !== 'Paid'" @click="editExpense(expense)" class="text-indigo-600 hover:text-indigo-900 mr-3 font-medium">Edit</button>
+                  <button v-if="expense.status !== 'Paid'" @click="deleteExpense(expense.id)" class="text-red-600 hover:text-red-900 font-medium">Delete</button>
                 </template>
               </td>
             </tr>
@@ -125,8 +127,8 @@
     <div v-if="showSalaryPaymentModal" class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-screen items-center justify-center px-4">
         <div class="fixed inset-0 bg-gray-500/75" @click="closeSalaryPaymentModal"></div>
-        <form @submit.prevent="markSalaryPaid" class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-          <h3 class="text-lg font-semibold text-gray-900">Mark teacher salary as paid</h3>
+        <form @submit.prevent="markSalaryPaid" class="mobile-modal-shell relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <h3 class="text-lg font-semibold text-gray-900">Mark {{ selectedSalary?.source === 'TeacherSalary' ? 'teacher salary' : 'expense' }} as paid</h3>
           <p class="mt-1 text-sm text-gray-600">{{ selectedSalary?.paidTo }} · ₹{{ formatCurrency(selectedSalary?.amount || 0) }}</p>
           <div class="mt-5 space-y-4">
             <div>
@@ -164,7 +166,7 @@
     <div v-if="showExpenseModal" class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeExpenseModal"></div>
-        <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full z-10">
+        <div class="mobile-modal-shell relative bg-white rounded-xl shadow-xl max-w-lg w-full z-10 overflow-y-auto">
           <form @submit.prevent="saveExpense">
             <div class="px-6 pt-6 pb-4">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">
@@ -202,13 +204,41 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">Paid To</label>
                   <input v-model="expenseForm.paidTo" type="text" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                    <input v-model="expenseForm.dueDate" type="date" required class="w-full rounded-lg border-gray-300 text-sm">
+                  </div>
+                  <div v-if="!isEditingExpense">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment</label>
+                    <select v-model="expenseForm.paymentTiming" class="w-full rounded-lg border-gray-300 text-sm">
+                      <option value="later">Pay later</option>
+                      <option value="now">Paid now</option>
+                    </select>
+                  </div>
+                </div>
+                <div v-if="!isEditingExpense">
+                  <label class="flex min-h-11 items-center gap-3 text-sm font-medium text-gray-700">
+                    <input v-model="expenseForm.isRecurring" type="checkbox" class="h-5 w-5 rounded border-gray-300">
+                    Repeat this expense
+                  </label>
+                  <div v-if="expenseForm.isRecurring" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <select v-model="expenseForm.recurrencePattern" class="w-full rounded-lg border-gray-300 text-sm">
+                      <option value="Monthly">Monthly</option>
+                      <option value="Quarterly">Quarterly</option>
+                      <option value="HalfYearly">Half-yearly — every 6 months</option>
+                      <option value="Yearly">Annual</option>
+                    </select>
+                    <input v-model="expenseForm.recurrenceEndDate" type="date" aria-label="Recurrence end date" class="w-full rounded-lg border-gray-300 text-sm">
+                  </div>
+                </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Receipt/Invoice Number</label>
                   <input v-model="expenseForm.receiptNumber" type="text" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 </div>
               </div>
             </div>
-            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
+            <div class="mobile-modal-actions bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
               <button type="button" @click="closeExpenseModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
@@ -259,6 +289,11 @@ const expenseForm = ref({
   paidTo: '',
   date: '',
   receiptNumber: ''
+  ,dueDate: '',
+  paymentTiming: 'later',
+  isRecurring: false,
+  recurrencePattern: 'Monthly',
+  recurrenceEndDate: ''
 })
 
 const filteredExpenses = computed(() => {
@@ -302,7 +337,8 @@ const loadExpenses = async () => {
 
 const openAddExpenseModal = () => {
   isEditingExpense.value = false
-  expenseForm.value = { id: 0, category: '', description: '', amount: '', paidTo: '', date: '', receiptNumber: '' }
+  const today = new Date().toISOString().slice(0, 10)
+  expenseForm.value = { id: 0, category: '', description: '', amount: '', paidTo: '', date: today, receiptNumber: '', dueDate: today, paymentTiming: 'later', isRecurring: false, recurrencePattern: 'Monthly', recurrenceEndDate: '' }
   showExpenseModal.value = true
 }
 
@@ -317,7 +353,12 @@ const editExpense = (expense: Expense) => {
     amount: expense.amount.toString(),
     paidTo: expense.paidTo,
     date: expense.date,
-    receiptNumber: expense.receiptNumber || ''
+    receiptNumber: expense.receiptNumber || '',
+    dueDate: expense.dueDate || expense.date,
+    paymentTiming: expense.status === 'Paid' ? 'now' : 'later',
+    isRecurring: false,
+    recurrencePattern: 'Monthly',
+    recurrenceEndDate: ''
   }
   showExpenseModal.value = true
 }
@@ -332,6 +373,12 @@ const saveExpense = async () => {
       paidTo: expenseForm.value.paidTo,
       date: expenseForm.value.date,
       receiptNumber: expenseForm.value.receiptNumber || undefined
+      ,dueDate: expenseForm.value.dueDate || undefined,
+      payNow: expenseForm.value.paymentTiming === 'now',
+      paymentDate: expenseForm.value.paymentTiming === 'now' ? expenseForm.value.date : undefined,
+      isRecurring: expenseForm.value.isRecurring,
+      recurrencePattern: expenseForm.value.isRecurring ? expenseForm.value.recurrencePattern : undefined,
+      recurrenceEndDate: expenseForm.value.recurrenceEndDate || undefined
     }
 
     if (isEditingExpense.value) {
@@ -379,18 +426,32 @@ const closeSalaryPaymentModal = () => {
 }
 
 const markSalaryPaid = async () => {
-  if (!selectedSalary.value?.salaryId) return
+  if (!selectedSalary.value) return
   loading.value = true
   try {
-    await financeService.markSalaryPaid(selectedSalary.value.salaryId, salaryPaymentForm.value)
+    if (selectedSalary.value.source === 'TeacherSalary' && selectedSalary.value.salaryId) {
+      await financeService.markSalaryPaid(selectedSalary.value.salaryId, salaryPaymentForm.value)
+    } else {
+      await financeService.markExpensePaid(selectedSalary.value.id, salaryPaymentForm.value)
+    }
     await loadExpenses()
     closeSalaryPaymentModal()
-    toast.success('Salary paid', 'Teacher salary has been marked as paid.')
+    toast.success('Payment recorded', 'The obligation is paid and its receipt is ready.')
   } catch (error) {
     console.error('Error marking salary paid:', error)
     toast.error('Failed to update salary', 'Please try again.')
   } finally {
     loading.value = false
+  }
+}
+
+const downloadExpenseReceipt = async (expenseId: number) => {
+  try {
+    await financeService.downloadExpenseReceipt(expenseId)
+    toast.success('Receipt downloaded', 'Expense receipt is ready.')
+  } catch (error) {
+    console.error('Error downloading expense receipt:', error)
+    toast.error('Unable to download receipt', 'Please try again.')
   }
 }
 

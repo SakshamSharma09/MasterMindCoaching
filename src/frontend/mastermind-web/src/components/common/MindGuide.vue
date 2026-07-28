@@ -335,6 +335,12 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (max-width: 640px) {
+  .mind-guide {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mind-guide__orb,
   .mind-guide__ring,

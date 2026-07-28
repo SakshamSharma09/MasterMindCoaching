@@ -22,6 +22,13 @@ public class Expense : BaseEntity
     public bool IsRecurring { get; set; } = false;
     public string? RecurrencePattern { get; set; } // e.g., "Monthly", "Quarterly", "Yearly"
     public DateTime? NextDueDate { get; set; }
+    public DateTime? DueDate { get; set; }
+    public DateTime? PaymentDate { get; set; }
+    public int? ParentExpenseId { get; set; }
+    public DateTime? PeriodStart { get; set; }
+    public DateTime? PeriodEnd { get; set; }
+    public int? RecurrenceIntervalMonths { get; set; }
+    public string? OccurrenceKey { get; set; }
     public int? BudgetCategoryId { get; set; }
     public int? SessionId { get; set; }
 
@@ -29,6 +36,8 @@ public class Expense : BaseEntity
     public User? ProcessedByUser { get; set; }
     public BudgetCategory? BudgetCategory { get; set; }
     public Session? Session { get; set; }
+    public Expense? ParentExpense { get; set; }
+    public ICollection<Expense> RecurringExpenses { get; set; } = new List<Expense>();
 }
 
 public enum ExpenseStatus

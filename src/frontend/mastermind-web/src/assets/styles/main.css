@@ -62,6 +62,7 @@
   body {
     @apply bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50;
     background-attachment: fixed;
+    overflow-x: hidden;
   }
 
   html,
@@ -295,6 +296,63 @@
   padding-right: env(safe-area-inset-right, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
+}
+
+.native-insets-applied .app-safe-area {
+  padding: 0;
+}
+
+.native-insets-applied .mobile-safe-fixed-header,
+.native-insets-applied .safe-sticky-header {
+  top: 0;
+}
+
+.native-insets-applied .mobile-safe-fixed-panel {
+  top: 4rem;
+}
+
+.mobile-icon-button {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-notification-panel {
+  max-height: min(70dvh, 36rem);
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 640px) {
+  button,
+  a,
+  select,
+  input:not([type="checkbox"]):not([type="radio"]) {
+    min-height: 44px;
+  }
+
+  .mobile-stack-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .mobile-modal-shell {
+    max-height: 100dvh;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .mobile-modal-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    background: white;
+  }
 }
 
 .mobile-safe-fixed-header {

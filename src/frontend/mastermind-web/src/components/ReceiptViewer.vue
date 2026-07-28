@@ -166,29 +166,34 @@ const printReceipt = () => {
   showSuccess('Print dialog opened. Please select your printer.')
 }
 
-const downloadPDF = () => {
-  // In a real implementation, this would generate and download a PDF
-  // For now, we'll create a simple text version
-  const receiptContent = generateReceiptText()
-  const blob = new Blob([receiptContent], { type: 'text/plain' })
-  const url = window.URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `Receipt-${props.receipt.receiptNumber}.txt`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  window.URL.revokeObjectURL(url)
-  
-  showSuccess('Receipt downloaded successfully!')
+const downloadPDF = async () => {
+  try {
+    await financeService.downloadFeeReceipt(props.receipt.id, props.receipt.receiptNumber)
+    showSuccess('Receipt PDF is ready.')
+  } catch (error) {
+    console.error('Error downloading receipt:', error)
+    showSuccess('Receipt could not be downloaded. Please try again.')
+  }
 }
 
 const shareReceipt = async () => {
+  const message = `Fee receipt ${props.receipt.receiptNumber} for ${props.receipt.studentName}. Amount paid: INR ${formatCurrency(props.receipt.paidAmount)}.`
+  const mobile = String(props.receipt.parentMobile || '').replace(/\D/g, '')
+  if (mobile) {
+    const normalizedMobile = mobile.length === 10 ? `91${mobile}` : mobile
+    window.open(
+      `https://wa.me/${normalizedMobile}?text=${encodeURIComponent(message)}`,
+      '_blank',
+      'noopener,noreferrer'
+    )
+    showSuccess('WhatsApp opened. Attach the downloaded PDF receipt before sending.')
+    return
+  }
   if (navigator.share) {
     try {
       await navigator.share({
         title: `Fee Receipt - ${props.receipt.receiptNumber}`,
-        text: `Fee receipt for ${props.receipt.studentName} - Amount: ₹${formatCurrency(props.receipt.paidAmount)}`,
+        text: message,
         url: window.location.href
       })
       showSuccess('Receipt shared successfully!')

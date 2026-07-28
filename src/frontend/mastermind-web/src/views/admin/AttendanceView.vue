@@ -307,30 +307,30 @@
     </div>
 
     <!-- Bulk Attendance Tab -->
-    <div v-if="activeTab === 'bulk'" class="mt-6">
+    <div v-if="activeTab === 'bulk'" class="mt-6 pb-24 sm:pb-0">
       <!-- Bulk Attendance Header -->
-      <div class="bg-white shadow rounded-lg p-6">
-        <div class="flex items-center justify-between mb-6">
+      <div class="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6">
           <div>
             <h2 class="text-lg font-medium text-gray-900">Bulk Attendance Marking</h2>
             <p class="mt-1 text-sm text-gray-500">
               Mark attendance for all students at once. Check the box to mark present, uncheck to mark absent.
             </p>
           </div>
-          <div class="flex items-center space-x-4">
-            <div>
+          <div class="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-[minmax(180px,1fr)_auto_auto] sm:items-end">
+            <div class="w-full">
               <label class="block text-sm font-medium text-gray-700">Select Date</label>
               <input
                 v-model="bulkDate"
                 type="date"
-                class="mt-1 input-primary"
+                class="mt-1 input-primary w-full min-h-11"
                 @change="loadBulkAttendance"
               />
             </div>
             <button
               @click="loadAllStudents"
               :disabled="loadingBulk"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              class="inline-flex min-h-11 w-full items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 sm:w-auto"
             >
               <svg v-if="loadingBulk" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -340,8 +340,8 @@
             </button>
             <button
               @click="saveBulkAttendance"
-              :disabled="loadingBulk || bulkStudents.length === 0"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+              :disabled="loadingBulk || savingBulk || bulkStudents.length === 0"
+              class="hidden min-h-11 items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 sm:inline-flex"
             >
               <svg v-if="savingBulk" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -353,27 +353,27 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="flex items-center space-x-4 mb-6 p-4 bg-gray-50 rounded-lg">
-          <span class="text-sm font-medium text-gray-700">Quick Actions:</span>
+        <div class="mb-6 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-3 sm:p-4">
+          <span class="w-full text-sm font-medium text-gray-700 sm:w-auto">Quick Actions:</span>
           <button
             @click="markAllPresent"
-            class="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            class="min-h-11 rounded-md px-3 text-sm text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 font-medium"
           >
             Mark All Present
           </button>
           <button
             @click="markAllAbsent"
-            class="text-sm text-red-600 hover:text-red-800 font-medium"
+            class="min-h-11 rounded-md px-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-800 font-medium"
           >
             Mark All Absent
           </button>
           <button
             @click="clearAllSelections"
-            class="text-sm text-gray-600 hover:text-gray-800 font-medium"
+            class="min-h-11 rounded-md px-3 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-800 font-medium"
           >
             Clear All
           </button>
-          <span class="text-sm text-gray-500">
+          <span class="w-full text-sm text-gray-500 sm:ml-auto sm:w-auto">
             Selected: {{ bulkStudents.filter(s => s.isPresent).length }} present, {{ bulkStudents.filter(s => !s.isPresent).length }} absent
           </span>
         </div>
@@ -381,8 +381,8 @@
         <!-- Students Grouped by Classes -->
         <div v-if="bulkStudents.length > 0" class="space-y-6">
           <div v-for="classGroup in groupedBulkStudents" :key="classGroup.classId" class="border border-gray-200 rounded-lg">
-            <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
-              <h3 class="text-lg font-medium text-gray-900">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 sm:px-6">
+              <h3 class="text-base font-medium text-gray-900 sm:text-lg">
                 {{ classGroup.className }}
                 <span class="ml-2 text-sm font-normal text-gray-500">
                   ({{ classGroup.board }} - {{ classGroup.medium }})
@@ -396,17 +396,17 @@
               <div
                 v-for="student in classGroup.students"
                 :key="student.id"
-                class="px-6 py-4 hover:bg-gray-50 transition-colors"
+                class="px-4 py-4 hover:bg-gray-50 transition-colors sm:px-6"
               >
-                <div class="flex items-center">
+                <div class="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-2 sm:flex">
                   <input
                     type="checkbox"
                     :checked="student.isPresent"
                     @change="toggleStudentAttendance(student)"
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    class="h-5 w-5 justify-self-center text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                   />
-                  <div class="ml-4 flex-1">
-                    <div class="flex items-center">
+                  <div class="min-w-0 flex-1 sm:ml-4">
+                    <div class="flex flex-wrap items-center">
                       <span class="text-sm font-medium text-gray-900">
                         {{ student.firstName }} {{ student.lastName }}
                       </span>
@@ -418,7 +418,7 @@
                       Mobile: {{ student.studentMobile || 'N/A' }}
                     </div>
                   </div>
-                  <div class="flex items-center space-x-4">
+                  <div class="col-start-2 mt-2 flex items-center sm:mt-0 sm:space-x-4">
                     <span
                       :class="[
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
@@ -455,6 +455,19 @@
             <span class="text-sm text-gray-600">Loading students...</span>
           </div>
         </div>
+      </div>
+      <div
+        v-if="bulkStudents.length > 0"
+        class="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur sm:hidden"
+        style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));"
+      >
+        <button
+          @click="saveBulkAttendance"
+          :disabled="loadingBulk || savingBulk"
+          class="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {{ savingBulk ? 'Saving attendance…' : `Save attendance for ${bulkStudents.length} students` }}
+        </button>
       </div>
     </div>
 

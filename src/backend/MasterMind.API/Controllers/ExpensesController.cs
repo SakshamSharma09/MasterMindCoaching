@@ -19,15 +19,18 @@ public class ExpensesController : ControllerBase
     private readonly MasterMindDbContext _context;
     private readonly ILogger<ExpensesController> _logger;
     private readonly ITeacherSalaryService _teacherSalaryService;
+    private readonly IRecurringObligationService _recurringObligationService;
 
     public ExpensesController(
         MasterMindDbContext context,
         ILogger<ExpensesController> logger,
-        ITeacherSalaryService teacherSalaryService)
+        ITeacherSalaryService teacherSalaryService,
+        IRecurringObligationService recurringObligationService)
     {
         _context = context;
         _logger = logger;
         _teacherSalaryService = teacherSalaryService;
+        _recurringObligationService = recurringObligationService;
     }
 
     /// <summary>
@@ -48,10 +51,13 @@ public class ExpensesController : ControllerBase
     {
         try
         {
+            await _recurringObligationService.EnsureExpenseObligationsAsync(DateTime.Today, sessionId);
             // Load data first, then filter/project in memory to avoid SQL translation issues
             var expensesList = await _context.Expenses
                 .Include(e => e.ProcessedByUser)
-                .Where(e => !e.IsDeleted && (!sessionId.HasValue || e.SessionId == sessionId.Value))
+                .Where(e => !e.IsDeleted &&
+                    !(e.IsRecurring && e.ParentExpenseId == null) &&
+                    (!sessionId.HasValue || e.SessionId == sessionId.Value))
                 .OrderByDescending(e => e.ExpenseDate)
                 .Take(100)
                 .ToListAsync();
@@ -84,10 +90,13 @@ public class ExpensesController : ControllerBase
                     PaidTo = e.PaidTo,
                     Date = e.ExpenseDate.ToString("yyyy-MM-dd"),
                     ReceiptNumber = e.ReceiptNumber,
-                    Status = e.Status.ToString(),
+                    Status = ExpenseDisplayStatus(e),
                     PaymentMethod = e.PaymentMethod.HasValue ? e.PaymentMethod.Value.ToString() : null,
                     VendorName = e.VendorName,
                     IsRecurring = e.IsRecurring,
+                    DueDate = e.DueDate?.ToString("yyyy-MM-dd"),
+                    PaymentDate = e.PaymentDate?.ToString("yyyy-MM-dd"),
+                    TransactionId = e.TransactionId,
                     ProcessedBy = e.ProcessedByUser != null ? $"{e.ProcessedByUser.FirstName} {e.ProcessedByUser.LastName}" : null
                     ,Source = "General"
                 })
@@ -131,16 +140,18 @@ public class ExpensesController : ControllerBase
     {
         try
         {
+            var expenseDate = DateTime.Parse(request.Date);
+            var recurrenceInterval = RecurrenceInterval(request.RecurrencePattern);
             var expense = new Expense
             {
                 Category = request.Category,
                 Description = request.Description,
                 Amount = request.Amount,
                 PaidTo = request.PaidTo,
-                ExpenseDate = DateTime.Parse(request.Date),
+                ExpenseDate = expenseDate,
                 ReceiptNumber = request.ReceiptNumber,
                 InvoiceNumber = request.InvoiceNumber,
-                Status = ExpenseStatus.Pending,
+                Status = request.PayNow ? ExpenseStatus.Paid : ExpenseStatus.Pending,
                 PaymentMethod = request.PaymentMethod,
                 TransactionId = request.TransactionId,
                 Remarks = request.Remarks,
@@ -148,6 +159,11 @@ public class ExpensesController : ControllerBase
                 VendorContact = request.VendorContact,
                 IsRecurring = request.IsRecurring,
                 RecurrencePattern = request.RecurrencePattern,
+                RecurrenceIntervalMonths = request.IsRecurring ? recurrenceInterval : null,
+                PeriodStart = request.IsRecurring ? expenseDate.Date : null,
+                PeriodEnd = request.RecurrenceEndDate,
+                DueDate = request.DueDate ?? expenseDate.Date,
+                PaymentDate = request.PayNow ? request.PaymentDate ?? DateTime.UtcNow : null,
                 ProcessedByUserId = GetCurrentUserId(),
                 SessionId = await _context.Sessions
                     .Where(s => s.IsActive && !s.IsDeleted)
@@ -157,6 +173,10 @@ public class ExpensesController : ControllerBase
 
             _context.Expenses.Add(expense);
             await _context.SaveChangesAsync();
+            if (expense.IsRecurring)
+            {
+                await _recurringObligationService.EnsureExpenseObligationsAsync(DateTime.Today, expense.SessionId);
+            }
 
             var expenseDto = new ExpenseDto
             {
@@ -171,6 +191,8 @@ public class ExpensesController : ControllerBase
                 PaymentMethod = expense.PaymentMethod?.ToString(),
                 VendorName = expense.VendorName,
                 IsRecurring = expense.IsRecurring,
+                DueDate = expense.DueDate?.ToString("yyyy-MM-dd"),
+                PaymentDate = expense.PaymentDate?.ToString("yyyy-MM-dd"),
                 ProcessedBy = $"{User.Identity?.Name}"
             };
 
@@ -236,6 +258,11 @@ public class ExpensesController : ControllerBase
             expense.VendorContact = request.VendorContact;
             expense.IsRecurring = request.IsRecurring;
             expense.RecurrencePattern = request.RecurrencePattern;
+            expense.RecurrenceIntervalMonths = request.IsRecurring
+                ? RecurrenceInterval(request.RecurrencePattern)
+                : null;
+            expense.DueDate = request.DueDate;
+            expense.PeriodEnd = request.RecurrenceEndDate;
 
             await _context.SaveChangesAsync();
 
@@ -321,6 +348,89 @@ public class ExpensesController : ControllerBase
                 Message = "Error deleting expense"
             });
         }
+    }
+
+    [HttpPost("{id}/pay")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<object>>> MarkExpensePaid(
+        int id,
+        [FromBody] MarkExpensePaidRequest request)
+    {
+        var expense = await _context.Expenses
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted &&
+                !(e.IsRecurring && e.ParentExpenseId == null));
+        if (expense == null)
+        {
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Expense obligation not found" });
+        }
+        if (expense.Status == ExpenseStatus.Paid)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "Expense is already paid" });
+        }
+
+        expense.Status = ExpenseStatus.Paid;
+        expense.PaymentDate = request.PaymentDate ?? DateTime.UtcNow;
+        expense.PaymentMethod = request.PaymentMethod;
+        expense.TransactionId = request.TransactionId?.Trim();
+        expense.Remarks = request.Remarks?.Trim() ?? expense.Remarks;
+        expense.ProcessedByUserId = GetCurrentUserId();
+        expense.ReceiptNumber ??= $"EXP-{expense.PaymentDate:yyyy}-{expense.Id:D5}";
+        expense.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Expense marked as paid",
+            Data = new { expense.Id, expense.ReceiptNumber, expense.PaymentDate }
+        });
+    }
+
+    [HttpGet("{id}/receipt")]
+    [Produces("application/pdf")]
+    public async Task<IActionResult> DownloadExpenseReceipt(int id)
+    {
+        var expense = await _context.Expenses
+            .Include(e => e.ProcessedByUser)
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+        if (expense == null) return NotFound();
+        if (expense.Status != ExpenseStatus.Paid)
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "A receipt is available after the expense is marked as paid"
+            });
+        }
+
+        var receiptNumber = expense.ReceiptNumber ?? $"EXP-{expense.PaymentDate:yyyy}-{expense.Id:D5}";
+        var pdf = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(45);
+                page.Header().Text("MasterMind Coaching Classes").FontSize(20).Bold();
+                page.Content().PaddingVertical(20).Column(column =>
+                {
+                    column.Spacing(8);
+                    column.Item().Text("EXPENSE PAYMENT RECEIPT").FontSize(15).Bold();
+                    column.Item().Text($"Receipt: {receiptNumber}");
+                    column.Item().Text($"Paid to: {expense.PaidTo}");
+                    column.Item().Text($"Category: {expense.Category}");
+                    column.Item().Text($"Description: {expense.Description}");
+                    column.Item().Text($"Amount paid: ₹{expense.Amount:N2}").FontSize(15).Bold();
+                    column.Item().Text($"Payment date: {expense.PaymentDate:dd MMMM yyyy}");
+                    column.Item().Text($"Payment method: {expense.PaymentMethod?.ToString() ?? "Not specified"}");
+                    if (!string.IsNullOrWhiteSpace(expense.TransactionId))
+                        column.Item().Text($"Reference: {expense.TransactionId}");
+                    column.Item().PaddingTop(18).Text("Status: PAID").Bold().FontColor(Colors.Green.Darken2);
+                });
+                page.Footer().AlignCenter().Text("This is a system-generated receipt.");
+            });
+        }).GeneratePdf();
+
+        return File(pdf, "application/pdf", $"Expense-Receipt-{expense.Id}.pdf");
     }
 
     [HttpPost("salaries/{id}/pay")]
@@ -476,7 +586,8 @@ public class ExpensesController : ControllerBase
             }
 
             var expenses = await query
-                .Where(e => e.Status == ExpenseStatus.Paid || e.Status == ExpenseStatus.Processed)
+                .Where(e => !e.IsDeleted && !e.IsRecurring &&
+                    e.Status != ExpenseStatus.Cancelled && e.Status != ExpenseStatus.Rejected)
                 .ToListAsync();
 
             var summary = expenses
@@ -550,6 +661,22 @@ public class ExpensesController : ControllerBase
     }
 
     private static string SalaryReceiptNumber(TeacherSalary salary) => $"SAL-{salary.Year}-{salary.Id:D5}";
+
+    private static string ExpenseDisplayStatus(Expense expense) =>
+        expense.Status == ExpenseStatus.Pending &&
+        expense.DueDate.HasValue &&
+        DateTime.Today >= expense.DueDate.Value.Date
+            ? "Overdue"
+            : expense.Status.ToString();
+
+    private static int? RecurrenceInterval(string? pattern) => pattern?.Trim().ToLowerInvariant() switch
+    {
+        "monthly" => 1,
+        "quarterly" => 3,
+        "halfyearly" or "half-yearly" => 6,
+        "annual" or "yearly" => 12,
+        _ => null
+    };
 }
 
 // DTOs
@@ -582,6 +709,14 @@ public class MarkSalaryPaidRequest
     public string? Remarks { get; set; }
 }
 
+public class MarkExpensePaidRequest
+{
+    public DateTime? PaymentDate { get; set; }
+    public PaymentMethod? PaymentMethod { get; set; }
+    public string? TransactionId { get; set; }
+    public string? Remarks { get; set; }
+}
+
 public class CreateExpenseRequest
 {
     public string Category { get; set; } = string.Empty;
@@ -598,6 +733,10 @@ public class CreateExpenseRequest
     public string? VendorContact { get; set; }
     public bool IsRecurring { get; set; }
     public string? RecurrencePattern { get; set; }
+    public DateTime? RecurrenceEndDate { get; set; }
+    public DateTime? DueDate { get; set; }
+    public bool PayNow { get; set; }
+    public DateTime? PaymentDate { get; set; }
 }
 
 public class UpdateExpenseRequest
@@ -616,6 +755,8 @@ public class UpdateExpenseRequest
     public string? VendorContact { get; set; }
     public bool IsRecurring { get; set; }
     public string? RecurrencePattern { get; set; }
+    public DateTime? RecurrenceEndDate { get; set; }
+    public DateTime? DueDate { get; set; }
 }
 
 public class ExpenseSummaryDto

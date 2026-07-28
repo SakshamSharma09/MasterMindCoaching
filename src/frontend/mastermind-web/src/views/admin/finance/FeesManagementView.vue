@@ -107,7 +107,7 @@
     <div v-if="showFeeModal" class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeFeeModal"></div>
-        <div class="relative bg-white rounded-xl shadow-xl max-w-2xl w-full z-10">
+        <div class="mobile-modal-shell relative z-10 w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-xl">
           <form @submit.prevent="saveFee">
             <div class="px-6 pt-6 pb-4">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">
@@ -122,7 +122,7 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Fee Type</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Reusable Fee Plan</label>
                   <select v-model="feeForm.feeStructureId" :disabled="isEditingFee" :required="!isEditingFee" @change="applyFeeStructureDefaults" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm disabled:bg-gray-100">
                     <option value="">Select Fee Type</option>
                     <option v-for="structure in feeStructures" :key="structure.id" :value="String(structure.id)">
@@ -135,6 +135,16 @@
                   <p v-else-if="selectedFeeStructure && !isEditingFee" class="mt-1 text-xs text-gray-500">
                     {{ selectedFeeStructure.frequency }}{{ selectedFeeStructure.academicYear ? ` · ${selectedFeeStructure.academicYear}` : '' }}
                   </p>
+                </div>
+                <div v-if="!isEditingFee">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                  <select v-model="feeForm.frequency" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly — every 3 months</option>
+                    <option value="HalfYearly">Half-yearly — every 6 months</option>
+                    <option value="Yearly">Annual</option>
+                    <option value="OneTime">One-time</option>
+                  </select>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
@@ -149,13 +159,17 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Schedule End Date</label>
                     <input v-model="feeForm.endDate" type="date" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                   </div>
+                  <div v-if="!isEditingFee">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">First Due Date</label>
+                    <input v-model="feeForm.firstDueDate" type="date" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                  </div>
                   <div v-else>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                     <input v-model="feeForm.dueDate" type="date" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                   </div>
                 </div>
-                <p v-if="!isEditingFee && feeForm.feeCategory === 'Monthly'" class="text-xs text-gray-500">
-                  Monthly installments become due on the 1st. Future months stay hidden until their due date. The schedule stops at this date or when the student becomes inactive.
+                <p v-if="!isEditingFee && feeForm.frequency !== 'OneTime'" class="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
+                  Billing uses next-cycle dates. Example: a monthly period starting 1 April is due on 1 May. A new installment is generated when each period starts; inactivation stops future periods.
                 </p>
 
                 <button
@@ -190,7 +204,7 @@
                 </div>
               </div>
             </div>
-            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
+            <div class="mobile-modal-actions bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
               <button type="button" @click="closeFeeModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
@@ -208,6 +222,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { financeService, type Fee, type UpdateFeeRequest } from '@/services/financeService'
+import { nextCycleDueDate, type BillingFrequency } from '@/utils/financeSchedule'
 import { studentsService } from '@/services/studentsService'
 import { classesService, type Class } from '@/services/classesService'
 import { useToast } from '@/composables/useToast'
@@ -254,11 +269,13 @@ const feeForm = ref({
   studentId: '',
   feeStructureId: '',
   feeCategory: 'Monthly',
+  frequency: 'Monthly',
   amount: '',
   discountAmount: '',
   startDate: '',
   endDate: '',
   dueDate: '',
+  firstDueDate: '',
   lateFeePerDay: '',
   gracePeriodDays: '0',
   academicYear: '',
@@ -288,8 +305,15 @@ const applyFeeStructureDefaults = () => {
   if (!structure) return
   feeForm.value.amount = structure.amount?.toString() || ''
   feeForm.value.feeCategory = inferFeeCategory(structure)
+  feeForm.value.frequency = structure.frequency || 'Monthly'
   feeForm.value.academicYear = structure.academicYear || ''
   feeForm.value.lateFeePerDay = structure.lateFeePerDay?.toString() || ''
+  if (feeForm.value.startDate) {
+    feeForm.value.firstDueDate = nextCycleDueDate(
+      feeForm.value.startDate,
+      feeForm.value.frequency as BillingFrequency
+    )
+  }
 }
 
 const filteredFees = computed(() => {
@@ -359,9 +383,10 @@ const openAddFeeModal = () => {
   isEditingFee.value = false
   feeForm.value = {
     id: 0, studentId: '', feeStructureId: '', feeCategory: 'Monthly',
+    frequency: 'Monthly',
     amount: '', discountAmount: '', startDate: today(),
     endDate: sessionStore.selectedSession?.endDate?.slice(0, 10) || '',
-    dueDate: today(),
+    dueDate: today(), firstDueDate: '',
     lateFeePerDay: '', gracePeriodDays: '0', academicYear: '', remarks: ''
   }
   if (feeStructures.value.length > 0) {
@@ -381,11 +406,13 @@ const editFee = (fee: Fee) => {
     studentId: fee.studentId.toString(),
     feeStructureId: '',
     feeCategory: 'Monthly',
+    frequency: 'Monthly',
     amount: fee.amount.toString(),
     discountAmount: '',
     startDate: '',
     endDate: '',
     dueDate: fee.dueDate,
+    firstDueDate: '',
     lateFeePerDay: '',
     gracePeriodDays: '0',
     academicYear: '',
@@ -419,7 +446,10 @@ const saveFee = async () => {
         discountAmount: feeForm.value.discountAmount ? parseFloat(feeForm.value.discountAmount) : null,
         startDate: feeForm.value.startDate || null,
         endDate: feeForm.value.endDate || null,
+        scheduleEndDate: feeForm.value.endDate || null,
         dueDate: feeForm.value.dueDate || null,
+        firstDueDate: feeForm.value.firstDueDate || null,
+        frequency: feeForm.value.frequency,
         lateFeePerDay: feeForm.value.lateFeePerDay ? parseFloat(feeForm.value.lateFeePerDay) : null,
         gracePeriodDays: feeForm.value.gracePeriodDays ? parseInt(feeForm.value.gracePeriodDays) : 0,
         academicYear: feeForm.value.academicYear,
