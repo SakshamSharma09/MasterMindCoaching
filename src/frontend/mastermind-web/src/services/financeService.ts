@@ -68,6 +68,14 @@ export interface CreateExpenseDto {
   paidTo: string
   date: string
   receiptNumber?: string
+  dueDate?: string
+  payNow?: boolean
+  paymentDate?: string
+  paymentMethod?: number
+  transactionId?: string
+  isRecurring?: boolean
+  recurrencePattern?: string
+  recurrenceEndDate?: string
 }
 
 export interface UpdateFeeRequest {
@@ -643,6 +651,21 @@ export const financeService = {
 
     const response = await apiService.post(`/feecollection/receipt/${receiptId}/send-email`, email ? { email } : {})
     return response.data
+  },
+
+  async markExpensePaid(id: number, data: Record<string, unknown>): Promise<void> {
+    await apiService.post(`/expenses/${id}/pay`, data)
+  },
+
+  async downloadExpenseReceipt(id: number): Promise<void> {
+    await apiService.download(`/expenses/${id}/receipt`, `Expense-Receipt-${id}.pdf`)
+  },
+
+  async downloadFeeReceipt(receiptId: number, receiptNumber: string): Promise<void> {
+    await apiService.download(
+      `/feecollection/receipt/${receiptId}/pdf`,
+      `Fee-Receipt-${receiptNumber}.pdf`
+    )
   },
 
   // Get student fee details

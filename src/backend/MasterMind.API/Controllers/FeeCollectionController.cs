@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
+using MasterMind.API.Services.Interfaces;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
 
 namespace MasterMind.API.Controllers;
 
@@ -15,11 +18,16 @@ public class FeeCollectionController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly ILogger<FeeCollectionController> _logger;
+    private readonly IEmailService _emailService;
 
-    public FeeCollectionController(MasterMindDbContext context, ILogger<FeeCollectionController> logger)
+    public FeeCollectionController(
+        MasterMindDbContext context,
+        ILogger<FeeCollectionController> logger,
+        IEmailService emailService)
     {
         _context = context;
         _logger = logger;
+        _emailService = emailService;
     }
 
     /// <summary>
@@ -173,15 +181,19 @@ public class FeeCollectionController : ControllerBase
                 });
             }
 
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             // Process payment for each fee item
             var payments = new List<Payment>();
             var receiptItems = new List<FeeReceiptItem>();
+            decimal totalSelectedAmount = 0;
+            decimal totalRemainingBalance = 0;
 
             foreach (var feeItem in request.FeeItems)
             {
                 var studentFee = await _context.StudentFees
                     .Include(sf => sf.FeeStructure)
-                    .FirstOrDefaultAsync(sf => sf.Id == feeItem.StudentFeeId);
+                    .FirstOrDefaultAsync(sf => sf.Id == feeItem.StudentFeeId &&
+                        sf.StudentId == request.StudentId && !sf.IsDeleted && !sf.IsRecurring);
 
                 if (studentFee == null)
                 {
@@ -189,6 +201,15 @@ public class FeeCollectionController : ControllerBase
                     {
                         Success = false,
                         Message = $"Student fee with ID {feeItem.StudentFeeId} not found"
+                    });
+                }
+                var remaining = studentFee.FinalAmount - studentFee.PaidAmount;
+                if (feeItem.Amount <= 0 || feeItem.Amount > remaining)
+                {
+                    return BadRequest(new ApiResponse<FeeReceiptDto>
+                    {
+                        Success = false,
+                        Message = $"Payment for fee {studentFee.Id} must be between 0 and {remaining:0.00}"
                     });
                 }
 
@@ -219,6 +240,8 @@ public class FeeCollectionController : ControllerBase
                 {
                     studentFee.Status = FeeStatus.PartiallyPaid;
                 }
+                totalSelectedAmount += studentFee.FinalAmount;
+                totalRemainingBalance += studentFee.FinalAmount - studentFee.PaidAmount;
 
                 // Create receipt item
                 var receiptItem = new FeeReceiptItem
@@ -239,10 +262,11 @@ public class FeeCollectionController : ControllerBase
             {
                 ReceiptNumber = $"RCP-{DateTime.Now:yyyyMMddHHmmss}",
                 StudentId = request.StudentId,
-                TotalAmount = request.FeeItems.Sum(fi => fi.ItemAmount),
+                TotalAmount = totalSelectedAmount,
                 PaidAmount = request.FeeItems.Sum(fi => fi.Amount),
-                BalanceAmount = request.FeeItems.Sum(fi => fi.ItemAmount) - request.FeeItems.Sum(fi => fi.Amount),
+                BalanceAmount = totalRemainingBalance,
                 PaymentMethod = request.PaymentMethod.ToString(),
+                Payment = payments.First(),
                 StudentName = $"{student.FirstName} {student.LastName}",
                 StudentClass = student.StudentClasses.FirstOrDefault()?.Class?.Name ?? "N/A",
                 FeeDescription = string.Join(", ", request.FeeItems.Select(fi => fi.Description)),
@@ -251,14 +275,15 @@ public class FeeCollectionController : ControllerBase
                 ParentEmail = student.ParentEmail,
                 ParentMobile = student.ParentMobile,
                 GeneratedByUserId = GetCurrentUserId(),
-                InstitutionName = "MasterMind Coaching",
-                InstitutionAddress = "Your Institution Address",
-                InstitutionContact = "Your Contact Number",
+                InstitutionName = "MasterMind Coaching Classes",
+                InstitutionAddress = "Kedia Palace, Sikar, Rajasthan",
+                InstitutionContact = "9887258679",
                 ReceiptItems = receiptItems
             };
 
             _context.FeeReceipts.Add(receipt);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
             await LogFeeReceiptTemplateUsageAsync(receipt);
 
             // Map to DTO
@@ -450,8 +475,30 @@ public class FeeCollectionController : ControllerBase
                 });
             }
 
-            // Here you would implement actual email sending logic
-            // For now, we'll just mark it as sent
+            if (string.IsNullOrWhiteSpace(receipt.ParentEmail))
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "The parent has not supplied a recovery email"
+                });
+            }
+            var body = $"<p>Namaste {receipt.ParentName},</p>" +
+                $"<p>Payment receipt <strong>{receipt.ReceiptNumber}</strong> for " +
+                $"<strong>₹{receipt.PaidAmount:N2}</strong> has been generated for {receipt.StudentName}.</p>" +
+                "<p>You can sign in to the Parent portal to view fee balances and receipt details.</p>";
+            var sent = await _emailService.SendEmailAsync(
+                receipt.ParentEmail,
+                $"Fee receipt {receipt.ReceiptNumber}",
+                body);
+            if (!sent)
+            {
+                return StatusCode(502, new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Email provider did not accept the receipt email"
+                });
+            }
             receipt.IsEmailSent = true;
             receipt.EmailSentAt = DateTime.UtcNow;
 
@@ -475,6 +522,44 @@ public class FeeCollectionController : ControllerBase
                 Message = "Error sending receipt email"
             });
         }
+    }
+
+    [HttpGet("receipt/{id}/pdf")]
+    [Produces("application/pdf")]
+    public async Task<IActionResult> DownloadReceiptPdf(int id)
+    {
+        var receipt = await _context.FeeReceipts
+            .Include(r => r.ReceiptItems)
+            .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+        if (receipt == null) return NotFound();
+
+        var pdf = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(45);
+                page.Header().Text(receipt.InstitutionName ?? "MasterMind Coaching Classes").FontSize(20).Bold();
+                page.Content().PaddingVertical(20).Column(column =>
+                {
+                    column.Spacing(7);
+                    column.Item().Text("FEE PAYMENT RECEIPT").FontSize(15).Bold();
+                    column.Item().Text($"Receipt: {receipt.ReceiptNumber}");
+                    column.Item().Text($"Student: {receipt.StudentName} — {receipt.StudentClass}");
+                    column.Item().Text($"Parent: {receipt.ParentName}");
+                    column.Item().Text($"Period: {receipt.FeePeriod}");
+                    foreach (var item in receipt.ReceiptItems)
+                        column.Item().Text($"{item.ItemDescription}: ₹{item.FinalAmount:N2}");
+                    column.Item().PaddingTop(8).Text($"Amount paid: ₹{receipt.PaidAmount:N2}").FontSize(15).Bold();
+                    column.Item().Text($"Balance: ₹{receipt.BalanceAmount:N2}");
+                    column.Item().Text($"Method: {receipt.PaymentMethod}");
+                    column.Item().Text($"Date: {receipt.ReceiptDate:dd MMMM yyyy}");
+                    column.Item().PaddingTop(18).Text("Status: PAID").Bold().FontColor(Colors.Green.Darken2);
+                });
+                page.Footer().AlignCenter().Text("This is a system-generated receipt.");
+            });
+        }).GeneratePdf();
+        return File(pdf, "application/pdf", $"Fee-Receipt-{receipt.ReceiptNumber}.pdf");
     }
 
     /// <summary>

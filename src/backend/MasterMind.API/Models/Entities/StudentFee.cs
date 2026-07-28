@@ -29,6 +29,13 @@ public class StudentFee : BaseEntity
     public int? ParentFeeId { get; set; } // For linking recurring fees to main fee
     public decimal? LateFeePerDay { get; set; } // Late fee charges
     public int GracePeriodDays { get; set; } = 0; // Grace period before late fees apply
+    public FeeFrequency? Frequency { get; set; }
+    public DateOnly? FirstDueDate { get; set; }
+    public DateOnly? ScheduleEndDate { get; set; }
+    public DateOnly? PeriodStart { get; set; }
+    public DateOnly? PeriodEnd { get; set; }
+    public int? RecurrenceIntervalMonths { get; set; }
+    public string? OccurrenceKey { get; set; }
 
     // Navigation properties
     public Student Student { get; set; } = null!;

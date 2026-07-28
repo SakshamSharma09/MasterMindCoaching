@@ -18,6 +18,7 @@ public class FinanceController : ControllerBase
     private readonly MasterMindDbContext _context;
     private readonly ILogger<FinanceController> _logger;
     private readonly ITeacherSalaryService _teacherSalaryService;
+    private readonly IRecurringObligationService _recurringObligationService;
     private static readonly Dictionary<int, (string Name, FeeType Type)> LegacyFeeStructureCatalog = new()
     {
         [1] = ("Tuition Fee", FeeType.Tuition),
@@ -32,11 +33,13 @@ public class FinanceController : ControllerBase
     public FinanceController(
         MasterMindDbContext context,
         ILogger<FinanceController> logger,
-        ITeacherSalaryService teacherSalaryService)
+        ITeacherSalaryService teacherSalaryService,
+        IRecurringObligationService recurringObligationService)
     {
         _context = context;
         _logger = logger;
         _teacherSalaryService = teacherSalaryService;
+        _recurringObligationService = recurringObligationService;
     }
 
     /// <summary>
@@ -57,6 +60,7 @@ public class FinanceController : ControllerBase
             await _teacherSalaryService.EnsureMonthlyObligationsAsync(activeSessionId);
             var todaySummary = DateOnly.FromDateTime(DateTime.Today);
             await EnsureMonthlyFeeInstallmentsAsync(todaySummary, activeSessionId);
+            await _recurringObligationService.EnsureFeeObligationsAsync(todaySummary, activeSessionId);
 
             var totalStudents = await _context.Students
                 .CountAsync(s => !s.IsDeleted && s.IsActive &&
@@ -832,15 +836,13 @@ public class FinanceController : ControllerBase
             var today = DateOnly.FromDateTime(DateTime.Today);
             var createdFees = new List<object>();
 
-            // Handle different fee categories
-            switch (request.FeeCategory)
+            var frequency = request.Frequency ?? feeStructure.Frequency;
+            if (frequency != FeeFrequency.OneTime)
             {
-                case FeeCategory.Monthly:
-                    // Create monthly recurring fee
-                    var monthlyFee = await CreateMonthlyFee(request, student, feeStructure, today);
-                    createdFees.Add(monthlyFee);
-                    break;
-
+                createdFees.Add(await CreateScheduledFee(request, student, feeStructure, frequency, today));
+            }
+            else switch (request.FeeCategory)
+            {
                 case FeeCategory.FullCourse:
                     // Create one-time course fee
                     var courseFee = await CreateCourseFee(request, student, feeStructure, today);
@@ -872,6 +874,73 @@ public class FinanceController : ControllerBase
                 Message = $"Error creating fee: {ex.Message}"
             });
         }
+    }
+
+    private async Task<object> CreateScheduledFee(
+        CreateFeeRequest request,
+        Student student,
+        FeeStructure feeStructure,
+        FeeFrequency frequency,
+        DateOnly today)
+    {
+        var start = request.StartDate ?? today;
+        var interval = _recurringObligationService.IntervalMonths(frequency);
+        var sessionEnd = student.Session == null
+            ? start.AddMonths(12)
+            : DateOnly.FromDateTime(student.Session.EndDate);
+        var end = request.ScheduleEndDate ?? request.EndDate ?? sessionEnd;
+        if (student.InactiveDate.HasValue)
+        {
+            var inactive = DateOnly.FromDateTime(student.InactiveDate.Value);
+            if (inactive < end) end = inactive;
+        }
+        if (end < start)
+        {
+            throw new InvalidOperationException("Schedule end date cannot be before billing start date.");
+        }
+
+        var schedule = new StudentFee
+        {
+            StudentId = student.Id,
+            FeeStructureId = feeStructure.Id,
+            Amount = request.Amount,
+            DiscountAmount = request.DiscountAmount,
+            FinalAmount = request.Amount - (request.DiscountAmount ?? 0),
+            DueDate = request.FirstDueDate ?? start.AddMonths(interval),
+            FeeCategory = request.FeeCategory,
+            Frequency = frequency,
+            FirstDueDate = request.FirstDueDate ?? start.AddMonths(interval),
+            StartDate = start,
+            EndDate = end,
+            ScheduleEndDate = end,
+            PeriodStart = start,
+            RecurrenceIntervalMonths = interval,
+            IsRecurring = true,
+            LateFeePerDay = request.LateFeePerDay ?? feeStructure.LateFeePerDay,
+            GracePeriodDays = request.GracePeriodDays,
+            AcademicYear = string.IsNullOrWhiteSpace(request.AcademicYear)
+                ? GetCurrentAcademicYear()
+                : request.AcademicYear,
+            Remarks = request.Remarks,
+            Status = FeeStatus.Pending
+        };
+        _context.StudentFees.Add(schedule);
+        await _context.SaveChangesAsync();
+        await _recurringObligationService.EnsureFeeObligationsAsync(today, student.SessionId);
+
+        return new
+        {
+            schedule.Id,
+            schedule.StudentId,
+            StudentName = $"{student.FirstName} {student.LastName}".Trim(),
+            FeePlan = feeStructure.Name,
+            Frequency = frequency.ToString(),
+            BillingStartDate = start,
+            FirstDueDate = schedule.FirstDueDate,
+            ScheduleEndDate = end,
+            schedule.Amount,
+            Message = "Fee schedule created; installments are generated at each period start."
+        };
     }
 
     private async Task<object> CreateMonthlyFee(CreateFeeRequest request, Student student, FeeStructure feeStructure, DateOnly today)
@@ -1351,6 +1420,9 @@ public class CreateFeeRequest
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public DateOnly? DueDate { get; set; }
+    public DateOnly? FirstDueDate { get; set; }
+    public DateOnly? ScheduleEndDate { get; set; }
+    public FeeFrequency? Frequency { get; set; }
     public int? RecurringDayOfMonth { get; set; }
     public decimal? LateFeePerDay { get; set; }
     public int GracePeriodDays { get; set; } = 0;

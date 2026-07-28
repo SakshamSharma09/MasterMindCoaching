@@ -170,6 +170,11 @@
                                                                "method":  "POST",
                                                                "path":  "/api/feecollection/receipt/{id}/send-email",
                                                                "action":  "SendReceiptEmail"
+                                                           },
+                                                           {
+                                                               "method":  "GET",
+                                                               "path":  "/api/feecollection/receipt/{id}/pdf",
+                                                               "action":  "DownloadReceiptPdf"
                                                            }
                                                        ]
                                         },
@@ -257,6 +262,16 @@
                                                           "method":  "POST",
                                                           "path":  "/api/expenses",
                                                           "action":  "CreateExpense"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/expenses/{id}/pay",
+                                                          "action":  "MarkExpensePaid"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/expenses/{id}/receipt",
+                                                          "action":  "DownloadExpenseReceipt"
                                                       },
                                                       {
                                                           "method":  "POST",
@@ -387,6 +402,21 @@
                                                       "method":  "GET",
                                                       "path":  "/api/fees/structures",
                                                       "action":  "GetFeeStructures"
+                                                  },
+                                                  {
+                                                      "method":  "POST",
+                                                      "path":  "/api/fees/structures",
+                                                      "action":  "CreateFeeStructure"
+                                                  },
+                                                  {
+                                                      "method":  "PUT",
+                                                      "path":  "/api/fees/structures/{id}",
+                                                      "action":  "UpdateFeeStructure"
+                                                  },
+                                                  {
+                                                      "method":  "DELETE",
+                                                      "path":  "/api/fees/structures/{id}",
+                                                      "action":  "ArchiveFeeStructure"
                                                   },
                                                   {
                                                       "method":  "POST",

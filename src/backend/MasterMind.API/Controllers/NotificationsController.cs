@@ -4,6 +4,7 @@ using MasterMind.API.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MasterMind.API.Services.Interfaces;
 
 namespace MasterMind.API.Controllers;
 
@@ -15,11 +16,16 @@ public class NotificationsController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly ILogger<NotificationsController> _logger;
+    private readonly IRecurringObligationService _recurringObligationService;
 
-    public NotificationsController(MasterMindDbContext context, ILogger<NotificationsController> logger)
+    public NotificationsController(
+        MasterMindDbContext context,
+        ILogger<NotificationsController> logger,
+        IRecurringObligationService recurringObligationService)
     {
         _context = context;
         _logger = logger;
+        _recurringObligationService = recurringObligationService;
     }
 
     [HttpGet]
@@ -73,6 +79,7 @@ public class NotificationsController : ControllerBase
         }
 
         var today = DateOnly.FromDateTime(DateTime.Today);
+        await _recurringObligationService.EnsureFeeObligationsAsync(today);
         var children = await _context.Students
             .Where(s => !s.IsDeleted && s.IsActive && s.ParentUserId == userId.Value)
             .Select(s => new { s.Id, StudentName = (s.FirstName + " " + s.LastName).Trim() })
@@ -89,11 +96,12 @@ public class NotificationsController : ControllerBase
 
         var fees = await _context.StudentFees
             .Where(sf => !sf.IsDeleted &&
+                         !sf.IsRecurring &&
                          childIds.Contains(sf.StudentId) &&
                          sf.Status != FeeStatus.Paid &&
                          sf.Status != FeeStatus.Waived &&
                          sf.Status != FeeStatus.Cancelled &&
-                         sf.DueDate <= today.AddDays(7))
+                         sf.DueDate <= today)
             .OrderBy(sf => sf.DueDate)
             .Take(20)
             .Select(sf => new
@@ -107,7 +115,7 @@ public class NotificationsController : ControllerBase
 
         notifications.AddRange(fees.Select(fee =>
         {
-            var isOverdue = fee.DueDate < today;
+            var isOverdue = fee.DueDate <= today;
             var days = today.DayNumber - fee.DueDate.DayNumber;
             return new PortalNotificationDto
             {

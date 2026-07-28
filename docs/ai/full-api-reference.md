@@ -67,6 +67,8 @@
 | GET | `/api/expenses/categories` | GetExpenseCategories |
 | GET | `/api/expenses/summary` | GetExpenseSummary |
 | POST | `/api/expenses` | CreateExpense |
+| POST | `/api/expenses/{id}/pay` | MarkExpensePaid |
+| GET | `/api/expenses/{id}/receipt` | DownloadExpenseReceipt |
 | POST | `/api/expenses/salaries/{id}/pay` | MarkSalaryPaid |
 | GET | `/api/expenses/salaries/{id}/receipt` | DownloadSalaryReceipt |
 | PUT | `/api/expenses/{id}` | UpdateExpense |
@@ -77,9 +79,13 @@
 | POST | `/api/feecollection/setup-student-fee` | SetupStudentFee |
 | POST | `/api/feecollection/collect-payment` | CollectPayment |
 | POST | `/api/feecollection/receipt/{id}/send-email` | SendReceiptEmail |
+| GET | `/api/feecollection/receipt/{id}/pdf` | DownloadReceiptPdf |
 | GET | `/api/fees` | GetFees |
 | GET | `/api/fees/overdue` | GetOverdueFees |
 | GET | `/api/fees/structures` | GetFeeStructures |
+| POST | `/api/fees/structures` | CreateFeeStructure |
+| PUT | `/api/fees/structures/{id}` | UpdateFeeStructure |
+| DELETE | `/api/fees/structures/{id}` | ArchiveFeeStructure |
 | POST | `/api/fees/reminders` | SendReminders |
 | POST | `/api/fees/{id}/mark-paid` | MarkFeeAsPaid |
 | PUT | `/api/fees/{id}` | UpdateFee |

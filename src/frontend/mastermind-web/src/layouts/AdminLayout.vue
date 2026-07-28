@@ -7,7 +7,8 @@
     <header class="mobile-safe-fixed-header lg:hidden fixed left-0 right-0 z-50 glass-navbar h-16 px-4 flex items-center justify-between">
       <button 
         @click="sidebarOpen = true"
-        class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors"
+        class="mobile-icon-button rounded-xl text-surface-600 hover:bg-surface-100 transition-colors"
+        aria-label="Open navigation"
       >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -25,7 +26,7 @@
       
       <div class="flex items-center gap-1">
         <button
-          class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors relative"
+          class="mobile-icon-button rounded-xl text-surface-600 hover:bg-surface-100 transition-colors relative"
           type="button"
           aria-label="Notifications"
           @click="toggleNotifications"
@@ -36,7 +37,7 @@
           <span v-if="notificationCount > 0" class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-accent-500 text-white text-[10px] font-bold flex items-center justify-center">{{ notificationCount }}</span>
         </button>
         <button
-          class="p-2 rounded-xl text-surface-600 hover:bg-surface-100 transition-colors"
+          class="mobile-icon-button rounded-xl text-surface-600 hover:bg-surface-100 transition-colors"
           type="button"
           aria-label="Change Password"
           @click="router.push({ name: 'AdminChangePassword' })"
@@ -49,13 +50,16 @@
       </div>
     </header>
 
-    <div v-if="notificationsOpen" class="mobile-safe-fixed-panel lg:hidden fixed right-4 z-50 w-[calc(100vw-2rem)] rounded-2xl border border-surface-200 bg-white shadow-xl overflow-hidden">
+    <div v-if="notificationsOpen" class="mobile-safe-fixed-panel mobile-notification-panel lg:hidden fixed right-4 z-[60] w-[calc(100vw-2rem)] rounded-2xl border border-surface-200 bg-white shadow-xl overflow-hidden">
       <div class="flex items-center justify-between px-4 py-3 border-b border-surface-100">
         <div>
           <p class="text-sm font-semibold text-surface-900">Admin Reminders</p>
           <p class="text-xs text-surface-500">{{ notificationSummary }}</p>
         </div>
-        <button class="text-xs font-semibold text-primary-600 hover:text-primary-700" type="button" @click="loadNotifications">Refresh</button>
+        <div class="flex items-center gap-1">
+          <button class="mobile-icon-button text-xs font-semibold text-primary-600 hover:text-primary-700" type="button" @click="loadNotifications">Refresh</button>
+          <button class="mobile-icon-button rounded-lg text-xl text-surface-500 hover:bg-surface-100" type="button" aria-label="Close notifications" @click="notificationsOpen = false">×</button>
+        </div>
       </div>
       <div v-if="notificationsLoading" class="px-4 py-5 text-sm text-surface-500">Loading reminders...</div>
       <div v-else-if="notifications.length === 0" class="px-4 py-5 text-sm text-surface-500">No pending reminders right now.</div>

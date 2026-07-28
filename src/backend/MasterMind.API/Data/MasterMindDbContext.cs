@@ -316,6 +316,26 @@ namespace MasterMind.API.Data
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
+            modelBuilder.Entity<StudentFee>(entity =>
+            {
+                entity.Property(e => e.OccurrenceKey).HasMaxLength(120);
+                entity.HasIndex(e => e.OccurrenceKey)
+                    .IsUnique()
+                    .HasFilter("[OccurrenceKey] IS NOT NULL");
+            });
+
+            modelBuilder.Entity<Expense>(entity =>
+            {
+                entity.Property(e => e.OccurrenceKey).HasMaxLength(120);
+                entity.HasIndex(e => e.OccurrenceKey)
+                    .IsUnique()
+                    .HasFilter("[OccurrenceKey] IS NOT NULL");
+                entity.HasOne(e => e.ParentExpense)
+                    .WithMany(e => e.RecurringExpenses)
+                    .HasForeignKey(e => e.ParentExpenseId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
             // Subject configuration
             modelBuilder.Entity<MasterMind.API.Models.Entities.Subject>(entity =>
             {

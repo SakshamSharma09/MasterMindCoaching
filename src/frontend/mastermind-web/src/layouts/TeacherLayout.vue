@@ -73,7 +73,8 @@
         <div class="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
             @click="sidebarOpen = !sidebarOpen"
-            class="lg:hidden p-2 rounded-md text-gray-500 hover:text-[#0a1d39] hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#19a68c]"
+            class="mobile-icon-button lg:hidden rounded-md text-gray-500 hover:text-[#0a1d39] hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#19a68c]"
+            aria-label="Open navigation"
           >
             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
@@ -84,7 +85,7 @@
 
           <!-- Notifications -->
           <div class="relative">
-            <button class="relative p-2 text-gray-400 hover:text-gray-600" type="button" @click="toggleNotifications">
+            <button class="mobile-icon-button relative text-gray-400 hover:text-gray-600" type="button" aria-label="Notifications" @click="toggleNotifications">
               <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM21 5a2 2 0 00-2-2H5a2 2 0 00-2 2v14l7-7h11z"></path>
               </svg>
@@ -93,10 +94,13 @@
               </span>
             </button>
 
-            <div v-if="notificationsOpen" class="absolute right-0 mt-3 w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-              <div class="border-b border-slate-100 px-4 py-3">
+            <div v-if="notificationsOpen" class="mobile-notification-panel absolute right-0 z-[60] mt-3 w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+              <div class="flex items-start justify-between border-b border-slate-100 px-4 py-3">
+                <div>
                 <p class="text-sm font-bold text-slate-950">Teacher notifications</p>
                 <p class="text-xs text-slate-500">{{ notificationSummary }}</p>
+                </div>
+                <button class="mobile-icon-button -mr-2 -mt-2 rounded-lg text-xl text-slate-500 hover:bg-slate-100" type="button" aria-label="Close notifications" @click="notificationsOpen = false">×</button>
               </div>
               <div v-if="notificationsLoading" class="px-4 py-5 text-sm text-slate-500">Loading updates...</div>
               <div v-else-if="notifications.length === 0" class="px-4 py-5 text-sm text-slate-500">No pending salary or class updates.</div>

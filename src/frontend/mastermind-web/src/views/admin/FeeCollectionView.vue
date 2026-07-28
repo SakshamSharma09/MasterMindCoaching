@@ -1,16 +1,18 @@
 <template>
   <div class="fee-collection-view">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Fee Collection</h1>
-      <div class="flex gap-3">
-        <button
-          @click="showSetupModal = true"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+    <div class="mobile-stack-actions mb-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Fee Collection</h1>
+        <p class="mt-1 text-sm text-gray-600">Select a student and a specific installment, then record payment and issue its receipt.</p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <router-link
+          to="/admin/finance/fees"
+          class="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
         >
-          <i class="fas fa-plus mr-2"></i>
-          Setup Student Fee
-        </button>
+          Manage fee assignments
+        </router-link>
         <button
           @click="refreshData"
           class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -224,25 +226,6 @@
       </div>
     </div>
 
-    <!-- Setup Fee Modal -->
-    <div v-if="showSetupModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold">Setup Student Fee</h2>
-            <button
-              @click="showSetupModal = false"
-              class="text-gray-400 hover:text-gray-600"
-            >
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-
-          <FeeSetupForm @success="onFeeSetupSuccess" @cancel="showSetupModal = false" />
-        </div>
-      </div>
-    </div>
-
     <!-- Receipt Modal -->
     <div v-if="showReceiptModal && currentReceipt" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -268,7 +251,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { financeService, type Student, type StudentFeeDetails, type FeeReceipt, type CollectPaymentRequest, type PaymentFeeItem } from '@/services/financeService'
 import { studentsService } from '@/services/studentsService'
-import FeeSetupForm from '@/components/FeeSetupForm.vue'
 import ReceiptViewer from '@/components/ReceiptViewer.vue'
 import { useToast } from '@/composables/useToast'
 
@@ -282,7 +264,6 @@ const studentFeeDetails = ref<StudentFeeDetails | null>(null)
 const selectedFees = ref<number[]>([])
 const selectedFeeItems = ref<PaymentFeeItem[]>([])
 const isProcessing = ref(false)
-const showSetupModal = ref(false)
 const showReceiptModal = ref(false)
 const currentReceipt = ref<FeeReceipt | null>(null)
 const studentSearchQuery = ref('')
@@ -415,10 +396,6 @@ const refreshData = async () => {
   }
 }
 
-const onFeeSetupSuccess = () => {
-  showSetupModal.value = false
-  refreshData()
-}
 
 const onEmailSent = () => {
   if (currentReceipt.value) {

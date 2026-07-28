@@ -6,8 +6,16 @@ import { buildAbsentWhatsAppMessage, resolveAttendanceParentGreeting } from './a
 import { buildParentInvitationWhatsAppMessage } from './parentInvitation'
 import { matchesDuePeriod } from './datePeriod'
 import { tokenExpiryTime } from './sessionExpiry'
+import { billingIntervalMonths, nextCycleDueDate } from './financeSchedule'
 
 describe('student and communication operational fixes', () => {
+  it('uses next-cycle fee due dates for every supported recurrence', () => {
+    expect(nextCycleDueDate('2026-04-01', 'Monthly')).toBe('2026-05-01')
+    expect(nextCycleDueDate('2026-04-01', 'Quarterly')).toBe('2026-07-01')
+    expect(nextCycleDueDate('2026-04-01', 'HalfYearly')).toBe('2026-10-01')
+    expect(nextCycleDueDate('2026-04-01', 'Yearly')).toBe('2027-04-01')
+    expect(billingIntervalMonths('HalfYearly')).toBe(6)
+  })
   it('filters overdue, current-month, and next-month due dates', () => {
     const now = new Date(2026, 6, 27)
     expect(matchesDuePeriod('2026-07-15', 'thisMonth', 'Pending', now)).toBe(true)
