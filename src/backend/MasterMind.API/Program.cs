@@ -1105,12 +1105,52 @@ try
     }
     else if (isSqlServer)
     {
+        var canConnectToDatabase = await dbContext.Database.CanConnectAsync();
+        if (!canConnectToDatabase)
+        {
+            Log.Information("Creating a new SQL Server schema through EF Core migrations...");
+            await dbContext.Database.MigrateAsync();
+            Log.Information("New SQL Server schema created successfully.");
+        }
+        else
+        {
+            var hasCoreSchema = await SqlServerTableExistsAsync(dbContext, "Users");
+            var hasMigrationHistory = await SqlServerTableExistsAsync(dbContext, "__EFMigrationsHistory");
+            if (!hasCoreSchema)
+            {
+                Log.Information("Creating tables in an empty SQL Server database through EF Core migrations...");
+                await dbContext.Database.MigrateAsync();
+                Log.Information("Empty SQL Server database migrated successfully.");
+            }
+            else if (hasMigrationHistory)
+            {
+                try
+                {
+                    Log.Information("Applying EF Core migrations for SQL Server / Azure SQL...");
+                    await dbContext.Database.MigrateAsync();
+                    Log.Information("EF Core migrations applied successfully.");
+                }
+                catch (Exception migrationException)
+                {
+                    Log.Warning(
+                        migrationException,
+                        "EF Core migrations could not be applied; continuing with idempotent schema compatibility checks.");
+                }
+            }
+            else
+            {
+                Log.Warning(
+                    "Legacy SQL Server database has no EF migration history; using idempotent schema compatibility checks.");
+            }
+        }
+
+        Log.Information("Applying guided Finance schema compatibility checks...");
+        await EnsureSqlServerGuidedFinanceCompatibilityAsync(dbContext);
+        Log.Information("Guided Finance schema compatibility checks completed successfully.");
+
         Log.Information("Applying SQL Server schema compatibility checks...");
         await EnsureSqlServerSchemaCompatibilityAsync(dbContext);
-
-        Log.Information("Applying EF Core migrations for SQL Server / Azure SQL...");
-        await dbContext.Database.MigrateAsync();
-        Log.Information("EF Core migrations applied successfully.");
+        Log.Information("SQL Server schema compatibility checks completed successfully.");
     }
     else
     {
@@ -1242,6 +1282,110 @@ static async Task SeedInitialDataAsync(MasterMindDbContext context)
     }
 
     Log.Information("All initial data seeding completed");
+}
+
+static async Task EnsureSqlServerGuidedFinanceCompatibilityAsync(MasterMindDbContext context)
+{
+    await context.Database.ExecuteSqlRawAsync(@"
+IF OBJECT_ID('dbo.StudentFees', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.StudentFees', 'Frequency') IS NULL
+    ALTER TABLE dbo.StudentFees ADD Frequency int NULL;
+
+IF OBJECT_ID('dbo.StudentFees', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.StudentFees', 'FirstDueDate') IS NULL
+    ALTER TABLE dbo.StudentFees ADD FirstDueDate date NULL;
+
+IF OBJECT_ID('dbo.StudentFees', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.StudentFees', 'ScheduleEndDate') IS NULL
+    ALTER TABLE dbo.StudentFees ADD ScheduleEndDate date NULL;
+
+IF OBJECT_ID('dbo.StudentFees', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.StudentFees', 'PeriodStart') IS NULL
+    ALTER TABLE dbo.StudentFees ADD PeriodStart date NULL;
+
+IF OBJECT_ID('dbo.StudentFees', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.StudentFees', 'PeriodEnd') IS NULL
+    ALTER TABLE dbo.StudentFees ADD PeriodEnd date NULL;
+
+IF OBJECT_ID('dbo.StudentFees', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.StudentFees', 'RecurrenceIntervalMonths') IS NULL
+    ALTER TABLE dbo.StudentFees ADD RecurrenceIntervalMonths int NULL;
+
+IF OBJECT_ID('dbo.StudentFees', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.StudentFees', 'OccurrenceKey') IS NULL
+    ALTER TABLE dbo.StudentFees ADD OccurrenceKey nvarchar(120) NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.Expenses', 'DueDate') IS NULL
+    ALTER TABLE dbo.Expenses ADD DueDate datetime2 NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.Expenses', 'PaymentDate') IS NULL
+    ALTER TABLE dbo.Expenses ADD PaymentDate datetime2 NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.Expenses', 'ParentExpenseId') IS NULL
+    ALTER TABLE dbo.Expenses ADD ParentExpenseId int NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.Expenses', 'PeriodStart') IS NULL
+    ALTER TABLE dbo.Expenses ADD PeriodStart datetime2 NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.Expenses', 'PeriodEnd') IS NULL
+    ALTER TABLE dbo.Expenses ADD PeriodEnd datetime2 NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.Expenses', 'RecurrenceIntervalMonths') IS NULL
+    ALTER TABLE dbo.Expenses ADD RecurrenceIntervalMonths int NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND COL_LENGTH('dbo.Expenses', 'OccurrenceKey') IS NULL
+    ALTER TABLE dbo.Expenses ADD OccurrenceKey nvarchar(120) NULL;
+    ");
+
+    await context.Database.ExecuteSqlRawAsync(@"
+IF OBJECT_ID('dbo.StudentFees', 'U') IS NOT NULL
+   AND NOT EXISTS
+   (
+       SELECT 1 FROM sys.indexes
+       WHERE name = 'IX_StudentFees_OccurrenceKey'
+         AND object_id = OBJECT_ID('dbo.StudentFees')
+   )
+   AND NOT EXISTS
+   (
+       SELECT OccurrenceKey FROM dbo.StudentFees
+       WHERE OccurrenceKey IS NOT NULL
+       GROUP BY OccurrenceKey HAVING COUNT(*) > 1
+   )
+    CREATE UNIQUE INDEX IX_StudentFees_OccurrenceKey
+        ON dbo.StudentFees(OccurrenceKey) WHERE OccurrenceKey IS NOT NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND NOT EXISTS
+   (
+       SELECT 1 FROM sys.indexes
+       WHERE name = 'IX_Expenses_OccurrenceKey'
+         AND object_id = OBJECT_ID('dbo.Expenses')
+   )
+   AND NOT EXISTS
+   (
+       SELECT OccurrenceKey FROM dbo.Expenses
+       WHERE OccurrenceKey IS NOT NULL
+       GROUP BY OccurrenceKey HAVING COUNT(*) > 1
+   )
+    CREATE UNIQUE INDEX IX_Expenses_OccurrenceKey
+        ON dbo.Expenses(OccurrenceKey) WHERE OccurrenceKey IS NOT NULL;
+
+IF OBJECT_ID('dbo.Expenses', 'U') IS NOT NULL
+   AND NOT EXISTS
+   (
+       SELECT 1 FROM sys.indexes
+       WHERE name = 'IX_Expenses_ParentExpenseId'
+         AND object_id = OBJECT_ID('dbo.Expenses')
+   )
+    CREATE INDEX IX_Expenses_ParentExpenseId ON dbo.Expenses(ParentExpenseId);
+");
 }
 
 static async Task EnsureSqlServerSchemaCompatibilityAsync(MasterMindDbContext context)
@@ -1579,4 +1723,32 @@ BEGIN
     );
 END
 ");
+}
+
+static async Task<bool> SqlServerTableExistsAsync(MasterMindDbContext context, string tableName)
+{
+    var connection = context.Database.GetDbConnection();
+    var shouldClose = connection.State != System.Data.ConnectionState.Open;
+    if (shouldClose)
+    {
+        await connection.OpenAsync();
+    }
+
+    try
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT CASE WHEN OBJECT_ID(@tableName, 'U') IS NULL THEN 0 ELSE 1 END";
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "@tableName";
+        parameter.Value = $"dbo.{tableName}";
+        command.Parameters.Add(parameter);
+        return Convert.ToInt32(await command.ExecuteScalarAsync()) == 1;
+    }
+    finally
+    {
+        if (shouldClose)
+        {
+            await connection.CloseAsync();
+        }
+    }
 }

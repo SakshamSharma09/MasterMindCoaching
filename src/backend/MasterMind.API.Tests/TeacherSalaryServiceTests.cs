@@ -11,11 +11,7 @@ public class TeacherSalaryServiceTests
     [Fact]
     public async Task EnsureMonthlyObligations_IsIdempotent_AndSkipsInactiveTeachers()
     {
-        var options = new DbContextOptionsBuilder<MasterMindDbContext>()
-            .UseInMemoryDatabase($"salary-tests-{Guid.NewGuid()}")
-            .Options;
-        await using var context = new MasterMindDbContext(options);
-
+        await using var context = NewContext();
         context.Teachers.AddRange(
             new Teacher
             {
@@ -49,4 +45,65 @@ public class TeacherSalaryServiceTests
         Assert.Equal(SalaryStatus.Pending, salary.Status);
         Assert.False(string.IsNullOrWhiteSpace(salary.ObligationKey));
     }
+
+    [Fact]
+    public async Task GeneratesEveryMissingMonthFromJoiningMonthWithoutDuplicates()
+    {
+        await using var context = NewContext();
+        var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var firstMonth = currentMonth.AddMonths(-2);
+        var session = new Session
+        {
+            Name = "salary-test",
+            DisplayName = "Salary test session",
+            AcademicYear = "test",
+            StartDate = firstMonth,
+            EndDate = currentMonth.AddMonths(10).AddDays(-1),
+            IsActive = true,
+            Status = SessionStatus.Active
+        };
+        var teacher = new Teacher
+        {
+            FirstName = "Test",
+            LastName = "Teacher",
+            Email = "teacher-test@example.invalid",
+            Mobile = "7000000000",
+            JoiningDate = firstMonth.AddDays(14),
+            MonthlySalary = 12000,
+            IsActive = true,
+            Session = session
+        };
+        context.AddRange(session, teacher);
+        await context.SaveChangesAsync();
+
+        context.TeacherSalaries.Add(new TeacherSalary
+        {
+            TeacherId = teacher.Id,
+            BasicSalary = 12000,
+            NetSalary = 12000,
+            Month = firstMonth.ToString("MMMM", System.Globalization.CultureInfo.InvariantCulture),
+            Year = firstMonth.Year,
+            Status = SalaryStatus.Pending
+        });
+        await context.SaveChangesAsync();
+
+        var service = new TeacherSalaryService(context);
+        await service.EnsureMonthlyObligationsAsync(session.Id);
+        await service.EnsureMonthlyObligationsAsync(session.Id);
+
+        var salaries = await context.TeacherSalaries
+            .Where(s => s.TeacherId == teacher.Id)
+            .OrderBy(s => s.Year)
+            .ThenBy(s => s.Month)
+            .ToListAsync();
+
+        Assert.Equal(3, salaries.Count);
+        Assert.Equal(3, salaries.Select(s => new { s.Year, s.Month }).Distinct().Count());
+        Assert.All(salaries, s => Assert.Equal(12000, s.NetSalary));
+    }
+
+    private static MasterMindDbContext NewContext() =>
+        new(new DbContextOptionsBuilder<MasterMindDbContext>()
+            .UseInMemoryDatabase($"teacher-salary-{Guid.NewGuid()}")
+            .Options);
 }

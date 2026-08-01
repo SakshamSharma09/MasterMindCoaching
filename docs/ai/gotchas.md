@@ -43,6 +43,13 @@ var result = data.Select(x => new Dto {
 **Files Affected**: `Program.cs`, `Data/Migrations/`  
 **Date Learned**: 2026-04-18
 
+### Finance Can Fail While Health Stays Green When Legacy Schema Lacks Migration History
+**Symptom**: Fee creation and expense creation return 500, Fees/Expenses pages appear empty, and teacher salary rows disappear even though `/health` remains green.
+**Root Cause**: The production Azure SQL database originated from `EnsureCreated` and may not have `__EFMigrationsHistory`. Calling `MigrateAsync()` then attempts historical migrations against an existing schema and fails. Startup intentionally allows the API to continue after setup errors, so health checks do not prove that newly referenced Finance columns exist.
+**Solution**: Detect whether migration history exists before running migrations, keep migration failure isolated from seeding/startup, and apply idempotent `COL_LENGTH`/`sys.indexes` compatibility DDL for every Finance column and index used by the deployed model. Verify the actual protected Finance endpoints after deployment, not only `/health`.
+**Files Affected**: `Program.cs`, `StudentFees`, `Expenses`, Finance endpoint tests
+**Date Learned**: 2026-08-01
+
 ### EF Migration and Test Providers Must Match the Intended Assembly
 **Symptom**: A newly scaffolded migration omits current model changes, or an EF test fails while creating SQLite tables with SQL Server-specific column types such as `nvarchar(max)`.
 **Root Cause**: `dotnet ef --no-build` can load a stale Debug assembly while the current model was built in Release, and this project contains SQL Server-specific model types that SQLite cannot create.
