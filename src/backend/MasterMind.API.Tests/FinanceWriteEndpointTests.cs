@@ -58,6 +58,51 @@ public class FinanceWriteEndpointTests
     }
 
     [Fact]
+    public async Task OneTimeFrequencyWithMonthlyPlanCreatesSingleFee()
+    {
+        await using var context = NewContext();
+        var (session, student) = await SeedSessionAndStudent(context);
+        var plan = new FeeStructure
+        {
+            Name = "Test reusable plan",
+            Type = FeeType.Tuition,
+            Category = FeeCategory.Monthly,
+            Frequency = FeeFrequency.Monthly,
+            Amount = 100,
+            AcademicYear = session.AcademicYear,
+            IsActive = true
+        };
+        context.FeeStructures.Add(plan);
+        await context.SaveChangesAsync();
+
+        var controller = WithAdmin(new FinanceController(
+            context,
+            NullLogger<FinanceController>.Instance,
+            new TeacherSalaryService(context),
+            new RecurringObligationService(context)));
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        var response = await controller.CreateFee(new CreateFeeRequest
+        {
+            StudentId = student.Id,
+            FeeStructureId = plan.Id,
+            Amount = 100,
+            FeeCategory = FeeCategory.Monthly,
+            Frequency = FeeFrequency.OneTime,
+            StartDate = today,
+            FirstDueDate = today,
+            ScheduleEndDate = today,
+            AcademicYear = session.AcademicYear
+        });
+
+        Assert.IsType<CreatedAtActionResult>(response.Result);
+        var fee = Assert.Single(await context.StudentFees.ToListAsync());
+        Assert.False(fee.IsRecurring);
+        Assert.Equal(FeeFrequency.OneTime, fee.Frequency);
+        Assert.Equal(student.Id, fee.StudentId);
+    }
+
+    [Fact]
     public async Task CreateAndListExpensesIncludesGeneralExpenseAndTeacherSalary()
     {
         await using var context = NewContext();

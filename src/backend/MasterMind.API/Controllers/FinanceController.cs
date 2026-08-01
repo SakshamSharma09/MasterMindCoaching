@@ -854,6 +854,11 @@ public class FinanceController : ControllerBase
                     var additionalFee = await CreateAdditionalFee(request, student, feeStructure, today);
                     createdFees.Add(additionalFee);
                     break;
+
+                default:
+                    var oneTimeFee = await CreateOneTimeFee(request, student, feeStructure, today);
+                    createdFees.Add(oneTimeFee);
+                    break;
             }
 
             await _context.SaveChangesAsync();
@@ -1287,6 +1292,54 @@ public class FinanceController : ControllerBase
             IsRecurring = false,
             IsOverdue = additionalFee.IsOverdue,
             DaysOverdue = additionalFee.DaysOverdue
+        };
+    }
+
+    private async Task<object> CreateOneTimeFee(
+        CreateFeeRequest request,
+        Student student,
+        FeeStructure feeStructure,
+        DateOnly today)
+    {
+        var dueDate = request.FirstDueDate ?? request.DueDate ?? request.StartDate ?? today;
+        var fee = new StudentFee
+        {
+            StudentId = request.StudentId,
+            FeeStructureId = feeStructure.Id,
+            Amount = request.Amount,
+            DiscountAmount = request.DiscountAmount,
+            FinalAmount = request.Amount - (request.DiscountAmount ?? 0),
+            DueDate = dueDate,
+            FeeCategory = request.FeeCategory,
+            Frequency = FeeFrequency.OneTime,
+            StartDate = request.StartDate ?? today,
+            EndDate = request.EndDate,
+            ScheduleEndDate = request.ScheduleEndDate,
+            IsRecurring = false,
+            LateFeePerDay = request.LateFeePerDay ?? feeStructure.LateFeePerDay,
+            GracePeriodDays = request.GracePeriodDays,
+            AcademicYear = request.AcademicYear ?? GetCurrentAcademicYear(),
+            Remarks = request.Remarks,
+            Status = dueDate <= today ? FeeStatus.Overdue : FeeStatus.Pending
+        };
+
+        _context.StudentFees.Add(fee);
+        await _context.SaveChangesAsync();
+
+        return new
+        {
+            fee.Id,
+            fee.StudentId,
+            StudentName = $"{student.FirstName} {student.LastName}".Trim(),
+            FeeType = feeStructure.Type.ToString(),
+            fee.Amount,
+            fee.FinalAmount,
+            fee.DueDate,
+            Status = fee.Status.ToString(),
+            FeeCategory = fee.FeeCategory.ToString(),
+            IsRecurring = false,
+            fee.IsOverdue,
+            fee.DaysOverdue
         };
     }
 
