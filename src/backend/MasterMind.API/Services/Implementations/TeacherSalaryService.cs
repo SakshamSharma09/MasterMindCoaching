@@ -20,10 +20,11 @@ public class TeacherSalaryService : ITeacherSalaryService
         CancellationToken cancellationToken = default)
     {
         var today = DateTime.Today;
-        var monthName = CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(today.Month);
         var monthEnd = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+        var currentMonth = new DateTime(today.Year, today.Month, 1);
 
         var teachers = await _context.Teachers
+            .Include(t => t.Session)
             .Where(t => !t.IsDeleted && t.IsActive && t.MonthlySalary.HasValue && t.MonthlySalary > 0 &&
                 t.JoiningDate <= monthEnd &&
                 (!sessionId.HasValue || t.SessionId == sessionId.Value))
@@ -35,28 +36,56 @@ public class TeacherSalaryService : ITeacherSalaryService
         }
 
         var teacherIds = teachers.Select(t => t.Id).ToList();
-        var existingTeacherIds = await _context.TeacherSalaries
-            .Where(s => !s.IsDeleted && s.Year == today.Year && s.Month == monthName &&
-                teacherIds.Contains(s.TeacherId))
-            .Select(s => s.TeacherId)
+        var existingRows = await _context.TeacherSalaries
+            .Where(s => !s.IsDeleted && teacherIds.Contains(s.TeacherId))
+            .Select(s => new { s.TeacherId, s.Month, s.Year })
             .ToListAsync(cancellationToken);
 
-        var existing = existingTeacherIds.ToHashSet();
-        foreach (var teacher in teachers.Where(t => !existing.Contains(t.Id)))
+        var existing = existingRows
+            .Select(s => SalaryPeriodKey(s.TeacherId, s.Year, s.Month))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var teacher in teachers)
         {
-            var amount = teacher.MonthlySalary!.Value;
-            var obligationKey = $"{teacher.Id}:{today.Year}:{today.Month:D2}";
-            _context.TeacherSalaries.Add(new TeacherSalary
+            var startMonth = new DateTime(teacher.JoiningDate.Year, teacher.JoiningDate.Month, 1);
+            if (teacher.Session != null)
             {
-                TeacherId = teacher.Id,
-                BasicSalary = amount,
-                NetSalary = amount,
-                Month = monthName,
-                Year = today.Year,
-                ObligationKey = obligationKey,
-                Status = SalaryStatus.Pending,
-                CreatedAt = DateTime.UtcNow
-            });
+                var sessionMonth = new DateTime(teacher.Session.StartDate.Year, teacher.Session.StartDate.Month, 1);
+                if (sessionMonth > startMonth) startMonth = sessionMonth;
+            }
+
+            var finalMonth = currentMonth;
+            if (teacher.LeavingDate.HasValue)
+            {
+                var leavingMonth = new DateTime(
+                    teacher.LeavingDate.Value.Year,
+                    teacher.LeavingDate.Value.Month,
+                    1);
+                if (leavingMonth < finalMonth) finalMonth = leavingMonth;
+            }
+
+            for (var salaryMonth = startMonth;
+                 salaryMonth <= finalMonth;
+                 salaryMonth = salaryMonth.AddMonths(1))
+            {
+                var monthName = CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(salaryMonth.Month);
+                var periodKey = SalaryPeriodKey(teacher.Id, salaryMonth.Year, monthName);
+                if (existing.Contains(periodKey)) continue;
+
+                var amount = teacher.MonthlySalary!.Value;
+                _context.TeacherSalaries.Add(new TeacherSalary
+                {
+                    TeacherId = teacher.Id,
+                    BasicSalary = amount,
+                    NetSalary = amount,
+                    Month = monthName,
+                    Year = salaryMonth.Year,
+                    ObligationKey = $"{teacher.Id}:{salaryMonth.Year}:{salaryMonth.Month:D2}",
+                    Status = SalaryStatus.Pending,
+                    CreatedAt = DateTime.UtcNow
+                });
+                existing.Add(periodKey);
+            }
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -76,4 +105,7 @@ public class TeacherSalaryService : ITeacherSalaryService
             .ThenByDescending(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+
+    private static string SalaryPeriodKey(int teacherId, int year, string month) =>
+        $"{teacherId}:{year}:{month.Trim()}";
 }

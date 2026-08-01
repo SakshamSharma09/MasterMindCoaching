@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-07-27",
+  "lastUpdated": "2026-08-01",
   "description": "Quick lookup index for AI gotchas - match symptoms to solutions",
   "gotchas": [
     {
@@ -16,6 +16,13 @@
       "category": "backend",
       "section": "Azure SQL: EnsureCreated Does Not Migrate Existing Databases",
       "severity": "high"
+    },
+    {
+      "id": "finance-schema-health-false-positive",
+      "symptoms": ["fee creation 500", "expense creation 500", "teacher salaries missing", "finance pages empty", "health endpoint still green", "legacy Azure SQL schema"],
+      "category": "backend",
+      "section": "Finance Can Fail While Health Stays Green When Legacy Schema Lacks Migration History",
+      "severity": "critical"
     },
     {
       "id": "ef-design-time-assembly-provider",
