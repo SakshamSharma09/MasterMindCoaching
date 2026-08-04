@@ -143,6 +143,118 @@ public class TeacherPortalController : ControllerBase
         }
     }
 
+    [HttpGet("classes/{classId:int}/attendance")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<object>>>> GetClassAttendance(int classId, [FromQuery] DateOnly date)
+    {
+        var teacher = await ResolveTeacherForCurrentUserAsync();
+        if (teacher == null)
+        {
+            return NotFound(new ApiResponse<IEnumerable<object>> { Success = false, Message = "Teacher profile not found for current user" });
+        }
+
+        if (!await CanManageClassAsync(teacher.Id, classId)) return Forbid();
+
+        var attendanceRows = await _context.Attendances
+            .Where(a => !a.IsDeleted && a.ClassId == classId && a.Date == date)
+            .Select(a => new
+            {
+                a.Id, a.StudentId, a.ClassId, a.Date,
+                a.Status,
+                a.CheckInTime, a.CheckOutTime, a.Remarks
+            })
+            .ToListAsync();
+        var records = attendanceRows.Select(a => new
+        {
+            a.Id, a.StudentId, a.ClassId, a.Date,
+            Status = a.Status.ToString(),
+            a.CheckInTime, a.CheckOutTime, a.Remarks
+        }).ToList();
+
+        return Ok(new ApiResponse<IEnumerable<object>>
+        {
+            Success = true,
+            Message = "Class attendance retrieved successfully",
+            Data = records
+        });
+    }
+
+    [HttpPost("classes/{classId:int}/attendance")]
+    public async Task<ActionResult<ApiResponse<object>>> SaveClassAttendance(int classId, [FromBody] TeacherAttendanceRequest request)
+    {
+        if (request.Date == default || request.Records.Count == 0)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "Attendance date and at least one student record are required" });
+        }
+
+        var teacher = await ResolveTeacherForCurrentUserAsync();
+        if (teacher == null)
+        {
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Teacher profile not found for current user" });
+        }
+
+        if (!await CanManageClassAsync(teacher.Id, classId)) return Forbid();
+
+        var studentIds = request.Records.Select(r => r.StudentId).Distinct().ToList();
+        if (studentIds.Count != request.Records.Count)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "Each student can appear only once" });
+        }
+
+        var allowedStudentIds = await _context.StudentClasses
+            .Where(sc => sc.ClassId == classId && sc.IsActive && studentIds.Contains(sc.StudentId) &&
+                sc.Student != null && !sc.Student.IsDeleted && sc.Student.IsActive)
+            .Select(sc => sc.StudentId)
+            .Distinct()
+            .ToListAsync();
+        if (allowedStudentIds.Count != studentIds.Count)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "One or more students are not active members of this class" });
+        }
+
+        var existing = await _context.Attendances
+            .Where(a => !a.IsDeleted && a.ClassId == classId && a.Date == request.Date && studentIds.Contains(a.StudentId))
+            .ToDictionaryAsync(a => a.StudentId);
+        var markedByUserId = GetCurrentUserId();
+        var markedAt = DateTime.UtcNow;
+
+        foreach (var record in request.Records)
+        {
+            if (!Enum.TryParse<AttendanceStatus>(record.Status, true, out var status))
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = $"Invalid attendance status for student {record.StudentId}" });
+            }
+
+            if (!existing.TryGetValue(record.StudentId, out var attendance))
+            {
+                attendance = new Attendance
+                {
+                    StudentId = record.StudentId,
+                    ClassId = classId,
+                    Date = request.Date,
+                    CreatedAt = markedAt
+                };
+                _context.Attendances.Add(attendance);
+            }
+
+            var hasClassTime = status is AttendanceStatus.Present or AttendanceStatus.Late or AttendanceStatus.HalfDay;
+            attendance.Status = status;
+            attendance.CheckInTime = hasClassTime ? new TimeOnly(15, 0) : null;
+            attendance.CheckOutTime = hasClassTime ? new TimeOnly(18, 0) : null;
+            attendance.Remarks = string.IsNullOrWhiteSpace(record.Remarks) ? null : record.Remarks.Trim();
+            attendance.MarkedByUserId = markedByUserId;
+            attendance.MarkedAt = markedAt;
+            attendance.UpdatedAt = markedAt;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = $"Attendance saved for {request.Records.Count} students",
+            Data = new { Count = request.Records.Count, request.Date, ClassId = classId }
+        });
+    }
+
     private async Task<Teacher?> ResolveTeacherForCurrentUserAsync()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -163,4 +275,27 @@ public class TeacherPortalController : ControllerBase
 
         return await _context.Teachers.FirstOrDefaultAsync(t => !t.IsDeleted && t.Email.ToLower() == email);
     }
+
+    private async Task<bool> CanManageClassAsync(int teacherId, int classId) =>
+        await _context.TeacherClasses.AnyAsync(tc => tc.TeacherId == teacherId && tc.ClassId == classId && tc.IsActive &&
+            tc.Class != null && !tc.Class.IsDeleted && tc.Class.IsActive);
+
+    private int? GetCurrentUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(value, out var userId) ? userId : null;
+    }
+}
+
+public sealed class TeacherAttendanceRequest
+{
+    public DateOnly Date { get; set; }
+    public List<TeacherAttendanceRecordRequest> Records { get; set; } = new();
+}
+
+public sealed class TeacherAttendanceRecordRequest
+{
+    public int StudentId { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? Remarks { get; set; }
 }

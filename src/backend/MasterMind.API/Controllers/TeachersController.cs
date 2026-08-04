@@ -5,6 +5,9 @@ using MasterMind.API.Data;
 using MasterMind.API.Models.Entities;
 using MasterMind.API.Models.DTOs.Common;
 using System.Text.Json;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using MasterMind.API.Services.Interfaces;
 
 namespace MasterMind.API.Controllers;
@@ -16,11 +19,22 @@ public class TeachersController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly ITeacherSalaryService _teacherSalaryService;
+    private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<TeachersController> _logger;
 
-    public TeachersController(MasterMindDbContext context, ITeacherSalaryService teacherSalaryService)
+    public TeachersController(
+        MasterMindDbContext context,
+        ITeacherSalaryService teacherSalaryService,
+        IEmailService emailService,
+        IConfiguration configuration,
+        ILogger<TeachersController> logger)
     {
         _context = context;
         _teacherSalaryService = teacherSalaryService;
+        _emailService = emailService;
+        _configuration = configuration;
+        _logger = logger;
     }
 
     // GET: api/Teachers
@@ -164,13 +178,40 @@ public class TeachersController : ControllerBase
                 });
             }
 
+            var mobile = NormalizeMobile(teacherData.GetProperty("mobile").GetString());
+            if (mobile.Length != 10)
+            {
+                return BadRequest(new ApiResponse<Teacher>
+                {
+                    Success = false,
+                    Message = "A valid 10-digit teacher mobile number is required"
+                });
+            }
+
+            var email = teacherData.TryGetProperty("email", out var emailElement)
+                ? emailElement.GetString()?.Trim().ToLowerInvariant()
+                : null;
+            email = string.IsNullOrWhiteSpace(email) ? BuildTeacherPlaceholderEmail(mobile) : email;
+
+            var accountConflict = await GetTeacherAccountConflictAsync(mobile, null);
+            if (accountConflict != null)
+            {
+                return BadRequest(new ApiResponse<Teacher> { Success = false, Message = accountConflict });
+            }
+
+            if (!teacherData.TryGetProperty("joiningDate", out var joiningDateElement) ||
+                !DateTime.TryParse(joiningDateElement.GetString(), out var joiningDate))
+            {
+                return BadRequest(new ApiResponse<Teacher> { Success = false, Message = "A valid teacher joining date is required" });
+            }
+
             // Create new teacher entity
             var teacher = new Teacher
             {
-                FirstName = teacherData.GetProperty("firstName").GetString(),
-                LastName = teacherData.GetProperty("lastName").GetString(),
-                Email = teacherData.GetProperty("email").GetString(),
-                Mobile = teacherData.GetProperty("mobile").GetString(),
+                FirstName = teacherData.GetProperty("firstName").GetString() ?? string.Empty,
+                LastName = teacherData.GetProperty("lastName").GetString() ?? string.Empty,
+                Email = email,
+                Mobile = mobile,
                 Specialization = teacherData.GetProperty("specialization").GetString(),
                 Qualification = teacherData.GetProperty("qualification").GetString(),
                 
@@ -179,7 +220,7 @@ public class TeachersController : ControllerBase
                 
                 ExperienceYears = teacherData.GetProperty("experienceYears").GetInt32(),
                 MonthlySalary = teacherData.GetProperty("monthlySalary").GetDecimal(),
-                JoiningDate = DateTime.Parse(teacherData.GetProperty("joiningDate").GetString()),
+                JoiningDate = joiningDate,
                 IsActive = teacherData.GetProperty("isActive").GetBoolean(),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -247,11 +288,31 @@ public class TeachersController : ControllerBase
                 });
             }
 
+            JsonElement teacherUpdate = updateData;
+            var mobile = NormalizeMobile(teacherUpdate.GetProperty("mobile").GetString());
+            if (mobile.Length != 10)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "A valid 10-digit teacher mobile number is required" });
+            }
+
+            var accountConflict = await GetTeacherAccountConflictAsync(mobile, teacher.UserId);
+            if (accountConflict != null)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = accountConflict });
+            }
+
+            var submittedEmail = teacherUpdate.TryGetProperty("email", out var emailElement)
+                ? emailElement.GetString()?.Trim().ToLowerInvariant()
+                : null;
+
             // Update basic teacher properties
             teacher.FirstName = updateData.GetProperty("firstName").GetString();
             teacher.LastName = updateData.GetProperty("lastName").GetString();
-            teacher.Email = updateData.GetProperty("email").GetString();
-            teacher.Mobile = updateData.GetProperty("mobile").GetString();
+            if (!string.IsNullOrWhiteSpace(submittedEmail) || IsPlaceholderEmail(teacher.Email))
+            {
+                teacher.Email = string.IsNullOrWhiteSpace(submittedEmail) ? BuildTeacherPlaceholderEmail(mobile) : submittedEmail;
+            }
+            teacher.Mobile = mobile;
             teacher.Specialization = updateData.GetProperty("specialization").GetString();
             teacher.Qualification = updateData.GetProperty("qualification").GetString();
             
@@ -265,7 +326,6 @@ public class TeachersController : ControllerBase
             decimal monthlySalary = updateData.GetProperty("monthlySalary").GetDecimal();
             teacher.ExperienceYears = experienceYears;
             teacher.MonthlySalary = monthlySalary;
-            JsonElement teacherUpdate = updateData;
             if (teacherUpdate.TryGetProperty("joiningDate", out JsonElement joiningDateElement) &&
                 DateTime.TryParse(joiningDateElement.GetString(), out DateTime parsedJoiningDate))
             {
@@ -320,6 +380,102 @@ public class TeachersController : ControllerBase
         }
     }
 
+    // POST: api/Teachers/5/invitation
+    [HttpPost("{id:int}/invitation")]
+    public async Task<ActionResult<ApiResponse<object>>> CreateTeacherInvitation(int id)
+    {
+        var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted && t.IsActive);
+        if (teacher == null)
+        {
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Active teacher not found" });
+        }
+
+        var mobile = NormalizeMobile(teacher.Mobile);
+        if (mobile.Length != 10)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "Add a valid 10-digit teacher mobile number before sending an invitation" });
+        }
+
+        var conflict = await GetTeacherAccountConflictAsync(mobile, teacher.UserId);
+        if (conflict != null)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = conflict });
+        }
+
+        await LinkTeacherUserAsync(teacher);
+        if (!teacher.UserId.HasValue)
+        {
+            return StatusCode(500, new ApiResponse<object> { Success = false, Message = "The teacher account could not be created" });
+        }
+
+        var teacherUser = await _context.Users.FirstAsync(u => u.Id == teacher.UserId.Value);
+        if (!string.IsNullOrWhiteSpace(teacherUser.PasswordHash) && !IsPlaceholderEmail(teacherUser.Email))
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "This teacher has already set a password. They can use Email OTP for access and password recovery."
+            });
+        }
+
+        var now = DateTime.UtcNow;
+        var activeInvitations = await _context.AccountInvitations
+            .Where(i => i.UserId == teacher.UserId.Value && i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > now)
+            .ToListAsync();
+        foreach (var activeInvitation in activeInvitations)
+        {
+            activeInvitation.RevokedAt = now;
+            activeInvitation.UpdatedAt = now;
+        }
+
+        var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
+        var expiresAt = now.AddHours(72);
+        _context.AccountInvitations.Add(new AccountInvitation
+        {
+            UserId = teacher.UserId.Value,
+            TokenHash = tokenHash,
+            ExpiresAt = expiresAt,
+            CreatedByUserId = GetCurrentUserId(),
+            CreatedAt = now
+        });
+        await _context.SaveChangesAsync();
+
+        var frontendBaseUrl = (_configuration["Frontend:BaseUrl"] ??
+            "https://victorious-glacier-0e6507000.6.azurestaticapps.net").TrimEnd('/');
+        var inviteUrl = $"{frontendBaseUrl}/accept-invitation?token={Uri.EscapeDataString(rawToken)}";
+        var teacherName = $"{teacher.FirstName} {teacher.LastName}".Trim();
+        var emailSent = false;
+        if (!IsPlaceholderEmail(teacher.Email))
+        {
+            try
+            {
+                emailSent = await _emailService.SendEmailAsync(
+                    teacher.Email,
+                    "Set your MasterMind Coaching teacher password",
+                    $"<p>Namaste {System.Net.WebUtility.HtmlEncode(teacherName)},</p><p>You have been invited to the MasterMind teacher app.</p><p><a href=\"{inviteUrl}\">Set your recovery email and password</a></p><p>This private link expires in 72 hours. Afterwards, sign in with your mobile number.</p>");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Teacher invitation {TeacherId} was created, but email delivery failed", teacher.Id);
+            }
+        }
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = emailSent ? "Teacher invitation created and emailed" : "Teacher invitation created for WhatsApp sharing",
+            Data = new
+            {
+                InviteUrl = inviteUrl,
+                ExpiresAt = expiresAt,
+                EmailSent = emailSent,
+                PrimaryMobile = mobile,
+                WhatsAppMessage = $"Namaste {teacherName}, use this private link to set your MasterMind teacher app password and recovery email: {inviteUrl} This link expires in 72 hours."
+            }
+        });
+    }
+
     // DELETE: api/Teachers/5
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTeacher(int id)
@@ -368,26 +524,48 @@ public class TeachersController : ControllerBase
 
     private async Task LinkTeacherUserAsync(Teacher teacher)
     {
-        if (string.IsNullOrWhiteSpace(teacher.Email))
+        var mobile = NormalizeMobile(teacher.Mobile);
+        if (mobile.Length != 10)
         {
             return;
         }
 
-        var normalizedEmail = teacher.Email.Trim().ToLowerInvariant();
-        var user = await _context.Users
+        teacher.Mobile = mobile;
+        var users = await _context.Users
             .Include(u => u.UserRoles)
-            .FirstOrDefaultAsync(u => !u.IsDeleted && u.Email.ToLower() == normalizedEmail);
+                .ThenInclude(ur => ur.Role)
+            .Where(u => !u.IsDeleted)
+            .ToListAsync();
+        var user = users.FirstOrDefault(u => NormalizeMobile(u.Mobile) == mobile);
 
         if (user == null)
         {
-            return;
+            user = new User
+            {
+                FirstName = teacher.FirstName,
+                LastName = teacher.LastName,
+                Mobile = mobile,
+                Email = IsPlaceholderEmail(teacher.Email) ? BuildTeacherPlaceholderEmail(mobile) : teacher.Email.Trim().ToLowerInvariant(),
+                IsActive = true,
+                IsEmailVerified = false,
+                IsMobileVerified = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
         }
 
-        if (teacher.UserId != user.Id)
+        user.FirstName = teacher.FirstName;
+        user.LastName = teacher.LastName;
+        user.Mobile = mobile;
+        user.IsActive = teacher.IsActive;
+        if (!IsPlaceholderEmail(teacher.Email))
         {
-            teacher.UserId = user.Id;
-            teacher.UpdatedAt = DateTime.UtcNow;
+            user.Email = teacher.Email.Trim().ToLowerInvariant();
         }
+        teacher.UserId = user.Id;
+        teacher.UpdatedAt = DateTime.UtcNow;
 
         var teacherRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Teacher");
         if (teacherRole != null && !await _context.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleId == teacherRole.Id))
@@ -402,4 +580,47 @@ public class TeachersController : ControllerBase
 
         await _context.SaveChangesAsync();
     }
+
+    private async Task<string?> GetTeacherAccountConflictAsync(string mobile, int? linkedUserId)
+    {
+        var users = await _context.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Where(u => !u.IsDeleted)
+            .ToListAsync();
+        var user = users.FirstOrDefault(u => NormalizeMobile(u.Mobile) == mobile);
+        if (user == null || user.Id == linkedUserId)
+        {
+            return null;
+        }
+
+        if (user.UserRoles.Any(ur => ur.Role.Name is "Admin" or "Parent"))
+        {
+            return "This mobile number belongs to an Admin or Parent account. Use a different teacher mobile number.";
+        }
+
+        var linkedToAnotherTeacher = await _context.Teachers.AnyAsync(t =>
+            !t.IsDeleted && t.UserId == user.Id && (!linkedUserId.HasValue || user.Id != linkedUserId.Value));
+        return linkedToAnotherTeacher
+            ? "This mobile number is already linked to another teacher."
+            : null;
+    }
+
+    private int? GetCurrentUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(value, out var userId) ? userId : null;
+    }
+
+    private static string NormalizeMobile(string? mobile)
+    {
+        var digits = new string((mobile ?? string.Empty).Where(char.IsDigit).ToArray());
+        return digits.Length == 12 && digits.StartsWith("91", StringComparison.Ordinal) ? digits[2..] : digits;
+    }
+
+    private static string BuildTeacherPlaceholderEmail(string mobile) =>
+        $"teacher_{mobile}@placeholder.mastermind.local";
+
+    private static bool IsPlaceholderEmail(string? email) =>
+        string.IsNullOrWhiteSpace(email) || email.EndsWith("@placeholder.mastermind.local", StringComparison.OrdinalIgnoreCase);
 }

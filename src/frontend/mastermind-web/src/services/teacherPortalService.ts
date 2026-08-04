@@ -17,6 +17,18 @@ export interface TeacherStudentItem {
   averageGrade: string
 }
 
+export interface TeacherAttendanceItem {
+  id: number
+  studentId: number
+  status: string
+}
+
+export interface SaveTeacherAttendanceRecord {
+  studentId: number
+  status: string
+  remarks?: string
+}
+
 export interface StudentRemarkItem {
   id: number
   studentId: number
@@ -69,6 +81,19 @@ class TeacherPortalService {
       attendance: student.attendance || '--',
       averageGrade: student.averageGrade || 'N/A'
     }))
+  }
+
+  async getClassAttendance(classId: number, date: string): Promise<TeacherAttendanceItem[]> {
+    const response = await apiService.get(`/teacher-portal/classes/${classId}/attendance?date=${encodeURIComponent(date)}`)
+    return (response.data || []).map((record: any) => ({
+      id: record.id,
+      studentId: record.studentId,
+      status: record.status
+    }))
+  }
+
+  async saveClassAttendance(classId: number, date: string, records: SaveTeacherAttendanceRecord[]): Promise<void> {
+    await apiService.post(`/teacher-portal/classes/${classId}/attendance`, { date, records })
   }
 
   async getRemarks(classId?: number): Promise<StudentRemarkItem[]> {

@@ -49,6 +49,7 @@ export const API_ENDPOINTS = {
     CREATE: '/teachers',
     UPDATE: (id: string) => `/teachers/${id}`,
     DELETE: (id: string) => `/teachers/${id}`,
+    INVITATION: (id: string) => `/teachers/${id}/invitation`,
     SCHEDULE: '/teachers/schedule',
     CLASSES: '/teachers/classes'
   },

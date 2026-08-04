@@ -40,7 +40,24 @@
 
     <!-- Teachers Table -->
     <div v-else class="mt-8 flex flex-col">
-      <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+      <div class="space-y-3 md:hidden">
+        <article v-for="teacher in teachers" :key="`mobile-${teacher.id}`" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h2 class="truncate font-bold text-slate-950">{{ teacher.fullName }}</h2>
+              <p class="mt-1 text-sm text-slate-500">{{ teacher.mobile }}</p>
+            </div>
+            <span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="teacher.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">{{ teacher.isActive ? 'Active' : 'Inactive' }}</span>
+          </div>
+          <p class="mt-3 text-sm text-slate-600">{{ getTeacherClasses(teacher).join(', ') || 'No classes assigned' }}</p>
+          <div class="mt-4 grid grid-cols-3 gap-2">
+            <button type="button" class="min-h-11 rounded-xl bg-indigo-600 px-2 text-xs font-bold text-white" @click="shareTeacherInvite(teacher)">Invite</button>
+            <button type="button" class="min-h-11 rounded-xl border border-slate-200 px-2 text-xs font-bold text-slate-700" @click="openEditModal(teacher)">Edit</button>
+            <button type="button" class="min-h-11 rounded-xl border border-red-200 px-2 text-xs font-bold text-red-700" @click="deleteTeacher(teacher.id)">Delete</button>
+          </div>
+        </article>
+      </div>
+      <div class="-my-2 -mx-4 hidden overflow-x-auto sm:-mx-6 md:block lg:-mx-8">
         <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
           <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
             <table class="min-w-full divide-y divide-gray-300">
@@ -143,6 +160,9 @@
                     </span>
                   </td>
                   <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                    <button @click="shareTeacherInvite(teacher)" class="mr-4 text-emerald-700 hover:text-emerald-900">
+                      Invite
+                    </button>
                     <button @click="openEditModal(teacher)" class="text-indigo-600 hover:text-indigo-900 mr-4">
                       Edit
                     </button>
@@ -201,15 +221,15 @@
                             />
                           </div>
                           <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
                             <input
                               v-model="teacherForm.email"
                               type="email"
                               id="email"
-                              required
                               class="block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                              placeholder="teacher@example.com"
+                              placeholder="Teacher adds recovery email from invite"
                             />
+                            <p class="mt-1 text-xs text-gray-500">The mobile number is primary. The teacher can add their own recovery email from the private invitation.</p>
                           </div>
                           <div>
                             <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">Mobile *</label>
@@ -419,6 +439,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { apiService } from '@/services/apiService'
 import { API_ENDPOINTS } from '@/config/api'
 import { formatClassForDropdown } from '@/utils/classUtils'
+import { buildTeacherInvitationWhatsAppUrl } from '@/utils/teacherInvitation'
 
 // Type definitions
 interface Teacher {
@@ -509,6 +530,8 @@ const formatSalary = (value?: number) => {
   return `₹${value.toLocaleString('en-IN')}`
 }
 
+const isPlaceholderEmail = (value?: string) => !value || value.endsWith('@placeholder.mastermind.local')
+
 // Get teacher classes as array of class names
 const getTeacherClasses = (teacher: any) => {
   if (!teacher.teacherClasses || teacher.teacherClasses.length === 0) {
@@ -596,7 +619,7 @@ const openEditModal = (teacher: any) => {
     id: teacher.id,
     firstName: teacher.firstName,
     lastName: teacher.lastName,
-    email: teacher.email,
+    email: isPlaceholderEmail(teacher.email) ? '' : teacher.email,
     mobile: teacher.mobile,
     specialization: teacher.specialization || '',
     qualification: teacher.qualification || '',
@@ -661,6 +684,29 @@ const saveTeacher = async () => {
     console.error('Error saving teacher:', err)
   } finally {
     saving.value = false
+  }
+}
+
+const shareTeacherInvite = async (teacher: Teacher) => {
+  const inviteWindow = window.open('about:blank', '_blank')
+  try {
+    const response: any = await apiService.post(API_ENDPOINTS.TEACHERS.INVITATION(teacher.id.toString()))
+    const invitation = response.data || response
+    if (!invitation.inviteUrl) throw new Error('The invitation link was not returned.')
+    const whatsappUrl = buildTeacherInvitationWhatsAppUrl(
+      invitation.primaryMobile || teacher.mobile,
+      teacher.fullName,
+      invitation.inviteUrl,
+      invitation.whatsAppMessage
+    )
+    if (inviteWindow) inviteWindow.location.href = whatsappUrl
+    else {
+      await navigator.clipboard.writeText(invitation.inviteUrl)
+      alert('WhatsApp could not be opened. The teacher invitation link has been copied.')
+    }
+  } catch (err: any) {
+    inviteWindow?.close()
+    alert(err.response?.data?.message || err.message || 'Teacher invitation could not be created.')
   }
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(25,166,140,0.13),transparent_30%),linear-gradient(135deg,#f7fbff_0%,#fffaf1_100%)]">
+  <div class="min-h-[100dvh] overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(25,166,140,0.13),transparent_30%),linear-gradient(135deg,#f7fbff_0%,#fffaf1_100%)]">
     <!-- Sidebar -->
     <div class="fixed inset-y-0 left-0 z-50 w-64 transform border-r border-slate-200/80 bg-white/94 shadow-[0_24px_70px_-45px_rgba(10,29,57,0.65)] backdrop-blur-xl transition-transform duration-300 ease-in-out"
          :class="{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }">
@@ -22,7 +22,7 @@
             v-for="item in navigation"
             :key="item.name"
             :to="item.href"
-            class="flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200"
+            class="flex min-h-11 items-center rounded-md px-4 py-2 text-sm font-medium transition-colors duration-200"
             :class="[
               $route.name === item.name
                 ? 'bg-[#f2edff] text-[#4f46e5] shadow-sm'
@@ -128,8 +128,8 @@
 
       <!-- Page Content -->
       <main class="flex-1">
-        <div class="py-6">
-          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="py-4 sm:py-6">
+          <div class="mx-auto max-w-7xl">
             <router-view />
           </div>
         </div>
@@ -192,8 +192,11 @@ const navigation = [
 
 const userInitials = computed(() => {
   const user = authStore.user
-  if (!user) return 'U'
-  return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
+  if (!user) return 'T'
+  const firstName = String(user.firstName || '').trim()
+  const lastName = String(user.lastName || '').trim()
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+  return initials || 'T'
 })
 
 const notificationCount = computed(() => Math.min(notifications.value.length, 99))

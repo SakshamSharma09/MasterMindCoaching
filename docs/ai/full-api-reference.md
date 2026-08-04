@@ -112,6 +112,8 @@ All `/api/parent/*` routes require the `Parent` role. Parent dashboard clients l
 | POST | `/api/student-remarks` | CreateRemark |
 | GET | `/api/teacher-portal/classes` | GetMyClasses |
 | GET | `/api/teacher-portal/classes/{classId}/students` | GetClassStudents |
+| GET | `/api/teacher-portal/classes/{classId}/attendance?date={date}` | GetClassAttendance; Teacher/Admin role, assigned class only |
+| POST | `/api/teacher-portal/classes/{classId}/attendance` | SaveClassAttendance; bulk upsert for an assigned class with 3 PM/6 PM defaults |
 | GET | `/api/sessions` | GetSessions |
 | GET | `/api/sessions/active` | GetActiveSession |
 | POST | `/api/sessions` | CreateSession |
@@ -202,8 +204,9 @@ All `/api/parent/*` routes require the `Parent` role. Parent dashboard clients l
 |--------|------|------|---------|
 | GET | `/api/students/export` | Admin | Download all non-deleted student details across every session as `.xlsx` |
 | POST | `/api/students/{id}/parent-invitation` | Admin | Until onboarding is complete, revoke any active invite and return a fresh 72-hour link plus the primary mobile for WhatsApp sharing; email delivery failure returns `EmailSent = false` without losing the WhatsApp link; reject resend after the parent has set a password |
-| GET | `/api/auth/invitations/{token}` | Public | Validate an invitation and return masked account details |
-| POST | `/api/auth/invitations/accept` | Public | Store the parent-supplied recovery email and password, link siblings by primary mobile, and consume the invitation |
+| GET | `/api/auth/invitations/{token}` | Public | Validate a Parent or Teacher invitation and return masked account details plus account type |
+| POST | `/api/auth/invitations/accept` | Public | Store the invited Parent/Teacher recovery email and password, synchronize the linked profile, and consume the invitation |
+| POST | `/api/teachers/{id}/invitation` | Admin | Provision the mobile-first Teacher account, revoke an earlier unused invite, and return a fresh 72-hour WhatsApp link; email failure is non-fatal |
 | GET | `/api/account/security` | Parent | Get recovery email plus read-only primary/secondary mobiles |
 | PUT | `/api/account/security/email` | Parent | Change the parent-controlled recovery email; primary mobile remains Admin-controlled |
 | POST | `/api/account/deletion-request` | Authenticated | Request deletion for the current account |
