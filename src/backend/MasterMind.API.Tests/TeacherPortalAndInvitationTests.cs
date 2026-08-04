@@ -36,6 +36,7 @@ public class TeacherPortalAndInvitationTests
         var controller = new TeachersController(
             context,
             new NoOpTeacherSalaryService(),
+            new RecordingBlobStorageService(),
             new NoOpEmailService(),
             new ConfigurationBuilder().AddInMemoryCollection().Build(),
             NullLogger<TeachersController>.Instance)
@@ -126,6 +127,7 @@ public class TeacherPortalAndInvitationTests
         var controller = new TeachersController(
             context,
             new NoOpTeacherSalaryService(),
+            new RecordingBlobStorageService(),
             new NoOpEmailService(),
             new ConfigurationBuilder().AddInMemoryCollection().Build(),
             NullLogger<TeachersController>.Instance);
@@ -134,6 +136,54 @@ public class TeacherPortalAndInvitationTests
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Empty(context.AccountInvitations);
+    }
+
+    [Fact]
+    public async Task TeacherPhotoUploadUpdatesTeacherAndLinkedUserProfile()
+    {
+        await using var context = CreateContext();
+        var user = new User
+        {
+            FirstName = "Photo",
+            LastName = "Teacher",
+            Mobile = "9876543210",
+            Email = "photo.teacher@example.com"
+        };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+        var teacher = new Teacher
+        {
+            FirstName = "Photo",
+            LastName = "Teacher",
+            Mobile = user.Mobile,
+            Email = user.Email,
+            UserId = user.Id,
+            IsActive = true
+        };
+        context.Teachers.Add(teacher);
+        await context.SaveChangesAsync();
+
+        var storage = new RecordingBlobStorageService();
+        var controller = new TeachersController(
+            context,
+            new NoOpTeacherSalaryService(),
+            storage,
+            new NoOpEmailService(),
+            new ConfigurationBuilder().AddInMemoryCollection().Build(),
+            NullLogger<TeachersController>.Instance);
+        var bytes = Encoding.UTF8.GetBytes("teacher-photo");
+        var file = new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "teacher.png")
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "image/png"
+        };
+
+        var result = await controller.UploadTeacherPhoto(teacher.Id, file);
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Equal("https://storage.test/photos/teacher.png", teacher.ProfileImageUrl);
+        Assert.Equal(teacher.ProfileImageUrl, user.ProfileImageUrl);
+        Assert.Equal("teacher.png", storage.UploadedBlobName);
     }
 
     [Fact]
@@ -209,6 +259,21 @@ public class TeacherPortalAndInvitationTests
         public Task EnsureMonthlyObligationsAsync(int? sessionId = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<IReadOnlyList<TeacherSalary>> GetObligationsAsync(int? sessionId = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<TeacherSalary>>(Array.Empty<TeacherSalary>());
+    }
+
+    private sealed class RecordingBlobStorageService : IBlobStorageService
+    {
+        public string? UploadedBlobName { get; private set; }
+
+        public Task<string> UploadPhotoAsync(Stream fileStream, string fileName, string contentType)
+        {
+            UploadedBlobName = fileName;
+            return Task.FromResult(fileName);
+        }
+
+        public Task<Stream?> DownloadPhotoAsync(string blobName) => Task.FromResult<Stream?>(null);
+        public Task<bool> DeletePhotoAsync(string blobName) => Task.FromResult(true);
+        public string GetPhotoUrl(string blobName) => $"https://storage.test/photos/{blobName}";
     }
 
     private sealed class NoOpAuthService : IAuthService

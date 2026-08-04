@@ -19,6 +19,7 @@ public class TeachersController : ControllerBase
 {
     private readonly MasterMindDbContext _context;
     private readonly ITeacherSalaryService _teacherSalaryService;
+    private readonly IBlobStorageService _blobStorageService;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TeachersController> _logger;
@@ -26,12 +27,14 @@ public class TeachersController : ControllerBase
     public TeachersController(
         MasterMindDbContext context,
         ITeacherSalaryService teacherSalaryService,
+        IBlobStorageService blobStorageService,
         IEmailService emailService,
         IConfiguration configuration,
         ILogger<TeachersController> logger)
     {
         _context = context;
         _teacherSalaryService = teacherSalaryService;
+        _blobStorageService = blobStorageService;
         _emailService = emailService;
         _configuration = configuration;
         _logger = logger;
@@ -72,9 +75,11 @@ public class TeachersController : ControllerBase
                     Mobile = t.Mobile,
                     Specialization = t.Specialization,
                     Qualification = t.Qualification,
+                    Subjects = t.Subjects,
                     ExperienceYears = t.ExperienceYears,
                     MonthlySalary = t.MonthlySalary,
                     JoiningDate = t.JoiningDate,
+                    ProfileImageUrl = t.ProfileImageUrl,
                     IsActive = t.IsActive,
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt,
@@ -120,9 +125,11 @@ public class TeachersController : ControllerBase
                     Mobile = t.Mobile,
                     Specialization = t.Specialization,
                     Qualification = t.Qualification,
+                    Subjects = t.Subjects,
                     ExperienceYears = t.ExperienceYears,
                     MonthlySalary = t.MonthlySalary,
                     JoiningDate = t.JoiningDate,
+                    ProfileImageUrl = t.ProfileImageUrl,
                     IsActive = t.IsActive,
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt,
@@ -380,6 +387,83 @@ public class TeachersController : ControllerBase
         }
     }
 
+    [HttpPost("{id:int}/photo")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<object>>> UploadTeacherPhoto(int id, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "No file uploaded" });
+        }
+
+        if (file.Length > 5 * 1024 * 1024)
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "File size exceeds 5MB limit" });
+        }
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(extension))
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Invalid file type. Allowed: jpg, jpeg, png, gif, webp"
+            });
+        }
+
+        var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
+        if (teacher == null)
+        {
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Teacher not found" });
+        }
+
+        try
+        {
+            var existingBlobName = ExtractBlobNameFromUrl(teacher.ProfileImageUrl);
+            if (!string.IsNullOrWhiteSpace(existingBlobName))
+            {
+                await _blobStorageService.DeletePhotoAsync(existingBlobName);
+            }
+
+            using var stream = file.OpenReadStream();
+            var blobName = await _blobStorageService.UploadPhotoAsync(stream, file.FileName, file.ContentType);
+            var photoUrl = _blobStorageService.GetPhotoUrl(blobName);
+
+            teacher.ProfileImageUrl = photoUrl;
+            teacher.UpdatedAt = DateTime.UtcNow;
+            if (teacher.UserId.HasValue)
+            {
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == teacher.UserId.Value && !u.IsDeleted);
+                if (user != null)
+                {
+                    user.ProfileImageUrl = photoUrl;
+                    user.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Teacher photo uploaded successfully",
+                Data = new { blobName, url = photoUrl }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading photo for teacher {TeacherId}", id);
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = $"Error uploading photo: {ex.Message}"
+            });
+        }
+    }
+
     // POST: api/Teachers/5/invitation
     [HttpPost("{id:int}/invitation")]
     public async Task<ActionResult<ApiResponse<object>>> CreateTeacherInvitation(int id)
@@ -560,6 +644,7 @@ public class TeachersController : ControllerBase
         user.LastName = teacher.LastName;
         user.Mobile = mobile;
         user.IsActive = teacher.IsActive;
+        user.ProfileImageUrl = teacher.ProfileImageUrl;
         if (!IsPlaceholderEmail(teacher.Email))
         {
             user.Email = teacher.Email.Trim().ToLowerInvariant();
@@ -623,4 +708,17 @@ public class TeachersController : ControllerBase
 
     private static bool IsPlaceholderEmail(string? email) =>
         string.IsNullOrWhiteSpace(email) || email.EndsWith("@placeholder.mastermind.local", StringComparison.OrdinalIgnoreCase);
+
+    private static string? ExtractBlobNameFromUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        var lastSegment = uri.Segments.LastOrDefault();
+        return string.IsNullOrWhiteSpace(lastSegment)
+            ? null
+            : Uri.UnescapeDataString(lastSegment.Trim('/'));
+    }
 }

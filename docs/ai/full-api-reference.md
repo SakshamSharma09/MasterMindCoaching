@@ -137,6 +137,7 @@ All `/api/parent/*` routes require the `Parent` role. Parent dashboard clients l
 | GET | `/api/teachers/{id}` | GetTeacher |
 | POST | `/api/teachers` | CreateTeacher |
 | PUT | `/api/teachers/{id}` | UpdateTeacher |
+| POST | `/api/teachers/{id}/photo` | UploadTeacherPhoto |
 | DELETE | `/api/teachers/{id}` | DeleteTeacher |
 | GET | `/api/test/student-count` | GetStudentCount |
 | GET | `/api/test/student-columns` | GetStudentColumns |
@@ -207,6 +208,7 @@ All `/api/parent/*` routes require the `Parent` role. Parent dashboard clients l
 | GET | `/api/auth/invitations/{token}` | Public | Validate a Parent or Teacher invitation and return masked account details plus account type |
 | POST | `/api/auth/invitations/accept` | Public | Store the invited Parent/Teacher recovery email and password, synchronize the linked profile, and consume the invitation |
 | POST | `/api/teachers/{id}/invitation` | Admin | Provision the mobile-first Teacher account, revoke an earlier unused invite, and return a fresh 72-hour WhatsApp link; email failure is non-fatal |
+| POST | `/api/teachers/{id}/photo` | Admin | Upload or replace a Teacher profile photo (JPG, PNG, GIF, or WebP up to 5 MB) and synchronize it to the linked Teacher login profile |
 | GET | `/api/account/security` | Parent | Get recovery email plus read-only primary/secondary mobiles |
 | PUT | `/api/account/security/email` | Parent | Change the parent-controlled recovery email; primary mobile remains Admin-controlled |
 | POST | `/api/account/deletion-request` | Authenticated | Request deletion for the current account |

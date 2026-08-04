@@ -41,6 +41,7 @@ async function authenticate(page: Page, role: keyof typeof routesByRole) {
       selectedSessionId: 1,
       selectedSession: { id: 1, name: '2026-27', isActive: true }
     }))
+    localStorage.setItem('selectedSessionId', '1')
   }, { role, token })
 }
 
@@ -48,6 +49,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', async route => {
     const url = route.request().url()
     let data: unknown = []
+    let directResponse = false
     if (url.includes('/teacher-portal/classes/10/students')) {
       data = [{ id: 1, name: 'Test Student', initials: 'TS', rollNo: 'TEST-1', classId: 10 }]
     } else if (url.includes('/teacher-portal/classes/10/attendance')) {
@@ -61,12 +63,34 @@ test.beforeEach(async ({ page }) => {
     } else if (url.includes('/notifications')) {
       data = { totalCount: 0, items: [] }
     } else if (url.includes('/students')) {
-      data = { data: [], totalCount: 0, totalPages: 0, currentPage: 1 }
+      directResponse = true
+      data = {
+        data: [{
+          id: 71,
+          firstName: 'Test',
+          lastName: 'Mobile Student',
+          fullName: 'Test Mobile Student',
+          mobile: '7627053236',
+          parentMobile: '7627053236',
+          motherName: 'Test Mother',
+          fatherName: 'Test Father',
+          currentSchool: 'Lotus School',
+          admissionDate: '2026-04-01',
+          isActive: true,
+          profileImageUrl: '',
+          studentClasses: [{ isActive: true, class: { id: 10, name: 'Class 8', board: 'CBSE', medium: 'English' } }]
+        }],
+        totalCount: 1,
+        totalPages: 1,
+        currentPage: 1
+      }
     }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true, message: 'fixture', data })
+      body: directResponse
+        ? JSON.stringify(data)
+        : JSON.stringify({ success: true, message: 'fixture', data })
     })
   })
 })
@@ -134,5 +158,18 @@ test('teacher attendance keeps status controls and save action reachable on mobi
     body: document.body.scrollWidth,
     viewport: document.documentElement.clientWidth
   }))
+  expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport + 1)
+})
+
+test('admin student list uses readable cards on a phone viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  await authenticate(page, 'Admin')
+  await page.goto('/admin/students')
+  await page.waitForLoadState('domcontentloaded')
+
+  await expect(page.getByRole('heading', { name: 'Test Mobile Student' })).toBeVisible()
+  const studentCard = page.getByRole('article')
+  await expect(studentCard.getByText('Lotus School', { exact: true })).toBeVisible()
+  const dimensions = await page.evaluate(() => ({ body: document.body.scrollWidth, viewport: document.documentElement.clientWidth }))
   expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport + 1)
 })

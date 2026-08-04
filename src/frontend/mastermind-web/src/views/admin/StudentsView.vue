@@ -60,8 +60,8 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+    <div class="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+      <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="h-12 w-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -76,7 +76,7 @@
           </div>
         </div>
       </div>
-      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+      <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="h-12 w-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
@@ -91,7 +91,7 @@
           </div>
         </div>
       </div>
-      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+      <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="h-12 w-12 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
@@ -106,7 +106,7 @@
           </div>
         </div>
       </div>
-      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+      <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="h-12 w-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -213,15 +213,69 @@
 
     <!-- Students Table -->
     <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between">
+      <div class="border-b border-gray-200 px-4 py-4 sm:px-6">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-lg font-semibold text-gray-900">Student Records</h2>
           <div class="text-sm text-gray-500">
             Showing {{ filteredStudents.length }} of {{ students.length }} students
           </div>
         </div>
       </div>
-      <div ref="studentTableScroller" class="max-h-[70vh] overflow-auto">
+      <div class="space-y-4 bg-slate-50 p-3 md:hidden">
+        <template v-for="group in groupedStudents" :key="`mobile-${group.key}`">
+          <div v-if="filters.groupBy === 'school'" class="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-900">
+            {{ group.label }} · {{ group.students.length }} student{{ group.students.length === 1 ? '' : 's' }}
+          </div>
+          <article v-for="student in group.students" :key="`mobile-student-${student.id}`" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="flex items-start gap-3">
+              <img v-if="student.photo" :src="student.photo" :alt="`${student.firstName} ${student.lastName}`" class="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-indigo-100" />
+              <div v-else class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-sm font-bold text-white">
+                {{ student.firstName?.charAt(0) }}{{ student.lastName?.charAt(0) }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="min-w-0 break-words text-base font-bold leading-5 text-slate-950">{{ student.firstName }} {{ student.lastName }}</h3>
+                  <span class="shrink-0 rounded-full px-2 py-1 text-[11px] font-bold" :class="student.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">{{ student.status }}</span>
+                </div>
+                <p class="mt-1 break-words text-sm font-medium text-indigo-700">{{ student.className || 'Not Assigned' }}</p>
+                <p class="mt-0.5 text-xs text-slate-500">Student ID {{ student.id.toString().padStart(4, '0') }}</p>
+              </div>
+            </div>
+
+            <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+              <div class="min-w-0">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">School</dt>
+                <dd class="mt-1 break-words font-medium text-slate-800">{{ student.currentSchool || 'Not provided' }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Admission</dt>
+                <dd class="mt-1 font-medium text-slate-800">{{ formatDate(student.admissionDate) }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Parent mobile</dt>
+                <dd class="mt-1 break-all font-medium text-slate-800">{{ student.parentMobile || 'Not provided' }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Student mobile</dt>
+                <dd class="mt-1 break-all font-medium text-slate-800">{{ student.phone || 'Not provided' }}</dd>
+              </div>
+            </dl>
+
+            <div v-if="student.motherName || student.fatherName || student.parentName" class="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+              <p v-if="student.motherName"><span class="font-semibold text-slate-700">Mother:</span> {{ student.motherName }}</p>
+              <p v-if="student.fatherName"><span class="font-semibold text-slate-700">Father:</span> {{ student.fatherName }}</p>
+              <p v-if="!student.motherName && !student.fatherName"><span class="font-semibold text-slate-700">Parent:</span> {{ student.parentName }}</p>
+            </div>
+
+            <div class="mt-4 grid grid-cols-3 gap-2">
+              <button type="button" :disabled="student.parentOnboarded" class="min-h-11 rounded-xl bg-emerald-600 px-2 text-xs font-bold text-white disabled:bg-slate-200 disabled:text-slate-500" @click="sendInvitation(student)">{{ student.parentOnboarded ? 'Joined' : 'Invite' }}</button>
+              <button type="button" class="min-h-11 rounded-xl border border-indigo-200 px-2 text-xs font-bold text-indigo-700" @click="editStudent(student)">Edit</button>
+              <button type="button" class="min-h-11 rounded-xl border border-red-200 px-2 text-xs font-bold text-red-700" @click="deleteStudent(student.id)">Delete</button>
+            </div>
+          </article>
+        </template>
+      </div>
+      <div ref="studentTableScroller" class="hidden max-h-[70vh] overflow-auto md:block">
         <table class="min-w-[940px] w-full divide-y divide-gray-200">
           <thead class="sticky top-0 z-20 bg-gray-50">
             <tr>
