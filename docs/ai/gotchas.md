@@ -244,6 +244,15 @@ $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
 
 ## Testing Patterns
 
+### Portal Layout Must Tolerate Partial Persisted User Profiles
+**Symptom**: An authenticated Teacher route renders a completely blank mobile screen with `Cannot read properties of undefined (reading 'charAt')`.
+**Root Cause**: The shared Teacher layout generated initials by calling `charAt` directly on assumed `firstName` and `lastName` values. Older or partially persisted login profiles can omit either field, which crashes the layout before any routed page renders.
+**Solution**: Coerce optional profile-name values to safe strings and provide a role fallback initial. Capture browser `pageerror` and console errors in mobile route tests so a blank shell cannot pass an overflow-only assertion.
+**Files Affected**: `src/frontend/mastermind-web/src/layouts/TeacherLayout.vue`, `src/frontend/mastermind-web/e2e/mobile-routes.spec.ts`
+**Date Learned**: 2026-08-02
+
+---
+
 ### API Testing with PowerShell
 **Pattern**: Always test protected endpoints both with and without auth token
 ```powershell

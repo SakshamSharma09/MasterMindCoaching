@@ -215,7 +215,8 @@ public class AuthController : ControllerBase
             {
                 invitation.ExpiresAt,
                 Mobile = MaskMobile(invitation.User.Mobile),
-                Name = $"{invitation.User.FirstName} {invitation.User.LastName}".Trim()
+                Name = $"{invitation.User.FirstName} {invitation.User.LastName}".Trim(),
+                AccountType = GetInvitationAccountType(invitation.User)
             }
         });
     }
@@ -260,19 +261,35 @@ public class AuthController : ControllerBase
         invitation.UsedAt = DateTime.UtcNow;
         invitation.UpdatedAt = DateTime.UtcNow;
 
-        var normalizedMobile = NormalizeMobile(invitation.User.Mobile);
-        var students = await _context.Students
-            .Where(s => !s.IsDeleted && s.ParentUserId == invitation.UserId)
-            .ToListAsync();
-        var sameMobileStudents = (await _context.Students
-                .Where(s => !s.IsDeleted && s.ParentUserId != invitation.UserId)
-                .ToListAsync())
-            .Where(s => NormalizeMobile(s.ParentMobile) == normalizedMobile);
-        foreach (var student in students.Concat(sameMobileStudents))
+        var accountType = GetInvitationAccountType(invitation.User);
+        if (accountType == "Teacher")
         {
-            student.ParentUserId = invitation.UserId;
-            student.ParentEmail = normalizedEmail;
-            student.UpdatedAt = DateTime.UtcNow;
+            var teachers = await _context.Teachers
+                .Where(t => !t.IsDeleted && (t.UserId == invitation.UserId || t.Mobile == invitation.User.Mobile))
+                .ToListAsync();
+            foreach (var teacher in teachers)
+            {
+                teacher.UserId = invitation.UserId;
+                teacher.Email = normalizedEmail;
+                teacher.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        else
+        {
+            var normalizedMobile = NormalizeMobile(invitation.User.Mobile);
+            var students = await _context.Students
+                .Where(s => !s.IsDeleted && s.ParentUserId == invitation.UserId)
+                .ToListAsync();
+            var sameMobileStudents = (await _context.Students
+                    .Where(s => !s.IsDeleted && s.ParentUserId != invitation.UserId)
+                    .ToListAsync())
+                .Where(s => NormalizeMobile(s.ParentMobile) == normalizedMobile);
+            foreach (var student in students.Concat(sameMobileStudents))
+            {
+                student.ParentUserId = invitation.UserId;
+                student.ParentEmail = normalizedEmail;
+                student.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         await _context.SaveChangesAsync();
@@ -284,10 +301,10 @@ public class AuthController : ControllerBase
         {
             await _emailService.SendEmailAsync(
                 normalizedEmail,
-                "Your MasterMind Coaching parent account is ready",
+                $"Your MasterMind Coaching {accountType.ToLowerInvariant()} account is ready",
                 $"""
                 <p>Namaste,</p>
-                <p>Your parent account password has been set successfully.</p>
+                <p>Your {accountType.ToLowerInvariant()} account password has been set successfully.</p>
                 <p><a href="{loginUrl}">Open MasterMind Coaching and sign in</a> using your registered mobile number.</p>
                 <p>This email can also be used for secure OTP access and password recovery.</p>
                 <p>— MasterMind Coaching Classes</p>
@@ -295,7 +312,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Parent account {UserId} was activated, but confirmation email failed", invitation.UserId);
+            _logger.LogWarning(ex, "{AccountType} account {UserId} was activated, but confirmation email failed", accountType, invitation.UserId);
         }
 
         return Ok(new ApiResponse<object>
@@ -583,8 +600,12 @@ public class AuthController : ControllerBase
                     .ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(i => i.TokenHash == hash && i.UsedAt == null &&
                 i.RevokedAt == null && i.ExpiresAt > now && !i.IsDeleted && !i.User.IsDeleted &&
-                !i.User.UserRoles.Any(ur => ur.Role.Name == "Admin" || ur.Role.Name == "Teacher"));
+                !i.User.UserRoles.Any(ur => ur.Role.Name == "Admin") &&
+                i.User.UserRoles.Any(ur => ur.Role.Name == "Parent" || ur.Role.Name == "Teacher"));
     }
+
+    private static string GetInvitationAccountType(User user) =>
+        user.UserRoles.Any(ur => ur.Role.Name == "Teacher") ? "Teacher" : "Parent";
 
     private static string MaskMobile(string mobile)
     {

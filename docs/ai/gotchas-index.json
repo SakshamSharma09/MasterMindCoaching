@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-08-01",
+  "lastUpdated": "2026-08-02",
   "description": "Quick lookup index for AI gotchas - match symptoms to solutions",
   "gotchas": [
     {
@@ -72,6 +72,13 @@
       "category": "frontend",
       "section": "Backend Returns roles[] Array, Frontend Expects role String",
       "severity": "medium"
+    },
+    {
+      "id": "portal-partial-user-profile",
+      "symptoms": ["teacher page blank", "mobile portal blank", "charAt undefined", "partial persisted user", "layout crash"],
+      "category": "frontend",
+      "section": "Portal Layout Must Tolerate Partial Persisted User Profiles",
+      "severity": "high"
     },
     {
       "id": "spa-routing",

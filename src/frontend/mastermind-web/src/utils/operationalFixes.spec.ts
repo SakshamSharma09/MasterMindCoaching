@@ -7,6 +7,7 @@ import { buildParentInvitationWhatsAppMessage } from './parentInvitation'
 import { matchesDuePeriod } from './datePeriod'
 import { tokenExpiryTime } from './sessionExpiry'
 import { billingIntervalMonths, nextCycleDueDate } from './financeSchedule'
+import { buildTeacherInvitationWhatsAppUrl } from './teacherInvitation'
 
 describe('student and communication operational fixes', () => {
   it('uses next-cycle fee due dates for every supported recurrence', () => {
@@ -107,6 +108,17 @@ describe('student and communication operational fixes', () => {
   it('adds India country code once', () => {
     expect(normalizeIndianMobile('98872 58679')).toBe('919887258679')
     expect(normalizeIndianMobile('+91 98872 58679')).toBe('919887258679')
+  })
+
+  it('builds a country-coded teacher invitation with the password setup link', () => {
+    const url = buildTeacherInvitationWhatsAppUrl(
+      '98765 43210',
+      'Test Teacher',
+      'https://example.test/accept-invitation?token=opaque'
+    )
+    expect(url).toContain('wa.me/919876543210')
+    expect(decodeURIComponent(url)).toContain('password and recovery email')
+    expect(decodeURIComponent(url)).toContain('token=opaque')
   })
 
   it('includes the selected academic session in student list requests', () => {

@@ -47,11 +47,22 @@ async function authenticate(page: Page, role: keyof typeof routesByRole) {
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', async route => {
     const url = route.request().url()
-    const data = url.includes('/notifications')
-      ? { totalCount: 0, items: [] }
-      : url.includes('/students')
-        ? { data: [], totalCount: 0, totalPages: 0, currentPage: 1 }
-        : []
+    let data: unknown = []
+    if (url.includes('/teacher-portal/classes/10/students')) {
+      data = [{ id: 1, name: 'Test Student', initials: 'TS', rollNo: 'TEST-1', classId: 10 }]
+    } else if (url.includes('/teacher-portal/classes/10/attendance')) {
+      data = []
+    } else if (url.includes('/teacher-portal/classes')) {
+      data = [{ id: 10, name: 'Class 8', board: 'CBSE', medium: 'English' }]
+    } else if (url.includes('/dashboard/teacher-stats')) {
+      data = { totalStudents: 1, classesToday: 1, attendanceMarked: 0, remarksAdded: 0 }
+    } else if (url.includes('/student-remarks')) {
+      data = []
+    } else if (url.includes('/notifications')) {
+      data = { totalCount: 0, items: [] }
+    } else if (url.includes('/students')) {
+      data = { data: [], totalCount: 0, totalPages: 0, currentPage: 1 }
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -100,4 +111,28 @@ test('bulk attendance keeps load and sticky save actions reachable', async ({ pa
   await page.goto('/admin/attendance')
   await page.getByRole('button', { name: 'Bulk Attendance' }).click()
   await expect(page.getByRole('button', { name: /load students/i })).toBeVisible()
+})
+
+test('teacher attendance keeps status controls and save action reachable on mobile', async ({ page }) => {
+  const pageErrors: string[] = []
+  const consoleErrors: string[] = []
+  const failedRequests: string[] = []
+  page.on('pageerror', error => pageErrors.push(error.message))
+  page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()) })
+  page.on('requestfailed', request => failedRequests.push(`${request.url()} (${request.failure()?.errorText})`))
+  await page.setViewportSize({ width: 390, height: 844 })
+  await authenticate(page, 'Teacher')
+  await page.goto('/teacher/attendance')
+  await page.waitForTimeout(500)
+  if (pageErrors.length) throw new Error(`Teacher attendance page errors: ${pageErrors.join(' | ')}`)
+  const bodyText = await page.locator('body').innerText()
+  if (!bodyText.includes('Test Student')) throw new Error(`Teacher attendance did not render. URL: ${page.url()}. Body: ${bodyText}. Console: ${consoleErrors.join(' | ')}. Requests: ${failedRequests.join(' | ')}`)
+  await expect(page.getByText('Test Student', { exact: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Attendance for Test Student' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /save attendance \(1\)/i })).toBeVisible()
+  const dimensions = await page.evaluate(() => ({
+    body: document.body.scrollWidth,
+    viewport: document.documentElement.clientWidth
+  }))
+  expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport + 1)
 })

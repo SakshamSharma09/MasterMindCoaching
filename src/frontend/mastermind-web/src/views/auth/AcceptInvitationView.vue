@@ -1,7 +1,7 @@
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-[#f7f9fc] px-4 py-10">
+  <main class="flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-[#f7f9fc] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
     <section class="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
-      <p class="text-sm font-bold uppercase tracking-[0.18em] text-[#6049e8]">Parent invitation</p>
+      <p class="text-sm font-bold uppercase tracking-[0.18em] text-[#6049e8]">{{ accountType }} invitation</p>
       <h1 class="mt-2 text-3xl font-black text-slate-950">Set your password</h1>
       <p class="mt-3 text-sm leading-6 text-slate-600">
         Add your own recovery email and create a password once. Your registered mobile number remains your primary login.
@@ -63,6 +63,7 @@ const confirmPassword = ref('')
 const email = ref('')
 const maskedMobile = ref('')
 const invitationName = ref('Parent')
+const accountType = ref('Account')
 const error = ref('')
 
 onMounted(async () => {
@@ -75,6 +76,7 @@ onMounted(async () => {
     const response = await authService.validateInvitation(token)
     maskedMobile.value = response.data?.mobile || ''
     invitationName.value = response.data?.name || 'Parent'
+    accountType.value = response.data?.accountType || 'Account'
     valid.value = true
   } catch (err: any) {
     error.value = err.response?.data?.message || 'This invitation is invalid or expired.'

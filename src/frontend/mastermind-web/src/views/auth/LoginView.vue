@@ -1,6 +1,6 @@
 <template>
-  <main class="min-h-screen bg-[#f7f9fc] text-slate-950">
-    <div class="mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
+  <main class="min-h-[100dvh] overflow-y-auto bg-[#f7f9fc] text-slate-950">
+    <div class="mx-auto grid min-h-[100dvh] w-full max-w-6xl grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
       <section class="hidden flex-col justify-between overflow-hidden bg-[#061a33] p-10 text-white lg:flex">
         <div>
           <div class="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3">
@@ -40,9 +40,9 @@
         </div>
       </section>
 
-      <section class="flex items-center justify-center px-4 py-8 sm:px-6 lg:px-10">
+      <section class="flex items-center justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:py-8 lg:px-10">
         <div class="w-full max-w-md">
-          <div class="mb-6 flex items-center gap-3 lg:hidden">
+          <div class="mb-3 flex items-center gap-3 sm:mb-6 lg:hidden">
             <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#6049e8] text-white shadow-lg shadow-indigo-200">
               <i class="fas fa-book-open text-xl"></i>
             </span>
@@ -52,8 +52,8 @@
             </div>
           </div>
 
-          <div class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-200/70 sm:p-7">
-            <div class="mb-6">
+          <div class="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-200/70 sm:rounded-[2rem] sm:p-7">
+            <div class="mb-4 sm:mb-6">
               <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#6049e8]">Secure login</p>
               <h2 class="mt-2 text-3xl font-black text-slate-950">Welcome back</h2>
               <p class="mt-2 text-sm leading-6 text-slate-500">
@@ -61,12 +61,12 @@
               </p>
             </div>
 
-            <div class="mb-6 grid grid-cols-1 gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-3">
+            <div class="mb-4 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 sm:mb-6 sm:gap-2">
               <button
                 v-for="option in loginOptions"
                 :key="option.value"
                 type="button"
-                class="rounded-xl px-3 py-3 text-sm font-bold transition"
+                class="min-h-11 rounded-xl px-1 py-2 text-[11px] font-bold leading-tight transition sm:px-3 sm:py-3 sm:text-sm"
                 :class="loginMode === option.value ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
                 @click="selectMode(option.value)"
               >
@@ -74,7 +74,7 @@
               </button>
             </div>
 
-            <form class="space-y-5" @submit.prevent="handleSubmit">
+            <form class="space-y-4 sm:space-y-5" @submit.prevent="handleSubmit">
               <div>
                 <label for="identifier" class="mb-2 block text-sm font-bold text-slate-700">{{ identifierLabel }}</label>
                 <div class="relative">
@@ -136,10 +136,10 @@
 
             <div class="mt-6 border-t border-slate-100 pt-5 text-sm leading-6 text-slate-500">
               <p>
-                First time parent? Use the private joining link sent by MasterMind to set your password.
-                Teachers can use
+                First-time parent or teacher? Use the private joining link sent by MasterMind to set your recovery email and password.
+                Already set up but forgot the password? Use
                 <button type="button" class="font-bold text-[#6049e8]" @click="selectMode('email-otp')">email OTP</button>
-                if their account has not been set up yet.
+                to access your account, then change the password in Account Security.
               </p>
               <p class="mt-3">
                 By using this app, you agree to our

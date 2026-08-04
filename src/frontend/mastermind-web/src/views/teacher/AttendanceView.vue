@@ -1,136 +1,101 @@
 <template>
-  <div class="px-4 sm:px-6 lg:px-8">
-    <div class="sm:flex sm:items-center">
-      <div class="sm:flex-auto">
-        <h1 class="text-2xl font-semibold text-gray-900">Mark Attendance</h1>
-        <p class="mt-2 text-sm text-gray-700">
-          Mark attendance for your class students.
-        </p>
-      </div>
-      <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-        <button
-          type="button"
-          class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-          @click="saveAttendance"
-          :disabled="saving || students.length === 0 || !selectedClass"
-        >
-          {{ saving ? 'Saving...' : 'Save Attendance' }}
-        </button>
-      </div>
-    </div>
-
-    <div class="mb-4 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+  <div class="mx-auto w-full max-w-6xl px-3 pb-28 sm:px-6 sm:pb-8 lg:px-8">
+    <header class="mb-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex sm:items-center sm:justify-between sm:p-7">
       <div>
-        <label for="class-select" class="block text-sm font-medium text-gray-700">Select Class</label>
-        <select
-          id="class-select"
-          v-model.number="selectedClass"
-          class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-green-500 focus:outline-none focus:ring-green-500 sm:text-sm"
-        >
+        <p class="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">Teacher workspace</p>
+        <h1 class="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">Mark Attendance</h1>
+        <p class="mt-2 text-sm text-slate-600">Only students from your assigned classes are shown.</p>
+      </div>
+      <button
+        type="button"
+        class="mt-4 hidden min-h-11 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50 sm:inline-flex sm:items-center sm:justify-center"
+        :disabled="!canSave"
+        @click="saveAttendance"
+      >
+        {{ saving ? 'Saving…' : 'Save Attendance' }}
+      </button>
+    </header>
+
+    <section class="mb-5 grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 sm:p-5">
+      <div>
+        <label for="class-select" class="mb-2 block text-sm font-bold text-slate-700">Class *</label>
+        <select id="class-select" v-model.number="selectedClass" class="min-h-12 w-full rounded-xl border-slate-300 px-3 text-base focus:border-indigo-500 focus:ring-indigo-500">
+          <option :value="null" disabled>Select an assigned class</option>
           <option v-for="classItem in classes" :key="classItem.id" :value="classItem.id">
-            {{ classItem.name }} - {{ classItem.board }}-{{ classItem.medium }}
+            {{ classItem.name }} · {{ classItem.board }} · {{ classItem.medium }}
           </option>
         </select>
       </div>
       <div>
-        <label for="attendance-date" class="block text-sm font-medium text-gray-700">Date</label>
-        <input
-          id="attendance-date"
-          v-model="attendanceDate"
-          type="date"
-          class="mt-1 block w-full rounded-md border-gray-300 py-2 px-3 text-base focus:border-green-500 focus:outline-none focus:ring-green-500 sm:text-sm"
-        />
+        <label for="attendance-date" class="mb-2 block text-sm font-bold text-slate-700">Date *</label>
+        <input id="attendance-date" v-model="attendanceDate" type="date" class="min-h-12 w-full rounded-xl border-slate-300 px-3 text-base focus:border-indigo-500 focus:ring-indigo-500">
       </div>
-    </div>
+    </section>
 
-    <div v-if="error" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-      {{ error }}
-    </div>
-    <div v-if="successMessage" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-      {{ successMessage }}
-    </div>
+    <div v-if="error" role="alert" class="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{{ error }}</div>
+    <div v-if="successMessage" role="status" class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">{{ successMessage }}</div>
 
-    <div v-if="loading" class="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
-      Loading students...
-    </div>
-
-    <div v-else-if="students.length === 0" class="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
-      No students found in this class.
-    </div>
-
-    <div v-else class="overflow-hidden rounded-md bg-white shadow">
-      <ul role="list" class="divide-y divide-gray-200">
-        <li v-for="student in students" :key="student.id">
-          <div class="px-4 py-4 sm:px-6">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
-                  <span class="text-sm font-medium text-gray-700">{{ student.initials }}</span>
-                </div>
-                <div class="ml-4">
-                  <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
-                  <div class="text-sm text-gray-500">Roll No: {{ student.rollNo }}</div>
-                </div>
-              </div>
-              <div class="flex items-center space-x-4">
-                <label class="inline-flex items-center">
-                  <input type="radio" :name="`attendance-${student.id}`" value="present" v-model="student.status" class="h-4 w-4 text-green-600">
-                  <span class="ml-2 text-sm text-gray-700">Present</span>
-                </label>
-                <label class="inline-flex items-center">
-                  <input type="radio" :name="`attendance-${student.id}`" value="absent" v-model="student.status" class="h-4 w-4 text-red-600">
-                  <span class="ml-2 text-sm text-gray-700">Absent</span>
-                </label>
-                <label class="inline-flex items-center">
-                  <input type="radio" :name="`attendance-${student.id}`" value="late" v-model="student.status" class="h-4 w-4 text-yellow-600">
-                  <span class="ml-2 text-sm text-gray-700">Late</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </li>
-      </ul>
-    </div>
-
-    <div class="mt-8 rounded-lg bg-white shadow">
-      <div class="px-4 py-5 sm:p-6">
-        <h3 class="mb-4 text-lg font-medium leading-6 text-gray-900">Attendance Summary</h3>
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
-          <div class="text-center">
-            <div class="text-2xl font-bold text-green-600">{{ attendanceSummary.present }}</div>
-            <div class="text-sm text-gray-500">Present</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-red-600">{{ attendanceSummary.absent }}</div>
-            <div class="text-sm text-gray-500">Absent</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-yellow-600">{{ attendanceSummary.late }}</div>
-            <div class="text-sm text-gray-500">Late</div>
-          </div>
+    <section v-if="students.length" class="mb-4 rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
+      <div class="grid grid-cols-3 gap-2 text-center sm:grid-cols-5">
+        <button v-for="option in statusOptions" :key="option.value" type="button" class="min-h-11 rounded-xl border px-2 py-2 text-xs font-bold sm:text-sm" :class="option.quickClass" @click="markAll(option.value)">
+          All {{ option.label }}
+        </button>
+      </div>
+      <div class="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+        <div v-for="option in statusOptions" :key="`count-${option.value}`" class="rounded-xl bg-slate-50 p-2 text-center">
+          <div class="text-lg font-black text-slate-950">{{ countStatus(option.value) }}</div>
+          <div class="text-[11px] font-semibold text-slate-500">{{ option.label }}</div>
         </div>
       </div>
+    </section>
+
+    <div v-if="loading" class="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Loading assigned students…</div>
+    <div v-else-if="!selectedClass" class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">Select one of your assigned classes.</div>
+    <div v-else-if="students.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">No active students are assigned to this class.</div>
+
+    <ul v-else class="space-y-3" aria-label="Student attendance">
+      <li v-for="student in students" :key="student.id" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="flex min-w-0 items-center gap-3">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-sm font-black text-indigo-700">{{ student.initials }}</div>
+          <div class="min-w-0">
+            <p class="truncate font-bold text-slate-950">{{ student.name }}</p>
+            <p class="text-xs text-slate-500">Admission no. {{ student.rollNo }}</p>
+          </div>
+        </div>
+        <fieldset class="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <legend class="sr-only">Attendance for {{ student.name }}</legend>
+          <label v-for="option in statusOptions" :key="option.value" class="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-2 text-xs font-bold transition" :class="student.status === option.value ? option.selectedClass : 'border-slate-200 bg-white text-slate-600'">
+            <input v-model="student.status" class="sr-only" type="radio" :name="`attendance-${student.id}`" :value="option.value">
+            {{ option.label }}
+          </label>
+        </fieldset>
+      </li>
+    </ul>
+
+    <div class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,0.12)] backdrop-blur sm:hidden">
+      <button type="button" class="min-h-12 w-full rounded-xl bg-indigo-600 px-5 font-black text-white disabled:opacity-50" :disabled="!canSave" @click="saveAttendance">
+        {{ saving ? 'Saving attendance…' : `Save attendance (${students.length})` }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import { ATTENDANCE_STATUS_MAP, attendanceService, type AttendanceRecord } from '@/services/attendanceService'
+import { useRoute } from 'vue-router'
 import { teacherPortalService, type TeacherClassContext } from '@/services/teacherPortalService'
+
+type AttendanceValue = 'Present' | 'Absent' | 'Late' | 'HalfDay' | 'Leave'
 
 interface StudentAttendanceRow {
   id: number
   name: string
   initials: string
   rollNo: string
-  status: 'present' | 'absent' | 'late'
-  attendanceId?: number
+  status: AttendanceValue
 }
 
-const authStore = useAuthStore()
-
+const route = useRoute()
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
@@ -140,109 +105,75 @@ const selectedClass = ref<number | null>(null)
 const students = ref<StudentAttendanceRow[]>([])
 const attendanceDate = ref(new Date().toISOString().slice(0, 10))
 
-const attendanceSummary = computed(() => ({
-  present: students.value.filter(s => s.status === 'present').length,
-  absent: students.value.filter(s => s.status === 'absent').length,
-  late: students.value.filter(s => s.status === 'late').length
-}))
+const statusOptions: Array<{ value: AttendanceValue; label: string; selectedClass: string; quickClass: string }> = [
+  { value: 'Present', label: 'Present', selectedClass: 'border-emerald-500 bg-emerald-50 text-emerald-700', quickClass: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  { value: 'Absent', label: 'Absent', selectedClass: 'border-red-500 bg-red-50 text-red-700', quickClass: 'border-red-200 bg-red-50 text-red-700' },
+  { value: 'Late', label: 'Late', selectedClass: 'border-amber-500 bg-amber-50 text-amber-700', quickClass: 'border-amber-200 bg-amber-50 text-amber-700' },
+  { value: 'HalfDay', label: 'Half Day', selectedClass: 'border-blue-500 bg-blue-50 text-blue-700', quickClass: 'border-blue-200 bg-blue-50 text-blue-700' },
+  { value: 'Leave', label: 'Leave', selectedClass: 'border-violet-500 bg-violet-50 text-violet-700', quickClass: 'border-violet-200 bg-violet-50 text-violet-700' }
+]
+
+const canSave = computed(() => !saving.value && !loading.value && !!selectedClass.value && students.value.length > 0)
+const countStatus = (status: AttendanceValue) => students.value.filter(student => student.status === status).length
+const markAll = (status: AttendanceValue) => students.value.forEach(student => { student.status = status })
 
 const loadStudentsAndAttendance = async () => {
   if (!selectedClass.value) {
     students.value = []
     return
   }
-
   loading.value = true
   error.value = ''
   successMessage.value = ''
   try {
     const [classStudents, attendanceRecords] = await Promise.all([
       teacherPortalService.getClassStudents(selectedClass.value),
-      attendanceService.getAttendance(attendanceDate.value, selectedClass.value)
+      teacherPortalService.getClassAttendance(selectedClass.value, attendanceDate.value)
     ])
-
-    const attendanceMap = new Map<number, AttendanceRecord>(
-      (attendanceRecords || []).map(record => [record.studentId, record])
-    )
-
-    students.value = classStudents.map(student => {
-      const existing = attendanceMap.get(student.id)
-      return {
-        id: student.id,
-        name: student.name,
-        initials: student.initials,
-        rollNo: student.rollNo,
-        status: ((existing?.status as 'present' | 'absent' | 'late') || 'present'),
-        attendanceId: existing?.id
-      }
-    })
+    const attendanceMap = new Map(attendanceRecords.map(record => [record.studentId, record.status as AttendanceValue]))
+    students.value = classStudents.map(student => ({
+      id: student.id,
+      name: student.name,
+      initials: student.initials,
+      rollNo: student.rollNo,
+      status: attendanceMap.get(student.id) || 'Present'
+    }))
   } catch (err: any) {
     students.value = []
-    error.value = err?.response?.data?.message || err?.message || 'Failed to load attendance data'
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadTeacherContext = async () => {
-  const email = authStore.user?.email || ''
-  if (!email) {
-    error.value = 'Teacher account email not found. Please re-login.'
-    return
-  }
-
-  loading.value = true
-  try {
-    classes.value = await teacherPortalService.getMyClasses()
-    selectedClass.value = classes.value.length > 0 ? classes.value[0].id : null
-    await loadStudentsAndAttendance()
-  } catch (err: any) {
-    error.value = err?.response?.data?.message || err?.message || 'Failed to load teacher classes'
+    error.value = err?.response?.data?.message || err?.message || 'Attendance could not be loaded.'
   } finally {
     loading.value = false
   }
 }
 
 const saveAttendance = async () => {
-  if (!selectedClass.value || students.value.length === 0) return
-
+  if (!selectedClass.value || !students.value.length) return
   saving.value = true
   error.value = ''
   successMessage.value = ''
   try {
-    for (const student of students.value) {
-      const payload = {
-        studentId: student.id,
-        classId: selectedClass.value,
-        date: attendanceDate.value,
-        status: ATTENDANCE_STATUS_MAP[student.status]
-      }
-
-      if (student.attendanceId) {
-        await attendanceService.updateAttendance(student.attendanceId, {
-          status: ATTENDANCE_STATUS_MAP[student.status]
-        })
-      } else {
-        const created = await attendanceService.markAttendance(payload)
-        student.attendanceId = created.id
-      }
-    }
-
-    successMessage.value = 'Attendance saved successfully.'
+    await teacherPortalService.saveClassAttendance(selectedClass.value, attendanceDate.value, students.value.map(student => ({ studentId: student.id, status: student.status })))
+    successMessage.value = `Attendance saved for ${students.value.length} students. Class time is recorded as 3:00 PM to 6:00 PM.`
   } catch (err: any) {
-    error.value = err?.response?.data?.message || err?.message || 'Failed to save attendance'
+    error.value = err?.response?.data?.message || err?.message || 'Attendance could not be saved.'
   } finally {
     saving.value = false
   }
 }
 
-watch([selectedClass, attendanceDate], async ([newClass, newDate], [oldClass, oldDate]) => {
-  if (newClass && (newClass !== oldClass || newDate !== oldDate)) {
-    await loadStudentsAndAttendance()
-  }
-})
+watch([selectedClass, attendanceDate], loadStudentsAndAttendance)
 
 onMounted(async () => {
-  await loadTeacherContext()
+  loading.value = true
+  try {
+    classes.value = await teacherPortalService.getMyClasses()
+    const requestedClass = Number(route.query.classId)
+    selectedClass.value = classes.value.some(item => item.id === requestedClass) ? requestedClass : (classes.value[0]?.id || null)
+    if (!selectedClass.value) students.value = []
+  } catch (err: any) {
+    error.value = err?.response?.data?.message || err?.message || 'Assigned classes could not be loaded.'
+  } finally {
+    loading.value = false
+  }
 })
 </script>

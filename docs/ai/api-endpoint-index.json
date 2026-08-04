@@ -381,6 +381,16 @@
                                                                 "method":  "GET",
                                                                 "path":  "/api/teacher-portal/classes/{classId}/students",
                                                                 "action":  "GetClassStudents"
+                                                            },
+                                                            {
+                                                                "method":  "GET",
+                                                                "path":  "/api/teacher-portal/classes/{classId}/attendance",
+                                                                "action":  "GetClassAttendance"
+                                                            },
+                                                            {
+                                                                "method":  "POST",
+                                                                "path":  "/api/teacher-portal/classes/{classId}/attendance",
+                                                                "action":  "SaveClassAttendance"
                                                             }
                                                         ]
                                          },
@@ -566,6 +576,11 @@
                                                           "method":  "PUT",
                                                           "path":  "/api/teachers/{id}",
                                                           "action":  "UpdateTeacher"
+                                                      },
+                                                      {
+                                                          "method":  "POST",
+                                                          "path":  "/api/teachers/{id}/invitation",
+                                                          "action":  "CreateTeacherInvitation"
                                                       },
                                                       {
                                                           "method":  "DELETE",
