@@ -251,6 +251,13 @@ $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
 **Files Affected**: `src/frontend/mastermind-web/src/layouts/TeacherLayout.vue`, `src/frontend/mastermind-web/e2e/mobile-routes.spec.ts`
 **Date Learned**: 2026-08-02
 
+### Mobile Student Route Fixtures Must Match Session Storage and Pagination Contracts
+**Symptom**: A Playwright mobile Student-list test shows zero students even though the mocked `/api/students` response contains a record, or a visible card assertion fails because the same text also exists in the hidden desktop table.
+**Root Cause**: The session store reads the plain `selectedSessionId` local-storage key, the Students endpoint returns a direct paginated result rather than an `ApiResponse` envelope, and responsive desktop/table markup remains in the DOM while CSS hides it.
+**Solution**: Seed `selectedSessionId`, return the direct `PaginatedResult` fixture shape for `/api/students`, and scope mobile assertions to the visible `article` card instead of using global text locators.
+**Files Affected**: `src/frontend/mastermind-web/e2e/mobile-routes.spec.ts`
+**Date Learned**: 2026-08-04
+
 ---
 
 ### API Testing with PowerShell

@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-08-02",
+  "lastUpdated": "2026-08-04",
   "description": "Quick lookup index for AI gotchas - match symptoms to solutions",
   "gotchas": [
     {
@@ -79,6 +79,13 @@
       "category": "frontend",
       "section": "Portal Layout Must Tolerate Partial Persisted User Profiles",
       "severity": "high"
+    },
+    {
+      "id": "mobile-student-route-fixtures",
+      "symptoms": ["mobile student test empty", "mocked students not rendered", "selectedSessionId fixture", "strict mode duplicate mobile card", "hidden desktop table"],
+      "category": "testing",
+      "section": "Mobile Student Route Fixtures Must Match Session Storage and Pagination Contracts",
+      "severity": "medium"
     },
     {
       "id": "spa-routing",

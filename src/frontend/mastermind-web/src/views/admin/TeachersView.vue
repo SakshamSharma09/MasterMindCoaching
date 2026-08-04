@@ -43,9 +43,15 @@
       <div class="space-y-3 md:hidden">
         <article v-for="teacher in teachers" :key="`mobile-${teacher.id}`" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <h2 class="truncate font-bold text-slate-950">{{ teacher.fullName }}</h2>
-              <p class="mt-1 text-sm text-slate-500">{{ teacher.mobile }}</p>
+            <div class="flex min-w-0 items-center gap-3">
+              <img v-if="teacher.profileImageUrl" :src="teacher.profileImageUrl" :alt="teacher.fullName" class="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-indigo-100" />
+              <div v-else class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-teal-500 text-sm font-bold text-white">
+                {{ teacherInitials(teacher) }}
+              </div>
+              <div class="min-w-0">
+                <h2 class="break-words font-bold leading-5 text-slate-950">{{ teacher.fullName }}</h2>
+                <p class="mt-1 text-sm text-slate-500">{{ teacher.mobile }}</p>
+              </div>
             </div>
             <span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="teacher.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">{{ teacher.isActive ? 'Active' : 'Inactive' }}</span>
           </div>
@@ -98,7 +104,11 @@
               <tbody class="divide-y divide-gray-200 bg-white">
                 <tr v-for="teacher in teachers" :key="teacher.id">
                   <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                    {{ teacher.fullName }}
+                    <div class="flex items-center gap-3">
+                      <img v-if="teacher.profileImageUrl" :src="teacher.profileImageUrl" :alt="teacher.fullName" class="h-10 w-10 rounded-full object-cover" />
+                      <div v-else class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-teal-500 text-xs font-bold text-white">{{ teacherInitials(teacher) }}</div>
+                      <span>{{ teacher.fullName }}</span>
+                    </div>
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -240,6 +250,23 @@
                               required
                               class="block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                               placeholder="+91 9876543210"
+                            />
+                          </div>
+                          <div>
+                            <label for="teacherPhoto" class="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
+                            <input
+                              id="teacherPhoto"
+                              type="file"
+                              accept="image/jpeg,image/png,image/gif,image/webp"
+                              class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:font-medium file:text-indigo-700"
+                              @change="onTeacherPhotoSelected"
+                            />
+                            <p class="mt-1 text-xs text-gray-500">JPG, PNG, GIF or WebP up to 5 MB.</p>
+                            <img
+                              v-if="teacherPhotoPreviewUrl || teacherForm.profileImageUrl"
+                              :src="teacherPhotoPreviewUrl || teacherForm.profileImageUrl"
+                              alt="Teacher photo preview"
+                              class="mt-3 h-20 w-20 rounded-full object-cover ring-2 ring-indigo-100"
                             />
                           </div>
                         </div>
@@ -455,6 +482,7 @@ interface Teacher {
   experienceYears?: number
   monthlySalary?: number
   joiningDate?: string
+  profileImageUrl?: string
   isActive?: boolean
   teacherClasses?: any[]
 }
@@ -466,6 +494,8 @@ const error = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+const selectedTeacherPhotoFile = ref<File | null>(null)
+const teacherPhotoPreviewUrl = ref('')
 // Available subjects for multi-select
 const availableSubjects = ref<string[]>([])
 
@@ -495,7 +525,8 @@ const teacherForm = ref({
   classes: [] as number[], // Array of class IDs
   joiningDate: getLocalDate(),
   experienceYears: 0,
-  monthlySalary: null as number | null
+  monthlySalary: null as number | null,
+  profileImageUrl: ''
 })
 
 // Fetch teachers from API
@@ -531,6 +562,28 @@ const formatSalary = (value?: number) => {
 }
 
 const isPlaceholderEmail = (value?: string) => !value || value.endsWith('@placeholder.mastermind.local')
+
+const teacherInitials = (teacher: Teacher) =>
+  `${teacher.firstName?.charAt(0) || ''}${teacher.lastName?.charAt(0) || ''}`.toUpperCase() || 'T'
+
+const clearTeacherPhotoSelection = () => {
+  if (teacherPhotoPreviewUrl.value.startsWith('blob:')) URL.revokeObjectURL(teacherPhotoPreviewUrl.value)
+  selectedTeacherPhotoFile.value = null
+  teacherPhotoPreviewUrl.value = ''
+}
+
+const onTeacherPhotoSelected = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0] || null
+  clearTeacherPhotoSelection()
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Teacher photo must be 5 MB or smaller.')
+    ;(event.target as HTMLInputElement).value = ''
+    return
+  }
+  selectedTeacherPhotoFile.value = file
+  teacherPhotoPreviewUrl.value = URL.createObjectURL(file)
+}
 
 // Get teacher classes as array of class names
 const getTeacherClasses = (teacher: any) => {
@@ -595,6 +648,7 @@ const fetchClasses = async () => {
 // Open add modal
 const openAddModal = () => {
   isEditing.value = false
+  clearTeacherPhotoSelection()
   teacherForm.value = {
     id: 0,
     firstName: '',
@@ -607,7 +661,8 @@ const openAddModal = () => {
     classes: [],
     joiningDate: getLocalDate(),
     experienceYears: 0,
-    monthlySalary: null
+    monthlySalary: null,
+    profileImageUrl: ''
   }
   showModal.value = true
 }
@@ -615,6 +670,7 @@ const openAddModal = () => {
 // Open edit modal
 const openEditModal = (teacher: any) => {
   isEditing.value = true
+  clearTeacherPhotoSelection()
   teacherForm.value = {
     id: teacher.id,
     firstName: teacher.firstName,
@@ -627,7 +683,8 @@ const openEditModal = (teacher: any) => {
     classes: teacher.teacherClasses ? teacher.teacherClasses.map((tc: any) => tc.classId) : [],
     joiningDate: teacher.joiningDate ? teacher.joiningDate.slice(0, 10) : getLocalDate(),
     experienceYears: teacher.experienceYears ?? 0,
-    monthlySalary: teacher.monthlySalary
+    monthlySalary: teacher.monthlySalary,
+    profileImageUrl: teacher.profileImageUrl || ''
   }
   showModal.value = true
 }
@@ -635,6 +692,7 @@ const openEditModal = (teacher: any) => {
 // Close modal
 const closeModal = () => {
   showModal.value = false
+  clearTeacherPhotoSelection()
   teacherForm.value = {
     id: 0,
     firstName: '',
@@ -647,7 +705,8 @@ const closeModal = () => {
     classes: [],
     joiningDate: getLocalDate(),
     experienceYears: 0,
-    monthlySalary: null
+    monthlySalary: null,
+    profileImageUrl: ''
   }
 }
 
@@ -671,14 +730,26 @@ const saveTeacher = async () => {
       classIds: teacherForm.value.classes // Send selected class IDs
     }
 
-    if (isEditing.value) {
-      await apiService.put(API_ENDPOINTS.TEACHERS.UPDATE(teacherForm.value.id.toString()), teacherData)
-    } else {
-      await apiService.post(API_ENDPOINTS.TEACHERS.CREATE, teacherData)
+    const response: any = isEditing.value
+      ? await apiService.put(API_ENDPOINTS.TEACHERS.UPDATE(teacherForm.value.id.toString()), teacherData)
+      : await apiService.post(API_ENDPOINTS.TEACHERS.CREATE, teacherData)
+    const savedTeacher = response.data || response
+    const teacherId = isEditing.value ? teacherForm.value.id : savedTeacher?.id
+
+    let photoUploadError = ''
+    if (selectedTeacherPhotoFile.value && teacherId) {
+      try {
+        await apiService.upload(API_ENDPOINTS.TEACHERS.PHOTO(String(teacherId)), selectedTeacherPhotoFile.value)
+      } catch (photoError: any) {
+        photoUploadError = photoError.response?.data?.message || photoError.message || 'Photo upload failed'
+      }
     }
 
     closeModal()
     await fetchTeachers() // Refresh the list
+    if (photoUploadError) {
+      alert(`Teacher details were saved, but the photo could not be uploaded: ${photoUploadError}`)
+    }
   } catch (err: any) {
     alert(err.response?.data?.message || 'Failed to save teacher')
     console.error('Error saving teacher:', err)
@@ -767,6 +838,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', closeDropdownOnClickOutside)
+  clearTeacherPhotoSelection()
 })
 
 // Initialize component - moved to the new onMounted below

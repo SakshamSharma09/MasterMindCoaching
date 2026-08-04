@@ -38,7 +38,8 @@
         <div class="border-t border-gray-200 p-4">
           <div class="flex items-center space-x-3">
             <div class="flex-shrink-0">
-              <div class="h-8 w-8 rounded-full bg-gradient-to-br from-[#0a1d39] to-[#19a68c] flex items-center justify-center">
+              <img v-if="authStore.user?.profileImageUrl" :src="authStore.user.profileImageUrl" alt="Teacher profile" class="h-9 w-9 rounded-full object-cover ring-2 ring-emerald-100" />
+              <div v-else class="h-9 w-9 rounded-full bg-gradient-to-br from-[#0a1d39] to-[#19a68c] flex items-center justify-center">
                 <span class="text-white text-sm font-medium">
                   {{ userInitials }}
                 </span>

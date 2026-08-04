@@ -174,9 +174,14 @@ import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { templateZoneService, type BirthdayReminder, type FeeReceiptLog, type FeeReminder, type MessageTemplate, type TemplatePreviewResponse } from '@/services/templateZoneService'
 import { studentsService } from '@/services/studentsService'
 import { saveOrShareBlob } from '@/utils/fileDownload'
+import {
+  buildBirthdayTemplateMessage,
+  buildFeeReminderTemplateMessage,
+  buildReceiptTemplateMessage,
+  buildWelcomeTemplateMessage
+} from '@/utils/templateWhatsApp'
 
 const WEBSITE_URL = 'https://victorious-glacier-0e6507000.6.azurestaticapps.net'
-const PASSWORD_SETUP_PATH = `${WEBSITE_URL}/change-password`
 
 type TemplateKind = 'welcome' | 'birthday' | 'feeReminder' | 'receipt'
 
@@ -185,7 +190,6 @@ interface WelcomeStudent {
   studentName: string
   className: string
   joiningDate: string
-  loginEmail: string
   parentName: string
   parentMobile: string
   profileImageUrl?: string
@@ -221,7 +225,7 @@ const QueuePanel = defineComponent({
     return () => h('div', { class: 'overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm' }, [
       h('div', { class: 'border-b px-5 py-3' }, [
         h('h3', { class: 'font-medium text-gray-900' }, props.title),
-        h('p', { class: 'text-xs text-gray-500' }, 'Download a personalized image or open WhatsApp with the prepared message.')
+        h('p', { class: 'text-xs text-gray-500' }, 'Download the image first, then attach it after WhatsApp opens. This helper instruction is never inserted into the parent message.')
       ]),
       h('div', { class: 'max-h-80 divide-y overflow-auto' }, [
         slots.default?.(),
@@ -315,7 +319,6 @@ const loadWelcomeStudents = async () => {
       studentName: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim() || `Student ${student.id}`,
       className: student.className || activeClass?.class?.name || 'Not Assigned',
       joiningDate: (student.admissionDate || student.createdAt || new Date().toISOString()).slice(0, 10),
-      loginEmail: student.studentEmail || student.email || '',
       parentName: student.parentName || '',
       parentMobile: student.parentMobile || student.studentMobile || '',
       profileImageUrl: student.profileImageUrl || student.photo || ''
@@ -397,15 +400,12 @@ const buildWelcomeCard = (student: WelcomeStudent): TemplateCardData => ({
   kind: 'welcome',
   fileName: `welcome-${cleanFilePart(student.studentName)}.png`,
   whatsappMobile: student.parentMobile,
-  whatsappText: [
-    `Welcome to The Master Mind Coaching Classes, ${student.studentName}!`,
-    `Class: ${student.className}`,
-    `Joining date: ${formatDisplayDate(student.joiningDate)}`,
-    `Login email: ${student.loginEmail || 'Please contact admin to update login email.'}`,
-    `Website/App: ${WEBSITE_URL}`,
-    `Create mobile password: Login once with email OTP, then open ${PASSWORD_SETUP_PATH}`,
-    'Please attach the downloaded welcome image before sending this message.'
-  ].join('\n'),
+  whatsappText: buildWelcomeTemplateMessage({
+    studentName: student.studentName,
+    className: student.className,
+    joiningDate: formatDisplayDate(student.joiningDate),
+    websiteUrl: WEBSITE_URL
+  }),
   title: 'Welcome',
   headline: 'Welcome to our learning family',
   subhead: 'Your journey toward knowledge, growth, and success begins here.',
@@ -418,12 +418,12 @@ const buildWelcomeCard = (student: WelcomeStudent): TemplateCardData => ({
   bodyLines: [
     `We are delighted to have ${student.studentName} join The Master Mind Coaching Classes.`,
     'We are committed to guiding and supporting every step of the way.',
-    student.loginEmail ? `Parent login email: ${student.loginEmail}` : 'Ask admin to add parent email for app login.'
+    'The parent account uses the registered primary mobile number after private invitation setup.'
   ],
   fields: [
     { label: 'Student', value: student.studentName },
     { label: 'Class', value: student.className },
-    { label: 'Login email', value: student.loginEmail || 'Update in profile' }
+    { label: 'Admission', value: formatDisplayDate(student.joiningDate) }
   ],
   accent: '#d59b2d'
 })
@@ -432,12 +432,7 @@ const buildBirthdayCard = (item: BirthdayReminder): TemplateCardData => ({
   kind: 'birthday',
   fileName: `birthday-${cleanFilePart(item.studentName)}.png`,
   whatsappMobile: item.parentMobile,
-  whatsappText: [
-    `Happy Birthday ${item.studentName}!`,
-    'The Master Mind Coaching Classes wishes you a bright year full of learning and joy.',
-    `Website/App: ${WEBSITE_URL}`,
-    'Please attach the downloaded birthday image before sending this message.'
-  ].join('\n'),
+  whatsappText: buildBirthdayTemplateMessage({ studentName: item.studentName }),
   title: 'Birthday Wishes',
   headline: `Happy Birthday, ${item.studentName}!`,
   subhead: 'May this year bring confidence, curiosity, and success.',
@@ -462,15 +457,13 @@ const buildFeeReminderCard = (item: FeeReminder): TemplateCardData => ({
   kind: 'feeReminder',
   fileName: `fee-reminder-${cleanFilePart(item.studentName)}.png`,
   whatsappMobile: item.parentMobile,
-  whatsappText: [
-    'Fee reminder from The Master Mind Coaching Classes.',
-    `Student: ${item.studentName}`,
-    `Class: ${item.className}`,
-    `Pending amount: Rs. ${formatCurrency(item.feeAmount)}`,
-    `Due date: ${formatDisplayDate(item.dueDate)}`,
-    `Website/App: ${WEBSITE_URL}`,
-    'Please attach the downloaded reminder image before sending this message.'
-  ].join('\n'),
+  whatsappText: buildFeeReminderTemplateMessage({
+    studentName: item.studentName,
+    className: item.className,
+    feePeriod: item.month,
+    amount: `Rs. ${formatCurrency(item.feeAmount)}`,
+    dueDate: formatDisplayDate(item.dueDate)
+  }),
   title: 'Fee Reminder',
   headline: 'Fee payment reminder',
   subhead: 'Kindly complete the pending fee by the due date.',
@@ -486,7 +479,7 @@ const buildFeeReminderCard = (item: FeeReminder): TemplateCardData => ({
   ],
   fields: [
     { label: 'Student', value: item.studentName },
-    { label: 'Class', value: item.className },
+    { label: 'Fee period', value: item.month },
     { label: 'Amount', value: `Rs. ${formatCurrency(item.feeAmount)}` }
   ],
   accent: '#f59e0b'
@@ -496,15 +489,14 @@ const buildReceiptCard = (item: FeeReceiptLog): TemplateCardData => ({
   kind: 'receipt',
   fileName: `fee-receipt-${cleanFilePart(item.receiptNumber || item.studentName)}.png`,
   whatsappMobile: item.parentMobile,
-  whatsappText: [
-    'Fee receipt confirmation from The Master Mind Coaching Classes.',
-    `Receipt: ${item.receiptNumber || 'Generated'}`,
-    `Student: ${item.studentName}`,
-    `Amount received: Rs. ${formatCurrency(item.paidAmount)}`,
-    `Date: ${formatDisplayDate(item.receiptDate)}`,
-    `Website/App: ${WEBSITE_URL}`,
-    'Please attach the downloaded receipt image before sending this message.'
-  ].join('\n'),
+  whatsappText: buildReceiptTemplateMessage({
+    receiptNumber: item.receiptNumber || 'Generated',
+    studentName: item.studentName,
+    feePeriod: item.feePeriod || 'Recorded period',
+    amount: `Rs. ${formatCurrency(item.paidAmount)}`,
+    receiptDate: formatDisplayDate(item.receiptDate),
+    paymentMethod: item.paymentMethod || 'Recorded'
+  }),
   title: 'Fee Receipt',
   headline: 'Payment received',
   subhead: 'Thank you. Your payment has been recorded successfully.',
@@ -519,7 +511,7 @@ const buildReceiptCard = (item: FeeReceiptLog): TemplateCardData => ({
   ],
   fields: [
     { label: 'Receipt', value: item.receiptNumber || 'Generated' },
-    { label: 'Student', value: item.studentName },
+    { label: 'Fee period', value: item.feePeriod || 'Recorded' },
     { label: 'Received', value: `Rs. ${formatCurrency(item.paidAmount)}` }
   ],
   accent: '#10b981'
