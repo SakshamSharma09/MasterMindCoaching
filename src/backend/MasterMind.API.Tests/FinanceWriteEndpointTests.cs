@@ -140,6 +140,125 @@ public class FinanceWriteEndpointTests
         Assert.Equal($"MM-PAY-{payment.Id:D8}", payment.TransactionId);
     }
 
+    private sealed class SqlServerFinanceTestDbContext : MasterMindDbContext
+    {
+        public SqlServerFinanceTestDbContext(DbContextOptions<MasterMindDbContext> options)
+            : base(options)
+        {
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<FeeReceipt>()
+                .HasOne(receipt => receipt.Student)
+                .WithMany()
+                .HasForeignKey(receipt => receipt.StudentId)
+                .OnDelete(DeleteBehavior.NoAction);
+            modelBuilder.Entity<FeeReceipt>()
+                .HasOne(receipt => receipt.Payment)
+                .WithMany()
+                .HasForeignKey(receipt => receipt.PaymentId)
+                .OnDelete(DeleteBehavior.NoAction);
+            modelBuilder.Entity<TemplateDispatchLog>()
+                .HasOne(log => log.Student)
+                .WithMany()
+                .HasForeignKey(log => log.StudentId)
+                .OnDelete(DeleteBehavior.NoAction);
+            modelBuilder.Entity<TemplateDispatchLog>()
+                .HasOne(log => log.StudentFee)
+                .WithMany()
+                .HasForeignKey(log => log.StudentFeeId)
+                .OnDelete(DeleteBehavior.NoAction);
+            modelBuilder.Entity<TemplateDispatchLog>()
+                .HasOne(log => log.FeeReceipt)
+                .WithMany()
+                .HasForeignKey(log => log.FeeReceiptId)
+                .OnDelete(DeleteBehavior.NoAction);
+        }
+    }
+
+    [Fact]
+    public async Task CollectPaymentSucceedsOnSqlServerWhenTransactionIdIsBlank()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var databaseName = $"MasterMindFeePayment_{Guid.NewGuid():N}";
+        var connectionString = $"Server=(localdb)\\mssqllocaldb;Database={databaseName};Trusted_Connection=True;MultipleActiveResultSets=true";
+        var options = new DbContextOptionsBuilder<MasterMindDbContext>()
+            .UseSqlServer(connectionString)
+            .Options;
+
+        await using var context = new SqlServerFinanceTestDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        try
+        {
+            var (session, student) = await SeedSessionAndStudent(context);
+            student.MotherName = "Test Mother";
+            var admin = new User
+            {
+                Email = "sql-fee-admin@example.invalid",
+                Mobile = "9887258679",
+                FirstName = "Fee",
+                LastName = "Admin",
+                PasswordHash = "test",
+                IsActive = true
+            };
+            var structure = new FeeStructure
+            {
+                Name = "Monthly SQL test fee",
+                Type = FeeType.Tuition,
+                Category = FeeCategory.Monthly,
+                Frequency = FeeFrequency.Monthly,
+                Amount = 3000,
+                AcademicYear = session.AcademicYear,
+                IsActive = true
+            };
+            context.AddRange(admin, structure);
+            await context.SaveChangesAsync();
+            var fee = new StudentFee
+            {
+                StudentId = student.Id,
+                FeeStructureId = structure.Id,
+                Amount = 3000,
+                FinalAmount = 3000,
+                DueDate = new DateOnly(2026, 5, 1),
+                AcademicYear = session.AcademicYear,
+                FeeCategory = FeeCategory.Monthly,
+                Frequency = FeeFrequency.Monthly,
+                Status = FeeStatus.Overdue
+            };
+            context.StudentFees.Add(fee);
+            await context.SaveChangesAsync();
+
+            var controller = WithUser(new FeeCollectionController(
+                context,
+                NullLogger<FeeCollectionController>.Instance,
+                new NoOpEmailService()), admin.Id);
+            var response = await controller.CollectPayment(new CollectPaymentRequest
+            {
+                StudentId = student.Id,
+                PaymentMethod = PaymentMethod.Cash,
+                TransactionId = string.Empty,
+                FeeItems = new List<PaymentFeeItemDto>
+                {
+                    new() { StudentFeeId = fee.Id, Amount = 3000, Description = "Tuition Fee - 2026-04", Period = "2026-04" }
+                }
+            });
+
+            Assert.IsType<CreatedAtActionResult>(response.Result);
+            var payment = Assert.Single(await context.Payments.ToListAsync());
+            Assert.Equal($"MM-PAY-{payment.Id:D8}", payment.TransactionId);
+        }
+        finally
+        {
+            await context.Database.EnsureDeletedAsync();
+        }
+    }
+
     [Fact]
     public async Task FeeDetailsExcludeDeletedSchedulesAndInternalControlRows()
     {
