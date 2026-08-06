@@ -170,6 +170,13 @@
       "category": "finance",
       "section": "Fee Collection Must Filter Soft-Deleted Schedule Families and Generate Blank References",
       "severity": "critical"
+    },
+    {
+      "id": "fee-collection-retry-strategy-transaction",
+      "symptoms": ["collect payment 500 only in azure", "PAYMENT-WRITE", "execution strategy transaction", "EnableRetryOnFailure user initiated transaction", "fee balance unchanged"],
+      "category": "finance",
+      "section": "Manual Finance Transactions Must Run Inside the SQL Retry Execution Strategy",
+      "severity": "critical"
     }
   ]
 }

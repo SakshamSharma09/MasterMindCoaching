@@ -189,7 +189,8 @@ public class FinanceWriteEndpointTests
         var databaseName = $"MasterMindFeePayment_{Guid.NewGuid():N}";
         var connectionString = $"Server=(localdb)\\mssqllocaldb;Database={databaseName};Trusted_Connection=True;MultipleActiveResultSets=true";
         var options = new DbContextOptionsBuilder<MasterMindDbContext>()
-            .UseSqlServer(connectionString)
+            .UseSqlServer(connectionString, sql =>
+                sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(1), null))
             .Options;
 
         await using var context = new SqlServerFinanceTestDbContext(options);
