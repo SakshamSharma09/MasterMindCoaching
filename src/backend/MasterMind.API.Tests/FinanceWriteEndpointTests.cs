@@ -134,8 +134,71 @@ public class FinanceWriteEndpointTests
         Assert.IsType<CreatedAtActionResult>(response.Result);
         Assert.Equal(FeeStatus.Paid, (await context.StudentFees.FindAsync(fee.Id))!.Status);
         var receipt = Assert.Single(await context.FeeReceipts.ToListAsync());
+        var payment = Assert.Single(await context.Payments.ToListAsync());
         Assert.Equal(string.Empty, receipt.ParentEmail);
         Assert.Equal("Test Mother", receipt.ParentName);
+        Assert.Equal($"MM-PAY-{payment.Id:D8}", payment.TransactionId);
+    }
+
+    [Fact]
+    public async Task FeeDetailsExcludeDeletedSchedulesAndInternalControlRows()
+    {
+        await using var context = NewContext();
+        var (session, student) = await SeedSessionAndStudent(context);
+        var plan = new FeeStructure
+        {
+            Name = "Monthly tuition",
+            Type = FeeType.Tuition,
+            Category = FeeCategory.Monthly,
+            Frequency = FeeFrequency.Monthly,
+            Amount = 3000,
+            AcademicYear = session.AcademicYear,
+            IsActive = true
+        };
+        context.FeeStructures.Add(plan);
+        await context.SaveChangesAsync();
+
+        var deletedSchedule = new StudentFee
+        {
+            StudentId = student.Id, FeeStructureId = plan.Id, Amount = 3000,
+            FinalAmount = 3000, DueDate = DateOnly.FromDateTime(DateTime.Today),
+            AcademicYear = session.AcademicYear, FeeCategory = FeeCategory.Monthly,
+            IsRecurring = true, IsDeleted = true, Status = FeeStatus.Pending
+        };
+        context.StudentFees.Add(deletedSchedule);
+        await context.SaveChangesAsync();
+        context.StudentFees.AddRange(
+            new StudentFee
+            {
+                StudentId = student.Id, FeeStructureId = plan.Id, Amount = 3000,
+                FinalAmount = 3000, DueDate = DateOnly.FromDateTime(DateTime.Today),
+                AcademicYear = session.AcademicYear, FeeCategory = FeeCategory.Monthly,
+                ParentFeeId = deletedSchedule.Id, Status = FeeStatus.Pending
+            },
+            new StudentFee
+            {
+                StudentId = student.Id, FeeStructureId = plan.Id, Amount = 3000,
+                FinalAmount = 3000, DueDate = DateOnly.FromDateTime(DateTime.Today).AddMonths(1),
+                AcademicYear = session.AcademicYear, FeeCategory = FeeCategory.Monthly,
+                Status = FeeStatus.Pending
+            },
+            new StudentFee
+            {
+                StudentId = student.Id, FeeStructureId = plan.Id, Amount = 3000,
+                FinalAmount = 3000, DueDate = DateOnly.FromDateTime(DateTime.Today).AddMonths(2),
+                AcademicYear = session.AcademicYear, FeeCategory = FeeCategory.Monthly,
+                IsDeleted = true, Status = FeeStatus.Pending
+            });
+        await context.SaveChangesAsync();
+
+        var controller = WithAdmin(new FeeCollectionController(
+            context, NullLogger<FeeCollectionController>.Instance, new NoOpEmailService()));
+        var response = await controller.GetStudentFeeDetails(student.Id);
+        var ok = Assert.IsType<OkObjectResult>(response.Result);
+        var payload = Assert.IsType<ApiResponse<StudentFeeDetailsDto>>(ok.Value);
+
+        var visible = Assert.Single(payload.Data!.PendingFees);
+        Assert.Equal(3000m, visible.BalanceAmount);
     }
 
     [Fact]

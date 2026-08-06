@@ -163,6 +163,13 @@
       "category": "authentication",
       "section": "Parent Invitation Must Not Reuse a Privileged Browser Session or Account",
       "severity": "critical"
+    },
+    {
+      "id": "fee-collection-soft-delete-reference",
+      "symptoms": ["pending fee total too high", "deleted fee still visible", "collect payment 500", "blank transaction id", "fee payment error"],
+      "category": "finance",
+      "section": "Fee Collection Must Filter Soft-Deleted Schedule Families and Generate Blank References",
+      "severity": "critical"
     }
   ]
 }

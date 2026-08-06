@@ -196,6 +196,9 @@ public class FeeCollectionController : ControllerBase
             var receiptItems = new List<FeeReceiptItem>();
             decimal totalSelectedAmount = 0;
             decimal totalRemainingBalance = 0;
+            var suppliedTransactionId = string.IsNullOrWhiteSpace(request.TransactionId)
+                ? null
+                : request.TransactionId.Trim();
 
             foreach (var feeItem in request.FeeItems.GroupBy(item => item.StudentFeeId).Select(group => group.First()))
             {
@@ -228,7 +231,7 @@ public class FeeCollectionController : ControllerBase
                     StudentFeeId = studentFee.Id,
                     Amount = feeItem.Amount,
                     Method = request.PaymentMethod,
-                    TransactionId = request.TransactionId,
+                    TransactionId = suppliedTransactionId,
                     ReceiptNumber = $"REC-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}"[..35],
                     Remarks = request.Remarks,
                     Status = PaymentStatus.Completed,
@@ -264,6 +267,18 @@ public class FeeCollectionController : ControllerBase
                 };
 
                 receiptItems.Add(receiptItem);
+            }
+
+            // Persist payments first so a blank external reference can safely fall back to
+            // the database-generated, monotonically increasing payment ID. This remains
+            // inside the transaction, so a later receipt failure still rolls everything back.
+            await _context.SaveChangesAsync();
+            if (suppliedTransactionId == null)
+            {
+                foreach (var payment in payments)
+                {
+                    payment.TransactionId = $"MM-PAY-{payment.Id:D8}";
+                }
             }
 
             // Generate receipt
@@ -598,9 +613,7 @@ public class FeeCollectionController : ControllerBase
             var student = await _context.Students
                 .Include(s => s.StudentClasses)
                     .ThenInclude(sc => sc.Class)
-                .Include(s => s.StudentFees)
-                    .ThenInclude(sf => sf.FeeStructure)
-                .FirstOrDefaultAsync(s => s.Id == studentId);
+                .FirstOrDefaultAsync(s => s.Id == studentId && !s.IsDeleted);
 
             if (student == null)
             {
@@ -611,6 +624,21 @@ public class FeeCollectionController : ControllerBase
                 });
             }
 
+            var pendingFees = await _context.StudentFees
+                .AsNoTracking()
+                .Include(sf => sf.FeeStructure)
+                .Where(sf => sf.StudentId == studentId
+                    && !sf.IsDeleted
+                    && !sf.IsRecurring
+                    && (!sf.ParentFeeId.HasValue || !sf.ParentFee!.IsDeleted)
+                    && sf.Status != FeeStatus.Paid
+                    && sf.Status != FeeStatus.Waived
+                    && sf.Status != FeeStatus.Cancelled
+                    && sf.FinalAmount > sf.PaidAmount)
+                .OrderBy(sf => sf.DueDate)
+                .ThenBy(sf => sf.Id)
+                .ToListAsync();
+
             var feeDetails = new StudentFeeDetailsDto
             {
                 StudentId = student.Id,
@@ -619,8 +647,7 @@ public class FeeCollectionController : ControllerBase
                 ParentName = student.ParentName,
                 ParentEmail = student.ParentEmail,
                 ParentMobile = student.ParentMobile,
-                PendingFees = student.StudentFees
-                    .Where(sf => sf.Status == FeeStatus.Pending || sf.Status == FeeStatus.PartiallyPaid)
+                PendingFees = pendingFees
                     .Select(sf => new PendingFeeItemDto
                     {
                         StudentFeeId = sf.Id,

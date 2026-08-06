@@ -236,6 +236,10 @@ Finance summary now returns `monthlyRecurringRevenue`, `unassignedStudents`, and
 
 Android `1.0.15` targets API 36 and uses `EdgeToEdge.enable()` with a single native WebView system-bar inset listener. Deprecated direct status-bar/navigation-bar color setters were removed to address the Android 15/16 Play pre-launch warnings while retaining safe fixed headers and bottom actions.
 
+Fee Collection operational totals exclude soft-deleted installments, recurring schedule control rows, children of deleted schedules, terminal-status rows, and zero balances. `POST /api/feecollection/collect-payment` accepts a blank `transactionId` and assigns a sequential `MM-PAY-{paymentId}` reference inside the receipt transaction.
+
+Android hotfix `1.0.16` uses versionCode `17` because versionCode `16` was already uploaded to the Play closed-testing draft before the Fee Collection regression was reported.
+
 ---
 
 ## Authentication

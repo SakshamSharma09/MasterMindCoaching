@@ -273,6 +273,15 @@ Invoke-WebRequest -Uri "$backend/api/students" -Headers $headers -UseBasicParsin
 
 ---
 
+### Fee Collection Must Filter Soft-Deleted Schedule Families and Generate Blank References
+**Symptom**: Fee Collection shows totals far above the configured schedule, deleted installments remain selectable, or collecting a payment with an empty transaction ID returns 500.
+**Root Cause**: The student fee-details endpoint projected the unfiltered `Student.StudentFees` navigation, which includes soft-deleted rows, internal recurring parent rows, and children of deleted schedules. Payment rows were also created before a stable fallback reference was available.
+**Solution**: Query operational installments directly with all soft-delete, parent-schedule, control-row, terminal-status, and positive-balance filters. Save new payments inside the existing database transaction to obtain their incremental IDs, then assign `MM-PAY-{Id}` when no external reference was supplied before generating the receipt.
+**Files Affected**: `src/backend/MasterMind.API/Controllers/FeeCollectionController.cs`, `src/backend/MasterMind.API.Tests/FinanceWriteEndpointTests.cs`, `src/frontend/mastermind-web/src/views/admin/FeeCollectionView.vue`
+**Date Learned**: 2026-08-06
+
+---
+
 ## Adding New Gotchas
 
 When you encounter a bug that requires multiple attempts to fix:
