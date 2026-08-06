@@ -1,7 +1,7 @@
 ﻿{
     "version":  "1.0.0",
     "generatedBy":  "Generate-ApiDocs.ps1",
-    "lastUpdated":  "2026-05-09",
+    "lastUpdated":  "2026-08-06",
     "services":  {
                      "auth":  "src/frontend/mastermind-web/src/services/authService.ts",
                      "api":  "src/frontend/mastermind-web/src/services/apiService.ts",
@@ -34,6 +34,17 @@
                    "auth":  "src/frontend/mastermind-web/src/stores/auth.ts"
                },
     "endpoints":  {
+                      "health":  {
+                                     "requiresAuth":  false,
+                                     "controller":  "src/backend/MasterMind.API/Program.cs",
+                                     "routes":  [
+                                                    {
+                                                        "method":  "GET",
+                                                        "path":  "/health/ready",
+                                                        "action":  "DatabaseReadiness"
+                                                    }
+                                                ]
+                                 },
                       "students":  {
                                        "requiresAuth":  true,
                                        "controller":  "src/backend/MasterMind.API/Controllers/StudentsController.cs",
@@ -47,6 +58,11 @@
                                                           "method":  "GET",
                                                           "path":  "/api/students/{id}",
                                                           "action":  "GetStudent"
+                                                      },
+                                                      {
+                                                          "method":  "GET",
+                                                          "path":  "/api/students/{id}/photo",
+                                                          "action":  "GetStudentPhoto"
                                                       },
                                                       {
                                                           "method":  "GET",
@@ -202,11 +218,16 @@
                                                          "path":  "/api/finance/payments/pending",
                                                          "action":  "GetPendingPayments"
                                                      },
-                                                     {
-                                                         "method":  "GET",
-                                                         "path":  "/api/finance/fees",
-                                                         "action":  "GetFees"
-                                                     },
+                                    {
+                                        "method":  "GET",
+                                        "path":  "/api/finance/fees",
+                                        "action":  "GetFees"
+                                    },
+                                    {
+                                        "method":  "GET",
+                                        "path":  "/api/finance/fees/unassigned-students",
+                                        "action":  "GetUnassignedFeeStudents"
+                                    },
                                                      {
                                                          "method":  "GET",
                                                          "path":  "/api/finance/fees/overdue",

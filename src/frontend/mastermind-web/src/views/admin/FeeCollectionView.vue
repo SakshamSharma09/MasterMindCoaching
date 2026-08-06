@@ -41,21 +41,20 @@
                 @input="searchStudents"
               />
             </div>
-            <div v-if="filteredStudents.length > 0" class="max-h-60 overflow-y-auto">
-              <div
-                v-for="student in filteredStudents"
-                :key="student.id"
-                @click="selectStudent(student)"
-                :class="[
-                  'p-3 border rounded-lg cursor-pointer transition-colors',
-                  selectedStudent?.id === student.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:bg-gray-50'
-                ]"
-              >
-                <div class="font-medium">{{ student.name }}</div>
-                <div class="text-sm text-gray-600">{{ student.class }} - ID: {{ student.id }}</div>
-              </div>
+            <div v-if="filteredStudents.length > 0" class="max-h-72 space-y-2 overflow-y-auto">
+              <section v-for="household in studentHouseholds" :key="household.key" class="rounded-xl border border-slate-200 bg-slate-50 p-2">
+                <p class="px-1 pb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Parent · {{ household.mobile || 'Mobile not added' }}</p>
+                <button
+                  v-for="student in household.students"
+                  :key="student.id"
+                  type="button"
+                  @click="selectStudent(student)"
+                  :class="['mb-1 min-h-11 w-full rounded-lg border bg-white p-3 text-left transition-colors last:mb-0', selectedStudent?.id === student.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50']"
+                >
+                  <span class="block truncate font-medium">{{ student.name }}</span>
+                  <span class="block truncate text-sm text-gray-600">{{ student.class }} · ID {{ student.id }}</span>
+                </button>
+              </section>
             </div>
           </div>
         </div>
@@ -253,8 +252,11 @@ import { financeService, type Student, type StudentFeeDetails, type FeeReceipt, 
 import { studentsService } from '@/services/studentsService'
 import ReceiptViewer from '@/components/ReceiptViewer.vue'
 import { useToast } from '@/composables/useToast'
+import { useRoute } from 'vue-router'
+import { householdKey, normalizeHouseholdMobile } from '@/utils/financeHouseholds'
 
 const toast = useToast()
+const route = useRoute()
 
 // Reactive data
 const students = ref<Student[]>([])
@@ -282,6 +284,18 @@ const selectedFeesTotalAmount = computed(() => {
 
 const selectedFeesTotalBalance = computed(() => {
   return selectedFeeItems.value.reduce((sum, item) => sum + item.amount, 0)
+})
+
+const studentHouseholds = computed(() => {
+  const groups = new Map<string, Student[]>()
+  filteredStudents.value.forEach(student => {
+    const mobile = normalizeHouseholdMobile(student.mobile)
+    const key = householdKey(student.id, mobile)
+    const members = groups.get(key) || []
+    members.push(student)
+    groups.set(key, members)
+  })
+  return Array.from(groups.entries()).map(([key, members]) => ({ key, mobile: key.startsWith('student-') ? '' : key, students: members }))
 })
 
 // Methods
@@ -372,9 +386,9 @@ const collectPayment = async () => {
     // Reset form
     resetPaymentForm()
     await loadStudentFeeDetails(selectedStudent.value.id)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error collecting payment:', error)
-    toast.error('Payment failed', 'Error collecting payment. Please try again.')
+    toast.error('Payment failed', error?.response?.data?.message || 'Payment could not be saved. No fee balance was changed.')
   } finally {
     isProcessing.value = false
   }
@@ -412,8 +426,17 @@ const formatDate = (dateString: string) => {
 }
 
 // Lifecycle
-onMounted(() => {
-  loadStudents()
+onMounted(async () => {
+  await loadStudents()
+  const studentId = Number(route.query.studentId)
+  const feeId = Number(route.query.feeId)
+  const student = students.value.find(item => item.id === studentId)
+  if (!student) return
+  await selectStudent(student)
+  if (feeId && studentFeeDetails.value?.pendingFees.some(fee => fee.studentFeeId === feeId)) {
+    selectedFees.value = [feeId]
+    updateSelectedFeeItems()
+  }
 })
 </script>
 

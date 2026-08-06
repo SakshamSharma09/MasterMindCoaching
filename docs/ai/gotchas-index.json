@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-08-04",
+  "lastUpdated": "2026-08-06",
   "description": "Quick lookup index for AI gotchas - match symptoms to solutions",
   "gotchas": [
     {
@@ -124,7 +124,7 @@
     },
     {
       "id": "android-aab-java-sdk-path",
-      "symptoms": ["JAVA_HOME is not set", "java command could not be found", "build:aab failed", "Failed to read or create install properties file", "android sdk licenses", "build tools 34"],
+      "symptoms": ["JAVA_HOME is not set", "java command could not be found", "build:aab failed", "Failed to read or create install properties file", "android sdk licenses", "build tools 34", "PropertyEscape", "local.properties lint"],
       "category": "mobile",
       "section": "Android AAB Build Fails Due to Java or SDK Path",
       "severity": "high"

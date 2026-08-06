@@ -402,6 +402,23 @@ app.MapGet("/health", () => Results.Ok(new
     Environment = app.Environment.EnvironmentName
 }));
 
+// Readiness also opens the database connection so the login page can wake an
+// auto-paused SQL database before credentials are submitted.
+app.MapGet("/health/ready", async (MasterMindDbContext database, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var canConnect = await database.Database.CanConnectAsync(cancellationToken);
+        return canConnect
+            ? Results.Ok(new { Status = "Ready", Timestamp = DateTime.UtcNow })
+            : Results.Json(new { Status = "Unavailable", Timestamp = DateTime.UtcNow }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch
+    {
+        return Results.Json(new { Status = "Unavailable", Timestamp = DateTime.UtcNow }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+}).AllowAnonymous();
+
 // API Status Endpoint for Railway Health Check
 app.MapGet("/api/status", () => Results.Ok(new 
 { 
@@ -1473,6 +1490,31 @@ END
 IF COL_LENGTH('dbo.Users', 'SecondaryMobile') IS NULL
 BEGIN
     ALTER TABLE dbo.Users ADD SecondaryMobile nvarchar(20) NULL;
+END
+
+IF COL_LENGTH('dbo.Teachers', 'DateOfBirth') IS NULL
+BEGIN
+    ALTER TABLE dbo.Teachers ADD DateOfBirth date NULL;
+END
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_Users_Email'
+      AND object_id = OBJECT_ID('dbo.Users')
+)
+BEGIN
+    CREATE INDEX IX_Users_Email ON dbo.Users(Email);
+END
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_Users_Mobile'
+      AND object_id = OBJECT_ID('dbo.Users')
+)
+BEGIN
+    CREATE INDEX IX_Users_Mobile ON dbo.Users(Mobile);
 END
 
 IF OBJECT_ID('dbo.AccountInvitations', 'U') IS NULL

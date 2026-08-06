@@ -1,15 +1,40 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { normalizeIndianMobile } from './phoneUtils'
 import { fileNameFromContentDisposition } from './fileDownload'
 import { buildStudentQueryParams, mapStudentPayload, normalizeSchoolKey, resolveParentNames } from '@/services/studentsService'
 import { buildAbsentWhatsAppMessage, resolveAttendanceParentGreeting } from './attendanceMessaging'
 import { buildParentInvitationWhatsAppMessage } from './parentInvitation'
 import { matchesDuePeriod } from './datePeriod'
-import { tokenExpiryTime } from './sessionExpiry'
+import { cancelSessionExpiry, scheduleSessionExpiry, tokenExpiryTime } from './sessionExpiry'
 import { billingIntervalMonths, nextCycleDueDate } from './financeSchedule'
 import { buildTeacherInvitationWhatsAppUrl } from './teacherInvitation'
+import { AUTH_REQUEST_DEADLINE_MS } from '@/services/authService'
+import { householdKey, normalizeHouseholdMobile, overdueMonthKey } from './financeHouseholds'
 
 describe('student and communication operational fixes', () => {
+  it('bounds each authentication flow below ten seconds', () => {
+    expect(AUTH_REQUEST_DEADLINE_MS).toBeLessThan(10_000)
+  })
+
+  it('can refresh a native session before the access token expires', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-05T12:00:00Z'))
+    const expiresAt = Math.floor((Date.now() + 120_000) / 1000)
+    const payload = btoa(JSON.stringify({ exp: expiresAt }))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')
+    const refresh = vi.fn()
+
+    scheduleSessionExpiry(`header.${payload}.signature`, refresh, 60_000)
+    vi.advanceTimersByTime(59_999)
+    expect(refresh).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(refresh).toHaveBeenCalledOnce()
+
+    cancelSessionExpiry()
+    vi.useRealTimers()
+  })
   it('uses next-cycle fee due dates for every supported recurrence', () => {
     expect(nextCycleDueDate('2026-04-01', 'Monthly')).toBe('2026-05-01')
     expect(nextCycleDueDate('2026-04-01', 'Quarterly')).toBe('2026-07-01')
@@ -108,6 +133,12 @@ describe('student and communication operational fixes', () => {
   it('adds India country code once', () => {
     expect(normalizeIndianMobile('98872 58679')).toBe('919887258679')
     expect(normalizeIndianMobile('+91 98872 58679')).toBe('919887258679')
+  })
+
+  it('groups siblings by normalized primary mobile and overdue fees by month', () => {
+    expect(normalizeHouseholdMobile('+91 76270 53236')).toBe('7627053236')
+    expect(householdKey(1, '7627053236')).toBe(householdKey(2, '+91 76270 53236'))
+    expect(overdueMonthKey('2026-06-01')).toBe('2026-06')
   })
 
   it('builds a country-coded teacher invitation with the password setup link', () => {

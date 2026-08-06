@@ -221,6 +221,21 @@ Student create/update payloads persist `motherName`, `fatherName`, `dateOfBirth`
 
 Monthly `POST /api/finance/fees` schedules installments on the configured start day each month (clamped to the month's last day) through the academic-session end date or an earlier supplied end date. Operational fee routes hide the recurring parent row and expose installments through the end of next month for due-period filtering. Missing installments are generated idempotently when Finance is opened, and student deactivation truncates unpaid future installments while retaining paid history. `DELETE /api/fees/{id}` stops a recurring schedule, deletes its unpaid installments, and retains paid installments; standalone fees with a payment return a clear conflict.
 
+### Release 1.0.15 Login, Teacher DOB, and Parent-Mobile Reuse
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/health/ready` | Public | Open and verify the database connection so login clients can wake an auto-paused database before credentials are submitted |
+| GET | `/api/students/{id}/photo` | Authenticated | Stream the stored student photo through the API so generated template canvases can render it without cross-origin Blob Storage failures |
+
+Password and OTP authentication requests have a 9.5-second overall client deadline instead of sequential 90-second waits. Password login uses indexed exact email/mobile candidates and writes last-login plus refresh-token state in one database save. The native Android app rotates its existing seven-day refresh token before access-token expiry and when returning to the foreground; website expiry behavior is unchanged.
+
+Teacher list/detail/create/update now include `dateOfBirth`; new Teacher records require a non-future DOB while legacy records may remain blank until edited. Creating a new Student with the primary parent mobile from a deleted Student reuses the existing Parent account and does not create or reject a duplicate login.
+
+Finance summary now returns `monthlyRecurringRevenue`, `unassignedStudents`, and `activeHouseholds`. `GET /api/finance/fees/unassigned-students?sessionId={id}` lists active students in the selected session who have no non-deleted fee assignment. Fee list and overdue responses include parent-mobile household metadata and student profile photos. Payment collection accepts parents without a recovery email, preserves atomic rollback, and always creates a receipt before a fee is shown as paid. Template Zone fee reminders and fee-receipt logs include student IDs and profile-photo metadata; rendered cards obtain the image from the authenticated student-photo stream so Azure Blob CORS cannot leave the card empty.
+
+Android `1.0.15` targets API 36 and uses `EdgeToEdge.enable()` with a single native WebView system-bar inset listener. Deprecated direct status-bar/navigation-bar color setters were removed to address the Android 15/16 Play pre-launch warnings while retaining safe fixed headers and bottom actions.
+
 ---
 
 ## Authentication
@@ -256,4 +271,4 @@ Authorization: Bearer <access_token>
 
 ---
 
-*Auto-generated baseline with manual updates through 2026-07-26 for release 1.0.9 account invitations, deletion requests, salary obligations, expenses, and student fields.*
+*Auto-generated baseline with manual updates through 2026-08-06 for release 1.0.15 login performance, native session continuity, Teacher DOB, parent-mobile reuse, household Finance workflows, and receipt reliability.*

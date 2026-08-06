@@ -18,6 +18,53 @@ namespace MasterMind.API.Tests;
 public class TeacherPortalAndInvitationTests
 {
     [Fact]
+    public async Task CreatingTeacherPersistsDateOfBirth()
+    {
+        await using var context = CreateContext();
+        context.Roles.Add(new Role { Name = "Teacher" });
+        context.Sessions.Add(new Session
+        {
+            Name = "2026-27",
+            DisplayName = "Academic Year 2026-27",
+            AcademicYear = "2026-27",
+            StartDate = new DateTime(2026, 4, 1),
+            EndDate = new DateTime(2027, 3, 31),
+            IsActive = true,
+            Status = SessionStatus.Active
+        });
+        await context.SaveChangesAsync();
+        using var payload = System.Text.Json.JsonDocument.Parse("""
+            {
+              "firstName": "Test",
+              "lastName": "Teacher",
+              "email": "",
+              "mobile": "9876543210",
+              "dateOfBirth": "1990-05-12",
+              "specialization": "Mathematics",
+              "qualification": "M.Sc.",
+              "subjects": "Mathematics",
+              "experienceYears": 5,
+              "monthlySalary": 25000,
+              "joiningDate": "2026-08-01",
+              "isActive": true,
+              "classIds": []
+            }
+            """);
+        var controller = new TeachersController(
+            context,
+            new NoOpTeacherSalaryService(),
+            new RecordingBlobStorageService(),
+            new NoOpEmailService(),
+            new ConfigurationBuilder().AddInMemoryCollection().Build(),
+            NullLogger<TeachersController>.Instance);
+
+        var response = await controller.CreateTeacher(payload.RootElement);
+
+        Assert.IsType<CreatedAtActionResult>(response.Result);
+        Assert.Equal(new DateTime(1990, 5, 12), Assert.Single(context.Teachers).DateOfBirth);
+    }
+
+    [Fact]
     public async Task TeacherInvitationCreatesMobileAccountAndHashedSingleUseToken()
     {
         await using var context = CreateContext();

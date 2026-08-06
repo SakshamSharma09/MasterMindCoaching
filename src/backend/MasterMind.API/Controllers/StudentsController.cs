@@ -623,6 +623,22 @@ public class StudentsController : ControllerBase
         }
     }
 
+    [HttpGet("{id}/photo")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetStudentPhoto(int id)
+    {
+        var photoUrl = await _context.Students
+            .Where(student => student.Id == id && !student.IsDeleted)
+            .Select(student => student.ProfileImageUrl)
+            .FirstOrDefaultAsync();
+        var blobName = ExtractBlobNameFromUrl(photoUrl);
+        if (string.IsNullOrWhiteSpace(blobName)) return NotFound();
+
+        var stream = await _blobStorageService.DownloadPhotoAsync(blobName);
+        return stream == null ? NotFound() : File(stream, PhotoContentType(blobName));
+    }
+
     /// <summary>
     /// Upload photo for a student
     /// </summary>
@@ -845,6 +861,14 @@ public class StudentsController : ControllerBase
         return Uri.UnescapeDataString(lastSegment.Trim('/'));
     }
 
+    private static string PhotoContentType(string blobName) => Path.GetExtension(blobName).ToLowerInvariant() switch
+    {
+        ".png" => "image/png",
+        ".webp" => "image/webp",
+        ".gif" => "image/gif",
+        _ => "image/jpeg"
+    };
+
     private async Task LinkParentUserAsync(Student student)
     {
         var normalizedMobile = NormalizeMobile(student.ParentMobile);
@@ -856,11 +880,14 @@ public class StudentsController : ControllerBase
         var users = await _context.Users
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
-            .Where(u => !u.IsDeleted)
+            .Where(u => !u.IsDeleted &&
+                (u.Mobile == normalizedMobile ||
+                 u.Mobile == $"91{normalizedMobile}" ||
+                 u.Mobile == $"+91{normalizedMobile}"))
             .ToListAsync();
         var user = users
-            .Where(u => !string.IsNullOrWhiteSpace(u.Mobile) && NormalizeMobile(u.Mobile) == normalizedMobile)
-            .OrderByDescending(u => u.UpdatedAt ?? u.CreatedAt)
+            .OrderByDescending(u => u.UserRoles.Any(ur => ur.Role.Name == "Parent"))
+            .ThenByDescending(u => u.UpdatedAt ?? u.CreatedAt)
             .ThenByDescending(u => u.Id)
             .FirstOrDefault();
 
@@ -897,11 +924,12 @@ public class StudentsController : ControllerBase
             user.UpdatedAt = DateTime.UtcNow;
         }
 
-        var siblings = (await _context.Students
-                .Where(s => !s.IsDeleted)
-                .ToListAsync())
-            .Where(s => NormalizeMobile(s.ParentMobile) == normalizedMobile)
-            .ToList();
+        var siblings = await _context.Students
+            .Where(s => !s.IsDeleted &&
+                (s.ParentMobile == normalizedMobile ||
+                 s.ParentMobile == $"91{normalizedMobile}" ||
+                 s.ParentMobile == $"+91{normalizedMobile}"))
+            .ToListAsync();
         foreach (var sibling in siblings)
         {
             sibling.ParentUserId = user.Id;

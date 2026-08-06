@@ -124,7 +124,12 @@ public class TemplateZoneController : ControllerBase
         var targetMonth = string.IsNullOrWhiteSpace(month) ? DateTime.Today.ToString("yyyy-MM") : month;
 
         var data = await _context.StudentFees
-            .Where(sf => sf.Status != FeeStatus.Paid)
+            .Where(sf => !sf.IsDeleted
+                && !sf.Student.IsDeleted
+                && !sf.IsRecurring
+                && sf.Status != FeeStatus.Paid
+                && sf.Status != FeeStatus.Waived
+                && sf.Status != FeeStatus.Cancelled)
             .Select(sf => new
             {
                 sf.Id,
@@ -132,6 +137,7 @@ public class TemplateZoneController : ControllerBase
                 StudentName = sf.Student.FirstName + " " + sf.Student.LastName,
                 ParentName = sf.Student.ParentName,
                 ParentMobile = sf.Student.ParentMobile,
+                ProfileImageUrl = sf.Student.ProfileImageUrl,
                 ClassName = sf.Student.StudentClasses.Where(sc => sc.IsActive).Select(sc => sc.Class != null ? sc.Class.Name : "N/A").FirstOrDefault(),
                 FeeAmount = sf.FinalAmount - sf.PaidAmount,
                 DueDate = sf.DueDate,
@@ -150,6 +156,7 @@ public class TemplateZoneController : ControllerBase
                 x.StudentName,
                 x.ParentName,
                 x.ParentMobile,
+                x.ProfileImageUrl,
                 ClassName = x.ClassName ?? "N/A",
                 x.FeeAmount,
                 Month = x.DueDate.ToString("yyyy-MM"),
@@ -174,13 +181,18 @@ public class TemplateZoneController : ControllerBase
                 .ThenInclude(sf => sf!.Student)
                     .ThenInclude(s => s.StudentClasses)
                         .ThenInclude(sc => sc.Class)
-            .Where(p => p.Status == PaymentStatus.Completed)
+            .Where(p => !p.IsDeleted
+                && p.Status == PaymentStatus.Completed
+                && p.StudentFee != null
+                && !p.StudentFee.IsDeleted
+                && !p.StudentFee.Student.IsDeleted)
             .OrderByDescending(p => p.PaymentDate)
             .Take(take)
             .Select(p => new
             {
                 p.Id,
                 p.ReceiptNumber,
+                StudentId = p.StudentFee != null ? p.StudentFee.StudentId : 0,
                 StudentName = p.StudentFee != null && p.StudentFee.Student != null
                     ? p.StudentFee.Student.FirstName + " " + p.StudentFee.Student.LastName
                     : "Unknown",
@@ -189,6 +201,9 @@ public class TemplateZoneController : ControllerBase
                     : "",
                 ParentMobile = p.StudentFee != null && p.StudentFee.Student != null
                     ? p.StudentFee.Student.ParentMobile
+                    : "",
+                ProfileImageUrl = p.StudentFee != null && p.StudentFee.Student != null
+                    ? p.StudentFee.Student.ProfileImageUrl
                     : "",
                 FeePeriod = p.StudentFee != null ? (p.StudentFee.Month ?? p.StudentFee.AcademicYear) : "",
                 PaidAmount = p.Amount,
@@ -202,9 +217,11 @@ public class TemplateZoneController : ControllerBase
         {
             r.Id,
             r.ReceiptNumber,
+            r.StudentId,
             r.StudentName,
             r.ParentName,
             r.ParentMobile,
+            r.ProfileImageUrl,
             r.FeePeriod,
             r.PaidAmount,
             r.TotalAmount,

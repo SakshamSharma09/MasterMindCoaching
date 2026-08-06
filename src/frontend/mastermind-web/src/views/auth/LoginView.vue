@@ -156,9 +156,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { authService } from '@/services/authService'
 
 type LoginMode = 'admin-password' | 'email-otp' | 'mobile-password'
 
@@ -180,6 +181,10 @@ const form = reactive({
 const loginMode = ref<LoginMode>('mobile-password')
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+
+onMounted(() => {
+  void authService.prepareLogin()
+})
 
 const requiresPassword = computed(() => loginMode.value !== 'email-otp')
 const identifierLabel = computed(() => loginMode.value === 'mobile-password' ? 'Registered mobile number' : 'Email address')

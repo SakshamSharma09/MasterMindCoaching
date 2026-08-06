@@ -73,6 +73,7 @@ public class TeachersController : ControllerBase
                     LastName = t.LastName,
                     Email = t.Email,
                     Mobile = t.Mobile,
+                    DateOfBirth = t.DateOfBirth,
                     Specialization = t.Specialization,
                     Qualification = t.Qualification,
                     Subjects = t.Subjects,
@@ -123,6 +124,7 @@ public class TeachersController : ControllerBase
                     LastName = t.LastName,
                     Email = t.Email,
                     Mobile = t.Mobile,
+                    DateOfBirth = t.DateOfBirth,
                     Specialization = t.Specialization,
                     Qualification = t.Qualification,
                     Subjects = t.Subjects,
@@ -212,6 +214,13 @@ public class TeachersController : ControllerBase
                 return BadRequest(new ApiResponse<Teacher> { Success = false, Message = "A valid teacher joining date is required" });
             }
 
+            if (!teacherData.TryGetProperty("dateOfBirth", out var dateOfBirthElement) ||
+                !DateTime.TryParse(dateOfBirthElement.GetString(), out var dateOfBirth) ||
+                dateOfBirth.Date > DateTime.Today)
+            {
+                return BadRequest(new ApiResponse<Teacher> { Success = false, Message = "A valid teacher date of birth is required" });
+            }
+
             // Create new teacher entity
             var teacher = new Teacher
             {
@@ -219,6 +228,7 @@ public class TeachersController : ControllerBase
                 LastName = teacherData.GetProperty("lastName").GetString() ?? string.Empty,
                 Email = email,
                 Mobile = mobile,
+                DateOfBirth = dateOfBirth.Date,
                 Specialization = teacherData.GetProperty("specialization").GetString(),
                 Qualification = teacherData.GetProperty("qualification").GetString(),
                 
@@ -320,6 +330,15 @@ public class TeachersController : ControllerBase
                 teacher.Email = string.IsNullOrWhiteSpace(submittedEmail) ? BuildTeacherPlaceholderEmail(mobile) : submittedEmail;
             }
             teacher.Mobile = mobile;
+            if (teacherUpdate.TryGetProperty("dateOfBirth", out JsonElement dateOfBirthElement) &&
+                DateTime.TryParse(dateOfBirthElement.GetString(), out DateTime parsedDateOfBirth))
+            {
+                if (parsedDateOfBirth.Date > DateTime.Today)
+                {
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Teacher date of birth cannot be in the future" });
+                }
+                teacher.DateOfBirth = parsedDateOfBirth.Date;
+            }
             teacher.Specialization = updateData.GetProperty("specialization").GetString();
             teacher.Qualification = updateData.GetProperty("qualification").GetString();
             

@@ -15,6 +15,68 @@ namespace MasterMind.API.Tests;
 public class ParentInvitationTests
 {
     [Fact]
+    public async Task NewStudentReusesParentLoginAfterEarlierStudentWasDeleted()
+    {
+        var options = new DbContextOptionsBuilder<MasterMindDbContext>()
+            .UseInMemoryDatabase($"deleted-student-mobile-reuse-{Guid.NewGuid()}")
+            .Options;
+        await using var context = new MasterMindDbContext(options);
+        var parentRole = new Role { Name = "Parent" };
+        var parentUser = new User
+        {
+            FirstName = "Test",
+            LastName = "Parent",
+            Email = "mobile_7627053236@placeholder.mastermind.local",
+            Mobile = "7627053236",
+            IsActive = true
+        };
+        var activeSession = new Session
+        {
+            Name = "2026-27",
+            DisplayName = "Academic Year 2026-27",
+            AcademicYear = "2026-27",
+            StartDate = new DateTime(2026, 4, 1),
+            EndDate = new DateTime(2027, 3, 31),
+            IsActive = true,
+            Status = SessionStatus.Active
+        };
+        context.AddRange(parentRole, parentUser, activeSession);
+        await context.SaveChangesAsync();
+        context.UserRoles.Add(new UserRole { UserId = parentUser.Id, RoleId = parentRole.Id });
+        context.Students.Add(new Student
+        {
+            FirstName = "Deleted",
+            LastName = "Student",
+            DateOfBirth = new DateTime(2012, 1, 1),
+            AdmissionDate = new DateTime(2026, 4, 1),
+            ParentName = "Test Parent",
+            ParentMobile = "7627053236",
+            ParentUserId = parentUser.Id,
+            SessionId = activeSession.Id,
+            IsDeleted = true
+        });
+        await context.SaveChangesAsync();
+
+        var controller = CreateStudentsController(context);
+        var newStudent = new Student
+        {
+            FirstName = "Replacement",
+            LastName = "Student",
+            DateOfBirth = new DateTime(2013, 2, 2),
+            AdmissionDate = new DateTime(2026, 8, 5),
+            ParentName = "Test Parent",
+            ParentMobile = "+91 76270 53236"
+        };
+
+        var response = await controller.CreateStudent(newStudent, activeSession.Id);
+
+        Assert.IsType<CreatedAtActionResult>(response.Result);
+        Assert.Equal(parentUser.Id, newStudent.ParentUserId);
+        Assert.Equal("7627053236", newStudent.ParentMobile);
+        Assert.Single(context.Users);
+    }
+
+    [Fact]
     public async Task InvitationStillSucceedsWhenEmailDeliveryThrows()
     {
         var options = new DbContextOptionsBuilder<MasterMindDbContext>()
@@ -115,6 +177,14 @@ public class ParentInvitationTests
 
         public bool IsValidEmail(string email) => true;
     }
+
+    private static StudentsController CreateStudentsController(MasterMindDbContext context) =>
+        new(
+            context,
+            NullLogger<StudentsController>.Instance,
+            new NoOpBlobStorageService(),
+            new ThrowingEmailService(),
+            new ConfigurationBuilder().AddInMemoryCollection().Build());
 
     private sealed class NoOpBlobStorageService : IBlobStorageService
     {

@@ -36,7 +36,7 @@
     </div>
 
     <!-- Financial Summary Bar -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
       <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow duration-300">
         <div class="flex items-center gap-3">
           <div class="flex-shrink-0 p-2 bg-green-100 rounded-lg">
@@ -47,6 +47,18 @@
           <div class="min-w-0">
             <p class="text-xs font-medium text-gray-500 truncate">Total Revenue</p>
             <p class="text-lg font-bold text-gray-900">₹{{ formatCurrency(summary.totalRevenue) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-indigo-100 bg-white p-3 shadow-sm transition-shadow duration-300 hover:shadow-md sm:p-4">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="flex-shrink-0 rounded-lg bg-indigo-100 p-2">
+            <CurrencyIcon class="h-5 w-5 text-indigo-600" />
+          </div>
+          <div class="min-w-0">
+            <p class="truncate text-[11px] font-medium text-gray-500 sm:text-xs">MRR · Monthly recurring</p>
+            <p class="text-base font-bold tabular-nums text-indigo-700 sm:text-lg">₹{{ formatCurrency(summary.monthlyRecurringRevenue) }}</p>
           </div>
         </div>
       </div>
@@ -154,7 +166,10 @@ const summary = ref<FinancialSummary>({
   totalStudents: 0,
   paidStudents: 0,
   pendingStudents: 0,
-  overdueStudents: 0
+  overdueStudents: 0,
+  monthlyRecurringRevenue: 0,
+  unassignedStudents: 0,
+  activeHouseholds: 0
 })
 
 // Icon components

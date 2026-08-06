@@ -27,15 +27,19 @@ export const expireSession = (): void => {
   window.location.replace('/login?reason=session-expired')
 }
 
-export const scheduleSessionExpiry = (token: string | null): void => {
+export const scheduleSessionExpiry = (
+  token: string | null,
+  onExpiry: () => void = expireSession,
+  leadTimeMs = 0
+): void => {
   cancelSessionExpiry()
   if (!token) return
   const expiresAt = tokenExpiryTime(token)
   if (!expiresAt) return
-  const remaining = expiresAt - Date.now()
+  const remaining = expiresAt - Date.now() - Math.max(0, leadTimeMs)
   if (remaining <= 0) {
-    expireSession()
+    onExpiry()
     return
   }
-  expiryTimer = setTimeout(expireSession, Math.min(remaining, 2_147_483_647))
+  expiryTimer = setTimeout(onExpiry, Math.min(remaining, 2_147_483_647))
 }

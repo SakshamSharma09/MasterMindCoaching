@@ -39,10 +39,12 @@ export interface FeeReminder {
   dueDate: string
   joiningDate: string
   frequency: string
+  profileImageUrl?: string
 }
 
 export interface FeeReceiptLog {
   id: number
+  studentId: number
   receiptNumber: string
   studentName: string
   parentName: string
@@ -52,6 +54,7 @@ export interface FeeReceiptLog {
   totalAmount: number
   paymentMethod: string
   receiptDate: string
+  profileImageUrl?: string
 }
 
 export interface TemplatePreviewResponse {
@@ -95,6 +98,10 @@ export const templateZoneService = {
   async getFeeReceiptLogs(take = 100): Promise<FeeReceiptLog[]> {
     const response = await apiService.get<ApiEnvelope<FeeReceiptLog[]>>(`/templatezone/fee-receipt-logs?take=${take}`)
     return unwrapData(response)
+  },
+
+  async getStudentPhoto(studentId: number): Promise<Blob> {
+    return apiService.getBlob(`/students/${studentId}/photo`)
   },
 
   async previewTemplate(payload: { templateId: number; studentId?: number; studentFeeId?: number; feeReceiptId?: number }): Promise<TemplatePreviewResponse> {
