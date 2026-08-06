@@ -168,13 +168,14 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Transaction ID</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Transaction ID <span class="font-normal text-gray-500">(optional)</span></label>
                 <input
                   v-model="paymentForm.transactionId"
                   type="text"
-                  placeholder="Enter transaction ID"
+                  placeholder="Leave blank to generate automatically"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                <p class="mt-1 text-xs text-gray-500">A sequential MM-PAY reference is created when this is left blank.</p>
               </div>
             </div>
             
