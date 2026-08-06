@@ -10,32 +10,42 @@ import type {
 } from '@/types/auth'
 
 const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true' || false
-const AUTH_REQUEST_TIMEOUT = 90000
+export const AUTH_REQUEST_DEADLINE_MS = 9500
+const AUTH_PRIMARY_ATTEMPT_MS = 6500
+const AUTH_WARMUP_BUDGET_MS = 1200
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 const getHealthUrl = () => {
-  if (API_BASE_URL.endsWith('/api')) return API_BASE_URL.slice(0, -4) + '/health'
-  if (API_BASE_URL.endsWith('/api/')) return API_BASE_URL.slice(0, -5) + '/health'
-  if (API_BASE_URL === '/api') return '/health'
-  return '/health'
+  if (API_BASE_URL.endsWith('/api')) return API_BASE_URL.slice(0, -4) + '/health/ready'
+  if (API_BASE_URL.endsWith('/api/')) return API_BASE_URL.slice(0, -5) + '/health/ready'
+  if (API_BASE_URL === '/api') return '/health/ready'
+  return '/health/ready'
 }
 
-const warmUpApi = async () => {
+let warmUpPromise: Promise<void> | null = null
+
+const warmUpApi = async (timeoutMs = AUTH_REQUEST_DEADLINE_MS) => {
+  if (warmUpPromise) return warmUpPromise
+
   const controller = new AbortController()
-  const timer = window.setTimeout(() => controller.abort(), 12000)
-  try {
-    await fetch(getHealthUrl(), {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal
-    })
-  } catch {
-    // A cold Azure App Service can miss this short warmup window.
-    // The auth request below still gets an extended timeout and retry.
-  } finally {
-    window.clearTimeout(timer)
-  }
+  const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs)
+  warmUpPromise = (async () => {
+    try {
+      await fetch(getHealthUrl(), {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal
+      })
+    } catch {
+      // Login still gets its own bounded attempt if readiness is unavailable.
+    } finally {
+      globalThis.clearTimeout(timer)
+      warmUpPromise = null
+    }
+  })()
+
+  return warmUpPromise
 }
 
 const isColdStartLikeError = (error: any) =>
@@ -43,20 +53,32 @@ const isColdStartLikeError = (error: any) =>
   /timeout/i.test(error?.message || '') ||
   !error?.response
 
-const withAuthRetry = async <T>(operation: () => Promise<T>): Promise<T> => {
+const createAuthTimeoutError = () => {
+  const error = new Error('Login service did not respond within 10 seconds. Please try again.')
+  error.name = 'AuthTimeoutError'
+  return error
+}
+
+const withAuthRetry = async <T>(operation: (timeoutMs: number) => Promise<T>): Promise<T> => {
+  const deadline = Date.now() + AUTH_REQUEST_DEADLINE_MS
   try {
-    return await operation()
+    return await operation(AUTH_PRIMARY_ATTEMPT_MS)
   } catch (error: any) {
     if (!isColdStartLikeError(error)) throw error
 
-    await warmUpApi()
-    await sleep(1600)
+    const warmupBudget = Math.min(AUTH_WARMUP_BUDGET_MS, Math.max(0, deadline - Date.now() - 1000))
+    if (warmupBudget > 0) {
+      await Promise.race([warmUpApi(warmupBudget), sleep(warmupBudget)])
+    }
+
+    const remaining = deadline - Date.now()
+    if (remaining < 750) throw createAuthTimeoutError()
+
     try {
-      return await operation()
+      return await operation(remaining)
     } catch (secondError: any) {
       if (!isColdStartLikeError(secondError)) throw secondError
-      await sleep(2600)
-      return await operation()
+      throw createAuthTimeoutError()
     }
   }
 }
@@ -73,10 +95,10 @@ export const authService = {
       }
     }
 
-    const response = await withAuthRetry(() => apiService.post<OtpResponse>(API_ENDPOINTS.AUTH.REQUEST_OTP, {
+    const response = await withAuthRetry((timeout) => apiService.post<OtpResponse>(API_ENDPOINTS.AUTH.REQUEST_OTP, {
       identifier,
       type
-    }, { timeout: AUTH_REQUEST_TIMEOUT }))
+    }, { timeout }))
     return response
   },
 
@@ -114,7 +136,7 @@ export const authService = {
       ...userData
     }
 
-    const response = await withAuthRetry(() => apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, payload, { timeout: AUTH_REQUEST_TIMEOUT }))
+    const response = await withAuthRetry((timeout) => apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.VERIFY_OTP, payload, { timeout }))
     return response
   },
 
@@ -125,10 +147,14 @@ export const authService = {
       ? { email: trimmedIdentifier, identifier: trimmedIdentifier, password }
       : { mobile: trimmedIdentifier, identifier: trimmedIdentifier, password }
 
-    const response = await withAuthRetry(() => apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
+    const response = await withAuthRetry((timeout) => apiService.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
       ...payload
-    }, { timeout: AUTH_REQUEST_TIMEOUT }))
+    }, { timeout }))
     return response
+  },
+
+  prepareLogin(): Promise<void> {
+    return warmUpApi(AUTH_REQUEST_DEADLINE_MS)
   },
 
   // Quick login for demo accounts

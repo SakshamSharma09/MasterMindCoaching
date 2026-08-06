@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import type { User } from '@/types/auth'
 import { authService } from '@/services/authService'
-import { cancelSessionExpiry, scheduleSessionExpiry } from '@/utils/sessionExpiry'
+import { cancelSessionExpiry, expireSession, scheduleSessionExpiry, tokenExpiryTime } from '@/utils/sessionExpiry'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -11,6 +12,8 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const isNativeMobile = Capacitor.isNativePlatform()
+  let refreshInProgress: Promise<void> | null = null
 
   // Getters
   const isAuthenticated = computed(() => !!accessToken.value && !!user.value)
@@ -18,10 +21,14 @@ export const useAuthStore = defineStore('auth', () => {
   const userName = computed(() => user.value ? `${user.value.firstName} ${user.value.lastName}` : '')
 
   // Actions
-  const setTokens = (access: string, refresh: string) => {
+  function setTokens(access: string, refresh: string) {
     accessToken.value = access
     refreshToken.value = refresh
-    scheduleSessionExpiry(access)
+    scheduleSessionExpiry(
+      access,
+      isNativeMobile ? () => { void refreshNativeSession() } : expireSession,
+      isNativeMobile ? 60_000 : 0
+    )
   }
 
   const setUser = (userData: User | any) => {
@@ -30,6 +37,28 @@ export const useAuthStore = defineStore('auth', () => {
       ...userData,
       role: normalizedRole
     } as User
+  }
+
+  async function refreshNativeSession(): Promise<void> {
+    if (!isNativeMobile || !refreshToken.value) {
+      expireSession()
+      return
+    }
+    if (refreshInProgress) return refreshInProgress
+
+    refreshInProgress = (async () => {
+      try {
+        const response = await authService.refreshToken(refreshToken.value || '')
+        if (!response.accessToken || !response.refreshToken) throw new Error('Session refresh failed')
+        setTokens(response.accessToken, response.refreshToken)
+        if (response.user) setUser(response.user)
+      } catch {
+        expireSession()
+      } finally {
+        refreshInProgress = null
+      }
+    })()
+    return refreshInProgress
   }
 
   const clearAuth = () => {
@@ -131,14 +160,31 @@ export const useAuthStore = defineStore('auth', () => {
 
   const initializeAuth = async () => {
     if (accessToken.value && user.value) {
-      scheduleSessionExpiry(accessToken.value)
+      const expiresAt = tokenExpiryTime(accessToken.value)
       try {
+        if (isNativeMobile && refreshToken.value && (!expiresAt || expiresAt <= Date.now() + 60_000)) {
+          await refreshNativeSession()
+        } else {
+          scheduleSessionExpiry(
+            accessToken.value,
+            isNativeMobile ? () => { void refreshNativeSession() } : expireSession,
+            isNativeMobile ? 60_000 : 0
+          )
+        }
         await getCurrentUser()
       } catch (err) {
         console.warn('[Auth] Token validation failed, clearing auth')
         clearAuth()
       }
     }
+  }
+
+  if (isNativeMobile && typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !accessToken.value || !refreshToken.value) return
+      const expiresAt = tokenExpiryTime(accessToken.value)
+      if (!expiresAt || expiresAt <= Date.now() + 60_000) void refreshNativeSession()
+    })
   }
 
   // Bypass authentication for test emails - now calls backend

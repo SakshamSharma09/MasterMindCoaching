@@ -210,6 +210,7 @@ interface TemplateCardData {
   dateLabel: string
   dateValue: string
   photoUrl?: string
+  photoStudentId?: number
   bodyLines: string[]
   fields: Array<{ label: string; value: string }>
   accent: string
@@ -415,6 +416,7 @@ const buildWelcomeCard = (student: WelcomeStudent): TemplateCardData => ({
   dateLabel: 'Joining date',
   dateValue: formatDisplayDate(student.joiningDate),
   photoUrl: student.profileImageUrl,
+  photoStudentId: student.id,
   bodyLines: [
     `We are delighted to have ${student.studentName} join The Master Mind Coaching Classes.`,
     'We are committed to guiding and supporting every step of the way.',
@@ -441,6 +443,7 @@ const buildBirthdayCard = (item: BirthdayReminder): TemplateCardData => ({
   dateLabel: 'Birthday',
   dateValue: formatDisplayDate(item.nextBirthday),
   photoUrl: item.profileImageUrl,
+  photoStudentId: item.id,
   bodyLines: [
     'From everyone at The Master Mind Coaching Classes, we wish you a joyful birthday.',
     'Keep learning, keep growing, and keep shining.'
@@ -473,6 +476,8 @@ const buildFeeReminderCard = (item: FeeReminder): TemplateCardData => ({
   amount: `Rs. ${formatCurrency(item.feeAmount)}`,
   dateLabel: 'Due date',
   dateValue: formatDisplayDate(item.dueDate),
+  photoUrl: item.profileImageUrl,
+  photoStudentId: item.studentId,
   bodyLines: [
     `This is a gentle reminder for ${item.studentName}'s pending fee.`,
     'Thank you for supporting timely academic planning and continuity.'
@@ -505,6 +510,8 @@ const buildReceiptCard = (item: FeeReceiptLog): TemplateCardData => ({
   amount: `Rs. ${formatCurrency(item.paidAmount)}`,
   dateLabel: 'Receipt date',
   dateValue: formatDisplayDate(item.receiptDate),
+  photoUrl: item.profileImageUrl,
+  photoStudentId: item.studentId,
   bodyLines: [
     `Receipt ${item.receiptNumber || ''} has been generated for ${item.studentName}.`,
     `Payment method: ${item.paymentMethod || 'Recorded'}`
@@ -593,22 +600,33 @@ const drawFieldValue = (ctx: CanvasRenderingContext2D, value: string, x: number,
   ctx.textBaseline = 'alphabetic'
 }
 
-const loadImage = (src?: string): Promise<HTMLImageElement | null> => {
+const loadImage = async (src?: string, studentId?: number): Promise<HTMLImageElement | null> => {
+  let resolvedSource = src
+  let objectUrl = ''
+  if (studentId) {
+    try {
+      const blob = await templateZoneService.getStudentPhoto(studentId)
+      objectUrl = URL.createObjectURL(blob)
+      resolvedSource = objectUrl
+    } catch (error) {
+      console.warn('Could not load authenticated template photo:', error)
+    }
+  }
   return new Promise(resolve => {
-    if (!src) {
+    if (!resolvedSource) {
       resolve(null)
       return
     }
     const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.onload = () => resolve(image)
-    image.onerror = () => resolve(null)
-    image.src = src
+    if (!objectUrl) image.crossOrigin = 'anonymous'
+    image.onload = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); resolve(image) }
+    image.onerror = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); resolve(null) }
+    image.src = resolvedSource
   })
 }
 
 const drawPhoto = async (ctx: CanvasRenderingContext2D, card: TemplateCardData) => {
-  const image = await loadImage(card.photoUrl)
+  const image = await loadImage(card.photoUrl, card.photoStudentId)
   const cx = 805
   const cy = 470
   const radius = 135

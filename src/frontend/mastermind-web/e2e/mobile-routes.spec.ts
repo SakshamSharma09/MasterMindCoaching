@@ -17,7 +17,7 @@ const routesByRole = {
     '/admin/paper-generator', '/admin/teachers', '/admin/leads', '/admin/change-password'
   ],
   Parent: ['/parent', '/parent/attendance', '/parent/fees', '/parent/performance', '/parent/account-security'],
-  Teacher: ['/teacher', '/teacher/students', '/teacher/attendance', '/teacher/remarks']
+  Teacher: ['/teacher', '/teacher/students', '/teacher/attendance', '/teacher/remarks', '/teacher/academic-planner']
 } as const
 
 const publicRoutes = [
@@ -62,6 +62,8 @@ test.beforeEach(async ({ page }) => {
       data = []
     } else if (url.includes('/notifications')) {
       data = { totalCount: 0, items: [] }
+    } else if (url.includes('/finance/summary')) {
+      data = { totalRevenue: 0, pendingPayments: 0, expenses: 0, netProfit: 0, totalStudents: 1, paidStudents: 0, pendingStudents: 0, overdueStudents: 0, monthlyRecurringRevenue: 1500, unassignedStudents: 1, activeHouseholds: 1 }
     } else if (url.includes('/students')) {
       directResponse = true
       data = {

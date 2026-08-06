@@ -2,10 +2,10 @@
   <div class="receipt-viewer">
     <!-- Receipt Header -->
     <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">MasterMind Coaching</h1>
+      <h1 class="text-2xl font-bold text-gray-900">MasterMind Coaching Classes</h1>
       <p class="text-gray-600">Education Excellence Center</p>
-      <p class="text-sm text-gray-500">123, Education Street, City - 123456</p>
-      <p class="text-sm text-gray-500">Phone: +91-9876543210 | Email: info@mastermind.com</p>
+      <p class="text-sm text-gray-500">Kedia Palace, Sikar, Rajasthan</p>
+      <p class="text-sm text-gray-500">Phone: +91 98872 58679 | Email: themastermindcoachingclasses@gmail.com</p>
     </div>
 
     <!-- Receipt Title -->
@@ -34,7 +34,7 @@
     </div>
 
     <!-- Fee Details Table -->
-    <div class="mb-6">
+    <div class="mb-6 overflow-x-auto">
       <h3 class="font-semibold text-gray-900 mb-3">Fee Details</h3>
       <table class="w-full border-collapse">
         <thead>
@@ -90,15 +90,15 @@
     </div>
 
     <!-- Action Buttons -->
-    <div class="mt-6 flex gap-3 justify-center">
+    <div class="mt-6 flex flex-wrap gap-3 justify-center">
       <button
         @click="sendEmail"
-        :disabled="isSendingEmail || receipt.isEmailSent"
+        :disabled="isSendingEmail || receipt.isEmailSent || !receipt.parentEmail"
         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
       >
         <i v-if="isSendingEmail" class="fas fa-spinner fa-spin mr-2"></i>
         <i v-else class="fas fa-envelope mr-2"></i>
-        {{ receipt.isEmailSent ? 'Email Sent' : 'Send Email' }}
+        {{ receipt.isEmailSent ? 'Email Sent' : receipt.parentEmail ? 'Send Email' : 'Email not set' }}
       </button>
       <button
         @click="printReceipt"
@@ -273,6 +273,12 @@ const formatDate = (dateString: string) => {
   padding: 2rem;
   background: white;
   font-family: 'Courier New', monospace;
+}
+
+@media (max-width: 640px) {
+  .receipt-viewer {
+    padding: 1rem;
+  }
 }
 
 /* Print styles */

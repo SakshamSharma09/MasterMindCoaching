@@ -187,6 +187,7 @@ const navigation = [
   { name: 'Dashboard', href: '/teacher', icon: HomeIcon },
   { name: 'Students', href: '/teacher/students', icon: UsersIcon },
   { name: 'Attendance', href: '/teacher/attendance', icon: ClipboardListIcon },
+  { name: 'Syllabus & Timetable', href: '/teacher/academic-planner', icon: ClipboardListIcon },
   { name: 'Remarks', href: '/teacher/remarks', icon: ChatAltIcon },
   { name: 'Change Password', href: '/change-password', icon: KeyIcon }
 ]

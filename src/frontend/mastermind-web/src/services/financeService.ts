@@ -13,6 +13,9 @@ export interface FinancialSummary {
   paidStudents: number
   pendingStudents: number
   overdueStudents: number
+  monthlyRecurringRevenue: number
+  unassignedStudents: number
+  activeHouseholds: number
 }
 
 export interface Payment {
@@ -42,6 +45,14 @@ export interface Fee {
   parentName?: string
   balanceAmount?: number
   daysOverdue?: number
+  studentProfileImageUrl?: string
+}
+
+export interface UnassignedFeeStudent {
+  id: number
+  studentName: string
+  className: string
+  parentMobile: string
 }
 
 export interface Expense {
@@ -217,7 +228,10 @@ export const financeService = {
         totalStudents: 150,
         paidStudents: 120,
         pendingStudents: 25,
-        overdueStudents: 5
+        overdueStudents: 5,
+        monthlyRecurringRevenue: 0,
+        unassignedStudents: 0,
+        activeHouseholds: 0
       }
     }
 
@@ -345,6 +359,12 @@ export const financeService = {
     }
 
     const response = await apiService.get('/finance/fees')
+    return response.data || []
+  },
+
+  async getUnassignedFeeStudents(sessionId?: number): Promise<UnassignedFeeStudent[]> {
+    const query = sessionId ? `?sessionId=${sessionId}` : ''
+    const response = await apiService.get(`/finance/fees/unassigned-students${query}`)
     return response.data || []
   },
 

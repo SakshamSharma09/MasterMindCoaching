@@ -180,6 +180,11 @@ const router = createRouter({
           path: 'remarks',
           name: 'TeacherRemarks',
           component: () => import('@/views/teacher/RemarksView.vue')
+        },
+        {
+          path: 'academic-planner',
+          name: 'TeacherAcademicPlanner',
+          component: () => import('@/views/admin/AcademicPlannerView.vue')
         }
       ]
     },

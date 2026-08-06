@@ -120,6 +120,34 @@ public class FinanceController : ControllerBase
                 .Distinct()
                 .CountAsync();
 
+            var recurringSchedules = await _context.StudentFees
+                .AsNoTracking()
+                .Where(sf => !sf.IsDeleted && sf.IsRecurring && !sf.Student.IsDeleted && sf.Student.IsActive &&
+                    sf.Frequency != FeeFrequency.OneTime &&
+                    (!activeSessionId.HasValue || sf.Student.SessionId == activeSessionId))
+                .Select(sf => new { sf.FinalAmount, sf.Frequency, sf.RecurrenceIntervalMonths })
+                .ToListAsync();
+            var monthlyRecurringRevenue = recurringSchedules.Sum(schedule =>
+                schedule.FinalAmount / Math.Max(1, schedule.RecurrenceIntervalMonths ?? schedule.Frequency switch
+                {
+                    FeeFrequency.Quarterly => 3,
+                    FeeFrequency.HalfYearly => 6,
+                    FeeFrequency.Yearly => 12,
+                    _ => 1
+                }));
+
+            var unassignedStudents = await _context.Students
+                .CountAsync(student => !student.IsDeleted && student.IsActive &&
+                    (!activeSessionId.HasValue || student.SessionId == activeSessionId) &&
+                    !student.StudentFees.Any(fee => !fee.IsDeleted));
+
+            var activeHouseholds = await _context.Students
+                .Where(student => !student.IsDeleted && student.IsActive &&
+                    (!activeSessionId.HasValue || student.SessionId == activeSessionId))
+                .Select(student => student.ParentMobile)
+                .Distinct()
+                .CountAsync();
+
             var summary = new FinancialSummary
             {
                 TotalRevenue = totalRevenue,
@@ -129,7 +157,10 @@ public class FinanceController : ControllerBase
                 TotalStudents = totalStudents,
                 PaidStudents = paidStudents,
                 PendingStudents = pendingStudents,
-                OverdueStudents = overdueStudents
+                OverdueStudents = overdueStudents,
+                MonthlyRecurringRevenue = monthlyRecurringRevenue,
+                UnassignedStudents = unassignedStudents,
+                ActiveHouseholds = activeHouseholds
             };
 
 
@@ -576,7 +607,10 @@ public class FinanceController : ControllerBase
                         sf.Status != FeeStatus.Cancelled && today >= sf.DueDate
                         ? FeeStatus.Overdue.ToString()
                         : sf.Status.ToString(),
-                    Description = sf.Remarks
+                    Description = sf.Remarks,
+                    ParentName = sf.Student?.ParentName ?? string.Empty,
+                    ParentMobile = sf.Student?.ParentMobile ?? string.Empty,
+                    StudentProfileImageUrl = sf.Student?.ProfileImageUrl ?? string.Empty
                 };
             }).ToList();
 
@@ -1295,6 +1329,49 @@ public class FinanceController : ControllerBase
         };
     }
 
+    [HttpGet("fees/unassigned-students")]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<UnassignedFeeStudentDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<UnassignedFeeStudentDto>>>> GetUnassignedFeeStudents([FromQuery] int? sessionId = null)
+    {
+        var activeSessionId = sessionId ?? await _context.Sessions
+            .Where(session => session.IsActive && !session.IsDeleted)
+            .Select(session => (int?)session.Id)
+            .FirstOrDefaultAsync();
+
+        var rows = await _context.Students
+            .AsNoTracking()
+            .Where(student => !student.IsDeleted && student.IsActive &&
+                (!activeSessionId.HasValue || student.SessionId == activeSessionId) &&
+                !student.StudentFees.Any(fee => !fee.IsDeleted))
+            .Select(student => new
+            {
+                student.Id,
+                StudentName = student.FirstName + " " + student.LastName,
+                student.ParentMobile,
+                ClassName = student.StudentClasses
+                    .Where(studentClass => studentClass.IsActive)
+                    .Select(studentClass => studentClass.Class != null ? studentClass.Class.Name : "Not Assigned")
+                    .FirstOrDefault()
+            })
+            .OrderBy(student => student.StudentName)
+            .ToListAsync();
+
+        var data = rows.Select(student => new UnassignedFeeStudentDto
+        {
+            Id = student.Id,
+            StudentName = student.StudentName.Trim(),
+            ParentMobile = student.ParentMobile ?? string.Empty,
+            ClassName = student.ClassName ?? "Not Assigned"
+        }).ToList();
+
+        return Ok(new ApiResponse<IEnumerable<UnassignedFeeStudentDto>>
+        {
+            Success = true,
+            Message = "Students without fee assignments retrieved successfully",
+            Data = data
+        });
+    }
+
     private async Task<object> CreateOneTimeFee(
         CreateFeeRequest request,
         Student student,
@@ -1418,6 +1495,17 @@ public class FinancialSummary
     public int PaidStudents { get; set; }
     public int PendingStudents { get; set; }
     public int OverdueStudents { get; set; }
+    public decimal MonthlyRecurringRevenue { get; set; }
+    public int UnassignedStudents { get; set; }
+    public int ActiveHouseholds { get; set; }
+}
+
+public class UnassignedFeeStudentDto
+{
+    public int Id { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
+    public string ParentMobile { get; set; } = string.Empty;
 }
 
 public class PaymentDto

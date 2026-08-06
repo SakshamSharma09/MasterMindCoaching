@@ -134,7 +134,8 @@ interface Transaction {
 const loading = ref(false)
 const financialSummary = ref<FinancialSummary>({
   totalRevenue: 0, pendingPayments: 0, expenses: 0, netProfit: 0,
-  totalStudents: 0, paidStudents: 0, pendingStudents: 0, overdueStudents: 0
+  totalStudents: 0, paidStudents: 0, pendingStudents: 0, overdueStudents: 0,
+  monthlyRecurringRevenue: 0, unassignedStudents: 0, activeHouseholds: 0
 })
 const recentTransactions = ref<Transaction[]>([])
 

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const androidDir = join(rootDir, 'android')
 const target = process.argv[2] || 'bundleRelease'
-const allowedTargets = new Set(['bundleRelease', 'assembleRelease'])
+const allowedTargets = new Set(['bundleRelease', 'assembleRelease', 'lintRelease'])
 
 const isWindows = process.platform === 'win32'
 const productionApiBaseUrl = 'https://mastermind-api-2404-eadxgpe5f7dch9f6.centralindia-01.azurewebsites.net/api'
@@ -177,7 +177,7 @@ const env = {
 mkdirSync(androidDir, { recursive: true })
 writeFileSync(
   join(androidDir, 'local.properties'),
-  `sdk.dir=${windowsPath(androidSdk).replaceAll('\\', '\\\\')}\n`
+  `sdk.dir=${windowsPath(androidSdk).replaceAll('\\', '\\\\').replace(':', '\\:')}\n`
 )
 
 console.log(`Using JAVA_HOME=${javaHome}`)

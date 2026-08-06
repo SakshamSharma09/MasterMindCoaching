@@ -55,7 +55,8 @@
             </div>
             <span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="teacher.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">{{ teacher.isActive ? 'Active' : 'Inactive' }}</span>
           </div>
-          <p class="mt-3 text-sm text-slate-600">{{ getTeacherClasses(teacher).join(', ') || 'No classes assigned' }}</p>
+          <p class="mt-3 text-sm text-slate-600">DOB: {{ formatDate(teacher.dateOfBirth) }}</p>
+          <p class="mt-1 text-sm text-slate-600">{{ getTeacherClasses(teacher).join(', ') || 'No classes assigned' }}</p>
           <div class="mt-4 grid grid-cols-3 gap-2">
             <button type="button" class="min-h-11 rounded-xl bg-indigo-600 px-2 text-xs font-bold text-white" @click="shareTeacherInvite(teacher)">Invite</button>
             <button type="button" class="min-h-11 rounded-xl border border-slate-200 px-2 text-xs font-bold text-slate-700" @click="openEditModal(teacher)">Edit</button>
@@ -86,6 +87,9 @@
                   </th>
                   <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                     Phone
+                  </th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Date of Birth
                   </th>
                   <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                     Joining Date
@@ -150,6 +154,9 @@
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     {{ teacher.mobile }}
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                    {{ formatDate(teacher.dateOfBirth) }}
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     {{ formatDate(teacher.joiningDate) }}
@@ -250,6 +257,17 @@
                               required
                               class="block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                               placeholder="+91 9876543210"
+                            />
+                          </div>
+                          <div>
+                            <label for="teacherDateOfBirth" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                            <input
+                              v-model="teacherForm.dateOfBirth"
+                              type="date"
+                              id="teacherDateOfBirth"
+                              :max="getLocalDate()"
+                              required
+                              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                             />
                           </div>
                           <div>
@@ -481,6 +499,7 @@ interface Teacher {
   subjects?: string
   experienceYears?: number
   monthlySalary?: number
+  dateOfBirth?: string
   joiningDate?: string
   profileImageUrl?: string
   isActive?: boolean
@@ -523,6 +542,7 @@ const teacherForm = ref({
   qualification: '',
   subjects: [] as string[],
   classes: [] as number[], // Array of class IDs
+  dateOfBirth: '',
   joiningDate: getLocalDate(),
   experienceYears: 0,
   monthlySalary: null as number | null,
@@ -659,6 +679,7 @@ const openAddModal = () => {
     qualification: '',
     subjects: [],
     classes: [],
+    dateOfBirth: '',
     joiningDate: getLocalDate(),
     experienceYears: 0,
     monthlySalary: null,
@@ -681,6 +702,7 @@ const openEditModal = (teacher: any) => {
     qualification: teacher.qualification || '',
     subjects: teacher.subjects ? teacher.subjects.split(',').map((s: string) => s.trim()) : [],
     classes: teacher.teacherClasses ? teacher.teacherClasses.map((tc: any) => tc.classId) : [],
+    dateOfBirth: teacher.dateOfBirth ? teacher.dateOfBirth.slice(0, 10) : '',
     joiningDate: teacher.joiningDate ? teacher.joiningDate.slice(0, 10) : getLocalDate(),
     experienceYears: teacher.experienceYears ?? 0,
     monthlySalary: teacher.monthlySalary,
@@ -703,6 +725,7 @@ const closeModal = () => {
     qualification: '',
     subjects: [],
     classes: [],
+    dateOfBirth: '',
     joiningDate: getLocalDate(),
     experienceYears: 0,
     monthlySalary: null,
@@ -725,6 +748,7 @@ const saveTeacher = async () => {
       subjects: teacherForm.value.subjects.join(', '),
       experienceYears: teacherForm.value.experienceYears,
       monthlySalary: teacherForm.value.monthlySalary,
+      dateOfBirth: teacherForm.value.dateOfBirth,
       joiningDate: teacherForm.value.joiningDate,
       isActive: true,
       classIds: teacherForm.value.classes // Send selected class IDs

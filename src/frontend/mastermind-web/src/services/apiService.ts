@@ -186,6 +186,12 @@ export const apiService = {
     await saveOrShareBlob(new Blob([response.data], { type: contentType }), resolvedFileName)
   },
 
+  async getBlob(endpoint: string): Promise<Blob> {
+    const response = await apiClient.get(endpoint, { responseType: 'blob' })
+    const contentType = response.headers['content-type'] || 'application/octet-stream'
+    return response.data instanceof Blob ? response.data : new Blob([response.data], { type: contentType })
+  },
+
   // GET request without automatic redirect on 401
   async getWithoutRedirect(endpoint: string, params?: any): Promise<any> {
     const config: ExtendedAxiosRequestConfig = {

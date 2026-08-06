@@ -869,7 +869,10 @@ const financialSummary = ref<FinancialSummary>({
   totalStudents: 0,
   paidStudents: 0,
   pendingStudents: 0,
-  overdueStudents: 0
+  overdueStudents: 0,
+  monthlyRecurringRevenue: 0,
+  unassignedStudents: 0,
+  activeHouseholds: 0
 })
 
 const recentPayments = ref<Payment[]>([])

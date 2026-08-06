@@ -6,6 +6,7 @@ using MasterMind.API.Services.Implementations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -13,6 +14,130 @@ namespace MasterMind.API.Tests;
 
 public class FinanceWriteEndpointTests
 {
+    [Fact]
+    public async Task FinancialSummaryReportsMonthlyRecurringRevenueAndUnassignedStudents()
+    {
+        await using var context = NewContext();
+        var (session, student) = await SeedSessionAndStudent(context);
+        var unassigned = new Student
+        {
+            FirstName = "test2",
+            LastName = "finance",
+            ParentMobile = "7000000002",
+            IsActive = true,
+            SessionId = session.Id
+        };
+        var plan = new FeeStructure
+        {
+            Name = "Quarterly test plan",
+            Type = FeeType.Tuition,
+            Category = FeeCategory.Monthly,
+            Frequency = FeeFrequency.Quarterly,
+            Amount = 3600,
+            AcademicYear = session.AcademicYear,
+            IsActive = true
+        };
+        context.AddRange(unassigned, plan);
+        await context.SaveChangesAsync();
+        context.StudentFees.Add(new StudentFee
+        {
+            StudentId = student.Id,
+            FeeStructureId = plan.Id,
+            Amount = 3600,
+            FinalAmount = 3600,
+            DueDate = DateOnly.FromDateTime(DateTime.Today).AddMonths(3),
+            AcademicYear = session.AcademicYear,
+            FeeCategory = FeeCategory.Monthly,
+            Frequency = FeeFrequency.Quarterly,
+            RecurrenceIntervalMonths = 3,
+            IsRecurring = true,
+            Status = FeeStatus.Pending
+        });
+        await context.SaveChangesAsync();
+
+        var controller = WithAdmin(new FinanceController(
+            context,
+            NullLogger<FinanceController>.Instance,
+            new TeacherSalaryService(context),
+            new RecurringObligationService(context)));
+        var response = await controller.GetFinancialSummary(session.Id);
+        var ok = Assert.IsType<OkObjectResult>(response.Result);
+        var payload = Assert.IsType<ApiResponse<FinancialSummary>>(ok.Value);
+
+        Assert.Equal(1200m, payload.Data!.MonthlyRecurringRevenue);
+        Assert.Equal(1, payload.Data.UnassignedStudents);
+        Assert.Equal(2, payload.Data.ActiveHouseholds);
+    }
+
+    [Fact]
+    public async Task CollectPaymentSucceedsWhenParentEmailWasNotYetProvided()
+    {
+        var options = new DbContextOptionsBuilder<MasterMindDbContext>()
+            .UseInMemoryDatabase($"fee-payment-{Guid.NewGuid()}")
+            .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        await using var context = new MasterMindDbContext(options);
+
+        var (session, student) = await SeedSessionAndStudent(context);
+        student.MotherName = "Test Mother";
+        student.ParentEmail = null;
+        var admin = new User
+        {
+            Email = "fee-admin@example.invalid",
+            Mobile = "9887258679",
+            FirstName = "Fee",
+            LastName = "Admin",
+            PasswordHash = "test",
+            IsActive = true
+        };
+        var structure = new FeeStructure
+        {
+            Name = "Monthly test fee",
+            Type = FeeType.Tuition,
+            Category = FeeCategory.Monthly,
+            Frequency = FeeFrequency.Monthly,
+            Amount = 1200,
+            AcademicYear = session.AcademicYear,
+            IsActive = true
+        };
+        context.AddRange(admin, structure);
+        await context.SaveChangesAsync();
+        var fee = new StudentFee
+        {
+            StudentId = student.Id,
+            FeeStructureId = structure.Id,
+            Amount = 1200,
+            FinalAmount = 1200,
+            DueDate = DateOnly.FromDateTime(DateTime.Today),
+            AcademicYear = session.AcademicYear,
+            FeeCategory = FeeCategory.Monthly,
+            Frequency = FeeFrequency.Monthly,
+            Status = FeeStatus.Pending
+        };
+        context.StudentFees.Add(fee);
+        await context.SaveChangesAsync();
+
+        var controller = WithUser(new FeeCollectionController(
+            context,
+            NullLogger<FeeCollectionController>.Instance,
+            new NoOpEmailService()), admin.Id);
+        var response = await controller.CollectPayment(new CollectPaymentRequest
+        {
+            StudentId = student.Id,
+            PaymentMethod = PaymentMethod.UPI,
+            FeeItems = new List<PaymentFeeItemDto>
+            {
+                new() { StudentFeeId = fee.Id, Amount = 1200, Description = "August fee", Period = "August" }
+            }
+        });
+
+        Assert.IsType<CreatedAtActionResult>(response.Result);
+        Assert.Equal(FeeStatus.Paid, (await context.StudentFees.FindAsync(fee.Id))!.Status);
+        var receipt = Assert.Single(await context.FeeReceipts.ToListAsync());
+        Assert.Equal(string.Empty, receipt.ParentEmail);
+        Assert.Equal("Test Mother", receipt.ParentName);
+    }
+
     [Fact]
     public async Task CreateFeeCreatesScheduleAndCurrentInstallment()
     {
@@ -189,5 +314,25 @@ public class FinanceWriteEndpointTests
             }
         };
         return controller;
+    }
+
+    private static T WithUser<T>(T controller, int userId) where T : ControllerBase
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) }, "Test"))
+            }
+        };
+        return controller;
+    }
+
+    private sealed class NoOpEmailService : MasterMind.API.Services.Interfaces.IEmailService
+    {
+        public Task<bool> SendOtpEmailAsync(string email, string otp) => Task.FromResult(true);
+        public Task<bool> SendEmailAsync(string to, string subject, string body) => Task.FromResult(true);
+        public bool IsValidEmail(string email) => true;
     }
 }

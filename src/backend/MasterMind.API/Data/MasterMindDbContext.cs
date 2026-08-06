@@ -162,6 +162,8 @@ namespace MasterMind.API.Data
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.Mobile).IsRequired().HasMaxLength(20);
                 entity.Property(e => e.SecondaryMobile).HasMaxLength(20);
+                entity.HasIndex(e => e.Email);
+                entity.HasIndex(e => e.Mobile);
             });
 
             // Class configuration

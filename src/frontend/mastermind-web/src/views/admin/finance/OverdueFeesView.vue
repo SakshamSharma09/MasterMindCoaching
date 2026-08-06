@@ -18,8 +18,36 @@
       </button>
     </div>
 
-    <!-- Overdue Fees Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="space-y-4">
+      <section v-for="month in groupedOverdueFees" :key="month.key" class="overflow-hidden rounded-2xl border border-red-100 bg-white shadow-sm">
+        <div class="flex items-center justify-between bg-red-50 px-4 py-3">
+          <div><h3 class="font-bold text-slate-950">{{ month.label }} overdue</h3><p class="text-xs text-red-700">{{ month.households.length }} household{{ month.households.length === 1 ? '' : 's' }}</p></div>
+          <p class="font-bold tabular-nums text-red-700">₹{{ formatCurrency(month.balance) }}</p>
+        </div>
+        <div class="space-y-2 p-3">
+          <details v-for="household in month.households" :key="household.key" class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <summary class="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 marker:hidden">
+              <div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-900">{{ household.parentName || 'Parent household' }}</p><p class="text-xs text-slate-500">{{ displayMobile(household.mobile) }} · {{ household.studentCount }} student{{ household.studentCount === 1 ? '' : 's' }}</p></div>
+              <div class="text-right"><p class="text-sm font-bold tabular-nums text-red-700">₹{{ formatCurrency(household.balance) }}</p><p class="text-[11px] text-slate-500">{{ household.fees.length }} due</p></div>
+            </summary>
+            <div class="border-t border-slate-100 bg-slate-50/70 p-3">
+              <div v-for="fee in household.fees" :key="fee.id" class="mb-2 flex items-center justify-between gap-3 rounded-lg bg-white p-3 last:mb-0">
+                <div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-900">{{ fee.studentName }}</p><p class="truncate text-xs text-slate-500">{{ fee.className }} · due {{ formatDate(fee.dueDate) }}</p></div>
+                <p class="shrink-0 text-sm font-bold tabular-nums">₹{{ formatCurrency(fee.balanceAmount || fee.amount) }}</p>
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" class="min-h-11 rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white" @click="sendHouseholdReminder(household)">WhatsApp reminder</button>
+                <button type="button" class="min-h-11 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white" @click="collectHouseholdFee(household)">Collect payment</button>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+      <div v-if="groupedOverdueFees.length === 0" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-12 text-center"><p class="font-semibold text-emerald-900">No overdue fees</p><p class="mt-1 text-sm text-emerald-700">All configured households are up to date.</p></div>
+    </div>
+
+    <!-- Legacy flat table retained for compatibility but hidden in the household ledger. -->
+    <div class="hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
@@ -71,11 +99,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { financeService, type Fee } from '@/services/financeService'
 import { useToast } from '@/composables/useToast'
+import { householdKey, normalizeHouseholdMobile, overdueMonthKey } from '@/utils/financeHouseholds'
 
 const toast = useToast()
+const router = useRouter()
 
 interface OverdueFee extends Fee {
   daysOverdue: number
@@ -102,6 +133,43 @@ const normalizePhone = (phone?: string): string => {
   return digits.length === 10 ? `91${digits}` : digits
 }
 
+const displayMobile = (phone?: string) => normalizeHouseholdMobile(phone) || 'Mobile not added'
+
+interface OverdueHousehold {
+  key: string
+  mobile: string
+  parentName: string
+  fees: OverdueFee[]
+  balance: number
+  studentCount: number
+}
+
+const groupedOverdueFees = computed(() => {
+  const months = new Map<string, Map<string, Omit<OverdueHousehold, 'balance' | 'studentCount'>>>()
+  overdueFees.value.forEach(fee => {
+    const monthKey = overdueMonthKey(fee.dueDate)
+    const householdId = householdKey(fee.studentId, fee.parentMobile || fee.parentContact)
+    if (!months.has(monthKey)) months.set(monthKey, new Map())
+    const households = months.get(monthKey)!
+    const household = households.get(householdId) || { key: householdId, mobile: fee.parentMobile || fee.parentContact || '', parentName: fee.parentName || '', fees: [] }
+    household.fees.push(fee)
+    households.set(householdId, household)
+  })
+  return Array.from(months.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([key, households]) => {
+    const grouped = Array.from(households.values()).map(household => ({
+      ...household,
+      balance: household.fees.reduce((sum, fee) => sum + (fee.balanceAmount || fee.amount), 0),
+      studentCount: new Set(household.fees.map(fee => fee.studentId)).size
+    }))
+    return {
+      key,
+      label: new Date(`${key}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+      households: grouped,
+      balance: grouped.reduce((sum, household) => sum + household.balance, 0)
+    }
+  })
+})
+
 const buildReminderMessage = (overdue: OverdueFee): string => {
   return [
     'Namaste, this is a fee reminder from The Master Mind Coaching Classes.',
@@ -122,6 +190,29 @@ const openWhatsAppReminder = (overdue: OverdueFee) => {
 
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(buildReminderMessage(overdue))}`
   window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+const sendHouseholdReminder = async (household: OverdueHousehold) => {
+  const phone = normalizePhone(household.mobile)
+  if (!phone) {
+    toast.error('WhatsApp number missing', 'Add the primary parent mobile number first.')
+    return
+  }
+  try {
+    await financeService.sendReminders(household.fees.map(fee => fee.id))
+    const lines = household.fees.map(fee => `• ${fee.studentName}: Rs. ${formatCurrency(fee.balanceAmount || fee.amount)} due ${formatDate(fee.dueDate)}`)
+    const message = ['Namaste, this is a fee reminder from The Master Mind Coaching Classes.', '', ...lines, '', 'Please complete the pending payment at your earliest convenience.'].join('\n')
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+  } catch (error) {
+    console.error('Error preparing household reminder:', error)
+    toast.error('Failed to prepare reminder', 'Please try again.')
+  }
+}
+
+const collectHouseholdFee = (household: OverdueHousehold) => {
+  const firstFee = household.fees[0]
+  if (!firstFee) return
+  router.push({ path: '/admin/finance/fee-collection', query: { studentId: String(firstFee.studentId), feeId: String(firstFee.id) } })
 }
 
 const loadOverdueFees = async () => {
@@ -167,15 +258,8 @@ const sendReminder = async (overdue: OverdueFee) => {
 }
 
 const markAsPaid = async (feeId: number) => {
-  if (!confirm('Mark this fee as paid?')) return
-  try {
-    await financeService.markFeeAsPaid(feeId)
-    await loadOverdueFees()
-    toast.success('Fee updated', 'Fee has been marked as paid.')
-  } catch (error) {
-    console.error('Error marking fee as paid:', error)
-    toast.error('Failed to update fee', 'Please try again.')
-  }
+  const fee = overdueFees.value.find(item => item.id === feeId)
+  if (fee) router.push({ path: '/admin/finance/fee-collection', query: { studentId: String(fee.studentId), feeId: String(fee.id) } })
 }
 
 onMounted(() => { loadOverdueFees() })

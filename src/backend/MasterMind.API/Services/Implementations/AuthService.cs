@@ -461,11 +461,13 @@ public class AuthService : IAuthService
 
             var users = isEmailLogin
                 ? await userQuery
-                    .Where(u => u.Email != null && u.Email.ToLower() == normalizedEmail)
+                    .Where(u => u.Email == normalizedEmail)
                     .ToListAsync()
-                : (await userQuery.ToListAsync())
-                    .Where(u => !string.IsNullOrWhiteSpace(u.Mobile) && NormalizeMobile(u.Mobile) == normalizedMobile)
-                    .ToList();
+                : await userQuery
+                    .Where(u => u.Mobile == normalizedMobile ||
+                        u.Mobile == $"91{normalizedMobile}" ||
+                        u.Mobile == $"+91{normalizedMobile}")
+                    .ToListAsync();
 
             if (!users.Any())
             {
@@ -517,16 +519,30 @@ public class AuthService : IAuthService
                 };
             }
 
-            await _userService.UpdateLastLoginAsync(user.Id);
-
-            var roles = user.UserRoles.Select(ur => ur.Role.Name);
+            user.LastLoginAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+            var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
             var accessToken = _jwtService.GenerateAccessToken(user, roles);
             var refreshToken = _jwtService.GenerateRefreshToken(GetClientIp());
             refreshToken.UserId = user.Id;
             _context.RefreshTokens.Add(refreshToken);
             await _context.SaveChangesAsync();
 
-            var userDto = await _userService.ToUserDtoAsync(user);
+            var userDto = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                Mobile = user.Mobile,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                IsActive = user.IsActive,
+                IsEmailVerified = user.IsEmailVerified,
+                IsMobileVerified = user.IsMobileVerified,
+                LastLoginAt = user.LastLoginAt,
+                ProfileImageUrl = user.ProfileImageUrl,
+                Roles = roles,
+                CreatedAt = user.CreatedAt
+            };
 
             _logger.LogInformation("User {UserId} authenticated via password", user.Id);
 

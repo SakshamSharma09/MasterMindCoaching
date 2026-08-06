@@ -167,6 +167,15 @@ public class FeeCollectionController : ControllerBase
     {
         try
         {
+            if (request.FeeItems.Count == 0)
+            {
+                return BadRequest(new ApiResponse<FeeReceiptDto>
+                {
+                    Success = false,
+                    Message = "Select at least one fee installment to collect"
+                });
+            }
+
             var student = await _context.Students
                 .Include(s => s.StudentClasses)
                     .ThenInclude(sc => sc.Class)
@@ -188,7 +197,7 @@ public class FeeCollectionController : ControllerBase
             decimal totalSelectedAmount = 0;
             decimal totalRemainingBalance = 0;
 
-            foreach (var feeItem in request.FeeItems)
+            foreach (var feeItem in request.FeeItems.GroupBy(item => item.StudentFeeId).Select(group => group.First()))
             {
                 var studentFee = await _context.StudentFees
                     .Include(sf => sf.FeeStructure)
@@ -220,7 +229,7 @@ public class FeeCollectionController : ControllerBase
                     Amount = feeItem.Amount,
                     Method = request.PaymentMethod,
                     TransactionId = request.TransactionId,
-                    ReceiptNumber = $"REC-{DateTime.Now:yyyyMMddHHmmss}",
+                    ReceiptNumber = $"REC-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}"[..35],
                     Remarks = request.Remarks,
                     Status = PaymentStatus.Completed,
                     ReceivedByUserId = GetCurrentUserId()
@@ -260,10 +269,10 @@ public class FeeCollectionController : ControllerBase
             // Generate receipt
             var receipt = new FeeReceipt
             {
-                ReceiptNumber = $"RCP-{DateTime.Now:yyyyMMddHHmmss}",
+                ReceiptNumber = $"RCP-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}"[..35],
                 StudentId = request.StudentId,
                 TotalAmount = totalSelectedAmount,
-                PaidAmount = request.FeeItems.Sum(fi => fi.Amount),
+                PaidAmount = payments.Sum(payment => payment.Amount),
                 BalanceAmount = totalRemainingBalance,
                 PaymentMethod = request.PaymentMethod.ToString(),
                 Payment = payments.First(),
@@ -271,9 +280,9 @@ public class FeeCollectionController : ControllerBase
                 StudentClass = student.StudentClasses.FirstOrDefault()?.Class?.Name ?? "N/A",
                 FeeDescription = string.Join(", ", request.FeeItems.Select(fi => fi.Description)),
                 FeePeriod = request.FeeItems.FirstOrDefault()?.Period ?? "",
-                ParentName = student.ParentName,
-                ParentEmail = student.ParentEmail,
-                ParentMobile = student.ParentMobile,
+                ParentName = FirstNonBlank(student.MotherName, student.FatherName, student.ParentName, "Parent/Guardian"),
+                ParentEmail = student.ParentEmail ?? string.Empty,
+                ParentMobile = student.ParentMobile ?? string.Empty,
                 GeneratedByUserId = GetCurrentUserId(),
                 InstitutionName = "MasterMind Coaching Classes",
                 InstitutionAddress = "Kedia Palace, Sikar, Rajasthan",
@@ -284,7 +293,16 @@ public class FeeCollectionController : ControllerBase
             _context.FeeReceipts.Add(receipt);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
-            await LogFeeReceiptTemplateUsageAsync(receipt);
+            try
+            {
+                await LogFeeReceiptTemplateUsageAsync(receipt);
+            }
+            catch (Exception logException)
+            {
+                _logger.LogWarning(logException,
+                    "Payment {ReceiptNumber} was saved, but Template Zone logging could not be completed",
+                    receipt.ReceiptNumber);
+            }
 
             // Map to DTO
             var receiptDto = new FeeReceiptDto
@@ -328,10 +346,13 @@ public class FeeCollectionController : ControllerBase
             return StatusCode(500, new ApiResponse<FeeReceiptDto>
             {
                 Success = false,
-                Message = "Error collecting payment"
+                Message = "Payment could not be saved. No fee balance was changed. Please retry or contact support."
             });
         }
     }
+
+    private static string FirstNonBlank(params string?[] values) =>
+        values.First(value => !string.IsNullOrWhiteSpace(value))!.Trim();
 
     private async Task LogFeeReceiptTemplateUsageAsync(FeeReceipt receipt)
     {

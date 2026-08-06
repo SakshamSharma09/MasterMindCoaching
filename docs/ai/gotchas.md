@@ -53,9 +53,9 @@ var result = data.Select(x => new Dto {
 ### EF Migration and Test Providers Must Match the Intended Assembly
 **Symptom**: A newly scaffolded migration omits current model changes, or an EF test fails while creating SQLite tables with SQL Server-specific column types such as `nvarchar(max)`.
 **Root Cause**: `dotnet ef --no-build` can load a stale Debug assembly while the current model was built in Release, and this project contains SQL Server-specific model types that SQLite cannot create.
-**Solution**: Build the same configuration passed to `dotnet ef` before scaffolding (`--configuration Release --no-build`). When the startup project exposes multiple contexts, pass `--context MasterMindDbContext`; set a non-secret SQL Server-shaped validation connection string so script generation uses the intended provider. For service tests that do not validate relational SQL, use EF Core InMemory; reserve SQL Server for migration validation.
+**Solution**: Build the same configuration passed to `dotnet ef` before scaffolding (`--configuration Release --no-build`). When the startup project exposes multiple contexts, pass `--context MasterMindDbContext`; set a non-secret SQL Server-shaped validation connection string so script generation uses the intended provider. For service/controller tests that do not validate relational SQL, use EF Core InMemory; if the production method opens a transaction, explicitly ignore `InMemoryEventId.TransactionIgnoredWarning`. Reserve SQL Server for migration validation.
 **Files Affected**: `Data/Migrations/`, `MasterMind.API.Tests`
-**Date Learned**: 2026-07-26
+**Date Learned**: 2026-08-05 (updated)
 
 ### Fee Save Failure Due to Missing/Hardcoded Fee Structures
 **Symptom**: `POST /api/finance/fees` fails with `400` and message `Fee structure not found`, especially when frontend sends fixed IDs (like `1..7`) but the database has no fee structure rows.  
@@ -188,11 +188,11 @@ const userData = {
 ## Mobile / Android Builds
 
 ### Android AAB Build Fails Due to Java or SDK Path
-**Symptom**: `npm run build:aab` fails with `JAVA_HOME is not set and no 'java' command could be found`, missing Android SDK licenses, or `Failed to read or create install properties file` while installing Build Tools.  
+**Symptom**: `npm run build:aab` fails with `JAVA_HOME is not set and no 'java' command could be found`, missing Android SDK licenses, `Failed to read or create install properties file`, or Release lint reports `PropertyEscape` for `android/local.properties`.
 **Root Cause**: Java was installed with Android Studio but not available in the terminal environment, and the Android SDK path pointed to `C:\Program Files (x86)\Android\android-sdk`, which can block SDK package/license writes.  
-**Solution**: Use the Android Studio bundled JDK for `JAVA_HOME`, use a user-writable SDK at `C:\Users\Saksham\AppData\Local\Android\Sdk`, accept licenses, install required SDK packages, and point `android/local.properties` to that SDK. Keep `npm run build:aab` and `npm run build:apk` behind the local build wrapper so Gradle receives the JDK/SDK paths even when the terminal has no Android environment variables.  
+**Solution**: Use the Android Studio bundled JDK for `JAVA_HOME`, use a user-writable SDK at `C:\Users\Saksham\AppData\Local\Android\Sdk`, accept licenses, and install required SDK packages. In `local.properties`, escape both Windows backslashes and the drive colon (`C\:\\Users...`). Keep `npm run build:aab` and `npm run build:apk` behind the local build wrapper so Gradle receives and safely writes the JDK/SDK paths even when the terminal has no Android environment variables.
 **Files Affected**: `src/frontend/mastermind-web/package.json`, `src/frontend/mastermind-web/scripts/build-android-release.mjs`, `src/frontend/mastermind-web/android/local.properties`, local Windows environment variables  
-**Date Learned**: 2026-05-24
+**Date Learned**: 2026-08-06 (updated)
 
 ```powershell
 $env:JAVA_HOME='C:\Program Files\Android\openjdk\jdk-21.0.8'

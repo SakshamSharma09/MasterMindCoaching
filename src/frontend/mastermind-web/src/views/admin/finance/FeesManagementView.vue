@@ -16,7 +16,10 @@
 
     <!-- Fee Filters -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <button type="button" class="flex min-h-11 w-full items-center justify-between text-sm font-semibold text-slate-800 md:hidden" :aria-expanded="filtersOpen" @click="filtersOpen = !filtersOpen">
+        <span>Filters</span><span class="rounded-full bg-slate-100 px-2 py-1 text-xs">{{ filtersOpen ? 'Hide' : 'Show' }}</span>
+      </button>
+      <div :class="filtersOpen ? 'grid' : 'hidden md:grid'" class="mt-3 grid-cols-1 gap-4 md:mt-0 md:grid-cols-5">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
           <select v-model="feeFilters.classId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
@@ -54,8 +57,54 @@
       </div>
     </div>
 
-    <!-- Fees Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm" role="tablist" aria-label="Fee assignment status">
+      <button type="button" class="min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold" :class="viewMode === 'assigned' ? 'bg-indigo-600 text-white' : 'text-gray-600'" @click="viewMode = 'assigned'">
+        Assigned <span class="ml-1 opacity-80">{{ filteredFees.length }}</span>
+      </button>
+      <button type="button" class="min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold" :class="viewMode === 'unassigned' ? 'bg-amber-500 text-white' : 'text-gray-600'" @click="viewMode = 'unassigned'">
+        Not assigned <span class="ml-1 opacity-80">{{ unassignedStudents.length }}</span>
+      </button>
+    </div>
+
+    <div v-if="viewMode === 'assigned'" class="space-y-3">
+      <details v-for="(household, index) in groupedFees" :key="household.key" :open="index === 0" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <summary class="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden">
+          <div class="min-w-0">
+            <p class="truncate text-sm font-bold text-slate-900">{{ household.parentName || 'Parent household' }}</p>
+            <p class="text-xs text-slate-500">{{ displayMobile(household.mobile) }} · {{ household.studentCount }} student{{ household.studentCount === 1 ? '' : 's' }}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-bold tabular-nums text-slate-900">₹{{ formatCurrency(household.balance) }}</p>
+            <p class="text-[11px] text-slate-500">{{ household.fees.length }} installments</p>
+          </div>
+        </summary>
+        <div class="grid gap-2 border-t border-slate-100 bg-slate-50/70 p-3 sm:grid-cols-2 xl:grid-cols-3">
+          <article v-for="fee in household.fees" :key="fee.id" class="rounded-xl border border-slate-200 bg-white p-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-900">{{ fee.studentName }}</p><p class="truncate text-xs text-slate-500">{{ fee.className }} · {{ fee.feeType }}</p></div>
+              <span :class="fee.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : fee.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'" class="rounded-full px-2 py-1 text-[10px] font-bold uppercase">{{ fee.status }}</span>
+            </div>
+            <div class="mt-3 flex items-end justify-between gap-2">
+              <div><p class="text-base font-bold tabular-nums text-slate-950">₹{{ formatCurrency(fee.balanceAmount ?? fee.amount) }}</p><p class="text-xs text-slate-500">Due {{ formatDate(fee.dueDate) }}</p></div>
+              <div class="flex"><button @click="editFee(fee)" class="min-h-11 rounded-lg px-3 text-xs font-semibold text-indigo-700">Edit</button><button @click="deleteFee(fee.id)" class="min-h-11 rounded-lg px-3 text-xs font-semibold text-red-700">Delete</button></div>
+            </div>
+          </article>
+        </div>
+      </details>
+      <div v-if="groupedFees.length === 0" class="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">No fees found matching your filters.</div>
+    </div>
+
+    <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <article v-for="student in unassignedStudents" :key="student.id" class="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+        <p class="font-semibold text-slate-900">{{ student.studentName }}</p>
+        <p class="mt-1 text-xs text-slate-600">{{ student.className }} · {{ displayMobile(student.parentMobile) }}</p>
+        <button type="button" class="mt-4 min-h-11 w-full rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white" @click="openAddFeeFor(student.id)">Configure fee</button>
+      </article>
+      <div v-if="unassignedStudents.length === 0" class="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-10 text-center text-sm font-medium text-emerald-800 sm:col-span-2 xl:col-span-3">Every active student in this session has a fee assignment.</div>
+    </div>
+
+    <!-- Legacy table retained but hidden while grouped household ledger is active. -->
+    <div class="hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
@@ -221,13 +270,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { financeService, type Fee, type UpdateFeeRequest } from '@/services/financeService'
+import { financeService, type Fee, type UnassignedFeeStudent, type UpdateFeeRequest } from '@/services/financeService'
 import { nextCycleDueDate, type BillingFrequency } from '@/utils/financeSchedule'
 import { studentsService } from '@/services/studentsService'
 import { classesService, type Class } from '@/services/classesService'
 import { useToast } from '@/composables/useToast'
 import { useSessionStore } from '@/stores/session'
 import { matchesDuePeriod, type DuePeriod } from '@/utils/datePeriod'
+import { householdKey, normalizeHouseholdMobile } from '@/utils/financeHouseholds'
 
 const toast = useToast()
 const sessionStore = useSessionStore()
@@ -253,6 +303,9 @@ const fees = ref<Fee[]>([])
 const students = ref<StudentItem[]>([])
 const classes = ref<Class[]>([])
 const feeStructures = ref<FeeStructureItem[]>([])
+const unassignedStudents = ref<UnassignedFeeStudent[]>([])
+const viewMode = ref<'assigned' | 'unassigned'>('assigned')
+const filtersOpen = ref(false)
 const showFeeModal = ref(false)
 const isEditingFee = ref(false)
 const showAdvancedFeeOptions = ref(false)
@@ -339,6 +392,24 @@ const filteredFees = computed(() => {
   return filtered
 })
 
+const displayMobile = (mobile?: string) => normalizeHouseholdMobile(mobile) || 'Mobile not added'
+
+const groupedFees = computed(() => {
+  const groups = new Map<string, { key: string; mobile: string; parentName: string; fees: Fee[] }>()
+  filteredFees.value.forEach(fee => {
+    const mobile = normalizeHouseholdMobile(fee.parentMobile || fee.parentContact)
+    const key = householdKey(fee.studentId, mobile)
+    const group = groups.get(key) || { key, mobile, parentName: fee.parentName || '', fees: [] }
+    group.fees.push(fee)
+    groups.set(key, group)
+  })
+  return Array.from(groups.values()).map(group => ({
+    ...group,
+    studentCount: new Set(group.fees.map(fee => fee.studentId)).size,
+    balance: group.fees.reduce((sum, fee) => sum + (fee.balanceAmount ?? fee.amount), 0)
+  })).sort((a, b) => b.balance - a.balance)
+})
+
 const formatCurrency = (amount: number): string => amount.toLocaleString('en-IN')
 const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -359,6 +430,15 @@ const loadStudents = async () => {
     students.value = result.data
   } catch (error) {
     console.error('Error loading students:', error)
+  }
+}
+
+const loadUnassignedStudents = async () => {
+  try {
+    unassignedStudents.value = await financeService.getUnassignedFeeStudents(sessionStore.selectedSessionId ?? undefined)
+  } catch (error) {
+    console.error('Error loading students without fees:', error)
+    unassignedStudents.value = []
   }
 }
 
@@ -398,6 +478,11 @@ const openAddFeeModal = () => {
 }
 
 const closeFeeModal = () => { showFeeModal.value = false }
+
+const openAddFeeFor = (studentId: number) => {
+  openAddFeeModal()
+  feeForm.value.studentId = String(studentId)
+}
 
 const editFee = (fee: Fee) => {
   isEditingFee.value = true
@@ -457,7 +542,7 @@ const saveFee = async () => {
       }
       await financeService.createFee(feeData)
     }
-    await loadFees()
+    await Promise.all([loadFees(), loadUnassignedStudents()])
     closeFeeModal()
     toast.success(isEditingFee.value ? 'Fee updated' : 'Fee created', 'Fee saved successfully.')
   } catch (error: any) {
@@ -483,6 +568,6 @@ const deleteFee = async (feeId: number) => {
 }
 
 onMounted(async () => {
-  await Promise.allSettled([loadFees(), loadStudents(), loadClasses(), loadFeeStructures()])
+  await Promise.allSettled([loadFees(), loadStudents(), loadClasses(), loadFeeStructures(), loadUnassignedStudents()])
 })
 </script>
