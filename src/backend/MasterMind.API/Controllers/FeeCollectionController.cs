@@ -2,6 +2,7 @@ using MasterMind.API.Data;
 using MasterMind.API.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using MasterMind.API.Services.Interfaces;
@@ -357,11 +358,21 @@ public class FeeCollectionController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error collecting payment");
+            var reference = HttpContext.TraceIdentifier;
+            var rootCause = ex.GetBaseException();
+            var diagnosticCode = rootCause is SqlException sqlException
+                ? $"DB-{sqlException.Number}"
+                : ex is DbUpdateException
+                    ? "DB-WRITE"
+                    : "PAYMENT-WRITE";
+            _logger.LogError(ex,
+                "Error collecting payment. Reference {Reference}; diagnostic {DiagnosticCode}",
+                reference,
+                diagnosticCode);
             return StatusCode(500, new ApiResponse<FeeReceiptDto>
             {
                 Success = false,
-                Message = "Payment could not be saved. No fee balance was changed. Please retry or contact support."
+                Message = $"Payment could not be saved. No fee balance was changed. Support reference: {reference} ({diagnosticCode})."
             });
         }
     }
