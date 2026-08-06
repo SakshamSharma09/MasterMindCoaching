@@ -1774,6 +1774,83 @@ END
 static async Task EnsureSqlServerFeeCollectionCompatibilityAsync(MasterMindDbContext context)
 {
     await context.Database.ExecuteSqlRawAsync(@"
+IF OBJECT_ID('dbo.Payments', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Payments
+    (
+        Id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_Payments PRIMARY KEY,
+        StudentFeeId int NOT NULL,
+        Amount decimal(18,2) NOT NULL,
+        PaymentDate datetime2 NOT NULL CONSTRAINT DF_Payments_PaymentDate DEFAULT(sysutcdatetime()),
+        Method int NOT NULL CONSTRAINT DF_Payments_Method DEFAULT(0),
+        TransactionId nvarchar(max) NULL,
+        ReceiptNumber nvarchar(max) NULL,
+        Remarks nvarchar(max) NULL,
+        Status int NOT NULL CONSTRAINT DF_Payments_Status DEFAULT(1),
+        ReceivedByUserId int NULL,
+        FeeInstallmentId int NULL,
+        CreatedAt datetime2 NOT NULL CONSTRAINT DF_Payments_CreatedAt DEFAULT(sysutcdatetime()),
+        UpdatedAt datetime2 NULL,
+        IsDeleted bit NOT NULL CONSTRAINT DF_Payments_IsDeleted DEFAULT(0)
+    );
+END
+
+IF OBJECT_ID('dbo.FeeReceipts', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.FeeReceipts
+    (
+        Id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_FeeReceipts PRIMARY KEY,
+        ReceiptNumber nvarchar(max) NOT NULL,
+        StudentId int NOT NULL,
+        PaymentId int NOT NULL,
+        TotalAmount decimal(18,2) NOT NULL,
+        PaidAmount decimal(18,2) NOT NULL CONSTRAINT DF_FeeReceipts_PaidAmount DEFAULT(0),
+        BalanceAmount decimal(18,2) NOT NULL CONSTRAINT DF_FeeReceipts_BalanceAmount DEFAULT(0),
+        PaymentMethod nvarchar(max) NOT NULL,
+        ReceiptDate datetime2 NOT NULL CONSTRAINT DF_FeeReceipts_ReceiptDate DEFAULT(sysutcdatetime()),
+        ReceiptStatus nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_ReceiptStatus DEFAULT('Generated'),
+        StudentName nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_StudentName DEFAULT(''),
+        StudentClass nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_StudentClass DEFAULT(''),
+        FeeDescription nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_FeeDescription DEFAULT(''),
+        FeePeriod nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_FeePeriod DEFAULT(''),
+        ParentName nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_ParentName DEFAULT(''),
+        ParentEmail nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_ParentEmail DEFAULT(''),
+        ParentMobile nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_ParentMobile DEFAULT(''),
+        IsEmailSent bit NOT NULL CONSTRAINT DF_FeeReceipts_IsEmailSent DEFAULT(0),
+        EmailSentAt datetime2 NULL,
+        IsSmsSent bit NOT NULL CONSTRAINT DF_FeeReceipts_IsSmsSent DEFAULT(0),
+        SmsSentAt datetime2 NULL,
+        Remarks nvarchar(max) NULL,
+        PaymentNotes nvarchar(max) NULL,
+        GeneratedByUserId int NULL,
+        InstitutionName nvarchar(max) NULL,
+        InstitutionAddress nvarchar(max) NULL,
+        InstitutionContact nvarchar(max) NULL,
+        InstitutionLogo nvarchar(max) NULL,
+        CreatedAt datetime2 NOT NULL CONSTRAINT DF_FeeReceipts_CreatedAt DEFAULT(sysutcdatetime()),
+        UpdatedAt datetime2 NULL,
+        IsDeleted bit NOT NULL CONSTRAINT DF_FeeReceipts_IsDeleted DEFAULT(0)
+    );
+END
+
+IF OBJECT_ID('dbo.FeeReceiptItems', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.FeeReceiptItems
+    (
+        Id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_FeeReceiptItems PRIMARY KEY,
+        FeeReceiptId int NOT NULL,
+        ItemDescription nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceiptItems_ItemDescription DEFAULT(''),
+        ItemAmount decimal(18,2) NOT NULL CONSTRAINT DF_FeeReceiptItems_ItemAmount DEFAULT(0),
+        DiscountAmount decimal(18,2) NULL,
+        FinalAmount decimal(18,2) NOT NULL CONSTRAINT DF_FeeReceiptItems_FinalAmount DEFAULT(0),
+        Period nvarchar(max) NULL,
+        StudentFeeId int NULL,
+        CreatedAt datetime2 NOT NULL CONSTRAINT DF_FeeReceiptItems_CreatedAt DEFAULT(sysutcdatetime()),
+        UpdatedAt datetime2 NULL,
+        IsDeleted bit NOT NULL CONSTRAINT DF_FeeReceiptItems_IsDeleted DEFAULT(0)
+    );
+END
+
 IF OBJECT_ID('dbo.Payments', 'U') IS NOT NULL
 BEGIN
     IF COL_LENGTH('dbo.Payments', 'Method') IS NULL
