@@ -238,6 +238,8 @@ Android `1.0.15` targets API 36 and uses `EdgeToEdge.enable()` with a single nat
 
 Fee Collection operational totals exclude soft-deleted installments, recurring schedule control rows, children of deleted schedules, terminal-status rows, and zero balances. `POST /api/feecollection/collect-payment` accepts a blank `transactionId` and assigns a sequential `MM-PAY-{paymentId}` reference inside the receipt transaction.
 
+The complete payment/reference/receipt transaction runs inside the configured SQL Server execution strategy. Startup compatibility checks non-destructively align legacy `Payments`, `FeeReceipts`, and `FeeReceiptItems` tables with the current EF model before collection is accepted.
+
 Android hotfix `1.0.16` uses versionCode `17` because versionCode `16` was already uploaded to the Play closed-testing draft before the Fee Collection regression was reported.
 
 ---

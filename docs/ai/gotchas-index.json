@@ -173,7 +173,7 @@
     },
     {
       "id": "fee-collection-retry-strategy-transaction",
-      "symptoms": ["collect payment 500 only in azure", "PAYMENT-WRITE", "execution strategy transaction", "EnableRetryOnFailure user initiated transaction", "fee balance unchanged"],
+      "symptoms": ["collect payment 500 only in azure", "PAYMENT-WRITE", "DB-207", "invalid column fee receipt", "execution strategy transaction", "EnableRetryOnFailure user initiated transaction", "fee balance unchanged"],
       "category": "finance",
       "section": "Manual Finance Transactions Must Run Inside the SQL Retry Execution Strategy",
       "severity": "critical"

@@ -1168,6 +1168,10 @@ try
         Log.Information("Applying SQL Server schema compatibility checks...");
         await EnsureSqlServerSchemaCompatibilityAsync(dbContext);
         Log.Information("SQL Server schema compatibility checks completed successfully.");
+
+        Log.Information("Applying Fee Collection schema compatibility checks...");
+        await EnsureSqlServerFeeCollectionCompatibilityAsync(dbContext);
+        Log.Information("Fee Collection schema compatibility checks completed successfully.");
     }
     else
     {
@@ -1763,6 +1767,119 @@ BEGIN
         UpdatedAt datetime2 NULL,
         IsDeleted bit NOT NULL DEFAULT(0)
     );
+END
+");
+}
+
+static async Task EnsureSqlServerFeeCollectionCompatibilityAsync(MasterMindDbContext context)
+{
+    await context.Database.ExecuteSqlRawAsync(@"
+IF OBJECT_ID('dbo.Payments', 'U') IS NOT NULL
+BEGIN
+    IF COL_LENGTH('dbo.Payments', 'Method') IS NULL
+        ALTER TABLE dbo.Payments ADD Method int NOT NULL CONSTRAINT DF_Payments_Method DEFAULT(0);
+    IF COL_LENGTH('dbo.Payments', 'Status') IS NULL
+        ALTER TABLE dbo.Payments ADD Status int NOT NULL CONSTRAINT DF_Payments_Status DEFAULT(1);
+    IF COL_LENGTH('dbo.Payments', 'ReceivedByUserId') IS NULL
+        ALTER TABLE dbo.Payments ADD ReceivedByUserId int NULL;
+    IF COL_LENGTH('dbo.Payments', 'FeeInstallmentId') IS NULL
+        ALTER TABLE dbo.Payments ADD FeeInstallmentId int NULL;
+    IF COL_LENGTH('dbo.Payments', 'UpdatedAt') IS NULL
+        ALTER TABLE dbo.Payments ADD UpdatedAt datetime2 NULL;
+    IF COL_LENGTH('dbo.Payments', 'IsDeleted') IS NULL
+        ALTER TABLE dbo.Payments ADD IsDeleted bit NOT NULL CONSTRAINT DF_Payments_IsDeleted DEFAULT(0);
+
+    IF COL_LENGTH('dbo.Payments', 'StudentId') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Payments') AND name = 'StudentId' AND is_nullable = 0)
+        ALTER TABLE dbo.Payments ALTER COLUMN StudentId int NULL;
+    IF COL_LENGTH('dbo.Payments', 'PaymentMethod') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Payments') AND name = 'PaymentMethod' AND is_nullable = 0)
+        ALTER TABLE dbo.Payments ALTER COLUMN PaymentMethod nvarchar(50) NULL;
+END
+
+IF OBJECT_ID('dbo.FeeReceipts', 'U') IS NOT NULL
+BEGIN
+    IF COL_LENGTH('dbo.FeeReceipts', 'PaidAmount') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD PaidAmount decimal(18,2) NOT NULL CONSTRAINT DF_FeeReceipts_PaidAmount DEFAULT(0);
+    IF COL_LENGTH('dbo.FeeReceipts', 'BalanceAmount') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD BalanceAmount decimal(18,2) NOT NULL CONSTRAINT DF_FeeReceipts_BalanceAmount DEFAULT(0);
+    IF COL_LENGTH('dbo.FeeReceipts', 'ReceiptDate') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD ReceiptDate datetime2 NOT NULL CONSTRAINT DF_FeeReceipts_ReceiptDate DEFAULT(sysutcdatetime());
+    IF COL_LENGTH('dbo.FeeReceipts', 'ReceiptStatus') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD ReceiptStatus nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_ReceiptStatus DEFAULT('Generated');
+    IF COL_LENGTH('dbo.FeeReceipts', 'StudentName') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD StudentName nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_StudentName DEFAULT('');
+    IF COL_LENGTH('dbo.FeeReceipts', 'StudentClass') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD StudentClass nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_StudentClass DEFAULT('');
+    IF COL_LENGTH('dbo.FeeReceipts', 'FeeDescription') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD FeeDescription nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_FeeDescription DEFAULT('');
+    IF COL_LENGTH('dbo.FeeReceipts', 'FeePeriod') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD FeePeriod nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_FeePeriod DEFAULT('');
+    IF COL_LENGTH('dbo.FeeReceipts', 'ParentName') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD ParentName nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_ParentName DEFAULT('');
+    IF COL_LENGTH('dbo.FeeReceipts', 'ParentEmail') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD ParentEmail nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_ParentEmail DEFAULT('');
+    IF COL_LENGTH('dbo.FeeReceipts', 'ParentMobile') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD ParentMobile nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceipts_ParentMobile DEFAULT('');
+    IF COL_LENGTH('dbo.FeeReceipts', 'IsEmailSent') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD IsEmailSent bit NOT NULL CONSTRAINT DF_FeeReceipts_IsEmailSent DEFAULT(0);
+    IF COL_LENGTH('dbo.FeeReceipts', 'EmailSentAt') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD EmailSentAt datetime2 NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'IsSmsSent') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD IsSmsSent bit NOT NULL CONSTRAINT DF_FeeReceipts_IsSmsSent DEFAULT(0);
+    IF COL_LENGTH('dbo.FeeReceipts', 'SmsSentAt') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD SmsSentAt datetime2 NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'Remarks') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD Remarks nvarchar(max) NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'PaymentNotes') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD PaymentNotes nvarchar(max) NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'GeneratedByUserId') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD GeneratedByUserId int NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'InstitutionName') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD InstitutionName nvarchar(max) NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'InstitutionAddress') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD InstitutionAddress nvarchar(max) NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'InstitutionContact') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD InstitutionContact nvarchar(max) NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'InstitutionLogo') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD InstitutionLogo nvarchar(max) NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'UpdatedAt') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD UpdatedAt datetime2 NULL;
+    IF COL_LENGTH('dbo.FeeReceipts', 'IsDeleted') IS NULL
+        ALTER TABLE dbo.FeeReceipts ADD IsDeleted bit NOT NULL CONSTRAINT DF_FeeReceipts_IsDeleted DEFAULT(0);
+
+    IF COL_LENGTH('dbo.FeeReceipts', 'PaymentDate') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.FeeReceipts') AND name = 'PaymentDate' AND is_nullable = 0)
+        ALTER TABLE dbo.FeeReceipts ALTER COLUMN PaymentDate datetime2 NULL;
+END
+
+IF OBJECT_ID('dbo.FeeReceiptItems', 'U') IS NOT NULL
+BEGIN
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'ItemDescription') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD ItemDescription nvarchar(max) NOT NULL CONSTRAINT DF_FeeReceiptItems_ItemDescription DEFAULT('');
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'ItemAmount') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD ItemAmount decimal(18,2) NOT NULL CONSTRAINT DF_FeeReceiptItems_ItemAmount DEFAULT(0);
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'DiscountAmount') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD DiscountAmount decimal(18,2) NULL;
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'FinalAmount') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD FinalAmount decimal(18,2) NOT NULL CONSTRAINT DF_FeeReceiptItems_FinalAmount DEFAULT(0);
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'Period') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD Period nvarchar(max) NULL;
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'StudentFeeId') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD StudentFeeId int NULL;
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'CreatedAt') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD CreatedAt datetime2 NOT NULL CONSTRAINT DF_FeeReceiptItems_CreatedAt DEFAULT(sysutcdatetime());
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'UpdatedAt') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD UpdatedAt datetime2 NULL;
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'IsDeleted') IS NULL
+        ALTER TABLE dbo.FeeReceiptItems ADD IsDeleted bit NOT NULL CONSTRAINT DF_FeeReceiptItems_IsDeleted DEFAULT(0);
+
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'FeeName') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.FeeReceiptItems') AND name = 'FeeName' AND is_nullable = 0)
+        ALTER TABLE dbo.FeeReceiptItems ALTER COLUMN FeeName nvarchar(max) NULL;
+    IF COL_LENGTH('dbo.FeeReceiptItems', 'Amount') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.FeeReceiptItems') AND name = 'Amount' AND is_nullable = 0)
+        ALTER TABLE dbo.FeeReceiptItems ALTER COLUMN Amount decimal(18,2) NULL;
 END
 ");
 }
