@@ -280,6 +280,13 @@ Invoke-WebRequest -Uri "$backend/api/students" -Headers $headers -UseBasicParsin
 **Files Affected**: `src/backend/MasterMind.API/Controllers/FeeCollectionController.cs`, `src/backend/MasterMind.API.Tests/FinanceWriteEndpointTests.cs`, `src/frontend/mastermind-web/src/views/admin/FeeCollectionView.vue`
 **Date Learned**: 2026-08-06
 
+### Manual Finance Transactions Must Run Inside the SQL Retry Execution Strategy
+**Symptom**: `POST /api/feecollection/collect-payment` succeeds in InMemory and ordinary LocalDB tests but returns 500 in Azure before changing the fee balance; the failure is classified as `PAYMENT-WRITE` rather than a SQL error.
+**Root Cause**: Production configures SQL Server with `EnableRetryOnFailure`, whose execution strategy rejects a user-initiated transaction started outside `CreateExecutionStrategy().ExecuteAsync(...)`. The clean LocalDB test originally omitted retry configuration and therefore missed the production-only path.
+**Solution**: Execute the entire atomic payment, generated fallback reference, receipt save, and commit inside the context's execution strategy. Configure the SQL Server regression test with `EnableRetryOnFailure` so the Azure behavior is exercised locally.
+**Files Affected**: `src/backend/MasterMind.API/Controllers/FeeCollectionController.cs`, `src/backend/MasterMind.API.Tests/FinanceWriteEndpointTests.cs`
+**Date Learned**: 2026-08-06
+
 ---
 
 ## Adding New Gotchas

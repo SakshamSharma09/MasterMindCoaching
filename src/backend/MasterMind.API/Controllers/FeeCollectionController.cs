@@ -191,169 +191,173 @@ public class FeeCollectionController : ControllerBase
                 });
             }
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            // Process payment for each fee item
-            var payments = new List<Payment>();
-            var receiptItems = new List<FeeReceiptItem>();
-            decimal totalSelectedAmount = 0;
-            decimal totalRemainingBalance = 0;
-            var suppliedTransactionId = string.IsNullOrWhiteSpace(request.TransactionId)
-                ? null
-                : request.TransactionId.Trim();
-
-            foreach (var feeItem in request.FeeItems.GroupBy(item => item.StudentFeeId).Select(group => group.First()))
+            var executionStrategy = _context.Database.CreateExecutionStrategy();
+            return await executionStrategy.ExecuteAsync<ActionResult<ApiResponse<FeeReceiptDto>>>(async () =>
             {
-                var studentFee = await _context.StudentFees
-                    .Include(sf => sf.FeeStructure)
-                    .FirstOrDefaultAsync(sf => sf.Id == feeItem.StudentFeeId &&
-                        sf.StudentId == request.StudentId && !sf.IsDeleted && !sf.IsRecurring);
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                // Process payment for each fee item
+                var payments = new List<Payment>();
+                var receiptItems = new List<FeeReceiptItem>();
+                decimal totalSelectedAmount = 0;
+                decimal totalRemainingBalance = 0;
+                var suppliedTransactionId = string.IsNullOrWhiteSpace(request.TransactionId)
+                    ? null
+                    : request.TransactionId.Trim();
 
-                if (studentFee == null)
+                foreach (var feeItem in request.FeeItems.GroupBy(item => item.StudentFeeId).Select(group => group.First()))
                 {
-                    return BadRequest(new ApiResponse<FeeReceiptDto>
+                    var studentFee = await _context.StudentFees
+                        .Include(sf => sf.FeeStructure)
+                        .FirstOrDefaultAsync(sf => sf.Id == feeItem.StudentFeeId &&
+                            sf.StudentId == request.StudentId && !sf.IsDeleted && !sf.IsRecurring);
+
+                    if (studentFee == null)
                     {
-                        Success = false,
-                        Message = $"Student fee with ID {feeItem.StudentFeeId} not found"
-                    });
-                }
-                var remaining = studentFee.FinalAmount - studentFee.PaidAmount;
-                if (feeItem.Amount <= 0 || feeItem.Amount > remaining)
-                {
-                    return BadRequest(new ApiResponse<FeeReceiptDto>
+                        return BadRequest(new ApiResponse<FeeReceiptDto>
+                        {
+                            Success = false,
+                            Message = $"Student fee with ID {feeItem.StudentFeeId} not found"
+                        });
+                    }
+                    var remaining = studentFee.FinalAmount - studentFee.PaidAmount;
+                    if (feeItem.Amount <= 0 || feeItem.Amount > remaining)
                     {
-                        Success = false,
-                        Message = $"Payment for fee {studentFee.Id} must be between 0 and {remaining:0.00}"
-                    });
+                        return BadRequest(new ApiResponse<FeeReceiptDto>
+                        {
+                            Success = false,
+                            Message = $"Payment for fee {studentFee.Id} must be between 0 and {remaining:0.00}"
+                        });
+                    }
+
+                    // Create payment
+                    var payment = new Payment
+                    {
+                        StudentFeeId = studentFee.Id,
+                        Amount = feeItem.Amount,
+                        Method = request.PaymentMethod,
+                        TransactionId = suppliedTransactionId,
+                        ReceiptNumber = $"REC-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}"[..35],
+                        Remarks = request.Remarks,
+                        Status = PaymentStatus.Completed,
+                        ReceivedByUserId = GetCurrentUserId()
+                    };
+
+                    _context.Payments.Add(payment);
+                    payments.Add(payment);
+
+                    // Update student fee
+                    studentFee.PaidAmount += feeItem.Amount;
+                    if (studentFee.PaidAmount >= studentFee.FinalAmount)
+                    {
+                        studentFee.Status = FeeStatus.Paid;
+                        studentFee.PaidAmount = studentFee.FinalAmount;
+                    }
+                    else
+                    {
+                        studentFee.Status = FeeStatus.PartiallyPaid;
+                    }
+                    totalSelectedAmount += studentFee.FinalAmount;
+                    totalRemainingBalance += studentFee.FinalAmount - studentFee.PaidAmount;
+
+                    // Create receipt item
+                    var receiptItem = new FeeReceiptItem
+                    {
+                        ItemDescription = $"{studentFee.FeeStructure.Name} - {feeItem.Description}",
+                        ItemAmount = studentFee.FinalAmount,
+                        DiscountAmount = feeItem.DiscountAmount,
+                        FinalAmount = feeItem.Amount,
+                        Period = feeItem.Period,
+                        StudentFeeId = studentFee.Id
+                    };
+
+                    receiptItems.Add(receiptItem);
                 }
 
-                // Create payment
-                var payment = new Payment
+                // Persist payments first so a blank external reference can safely fall back to
+                // the database-generated, monotonically increasing payment ID. This remains
+                // inside the transaction, so a later receipt failure still rolls everything back.
+                await _context.SaveChangesAsync();
+                if (suppliedTransactionId == null)
                 {
-                    StudentFeeId = studentFee.Id,
-                    Amount = feeItem.Amount,
-                    Method = request.PaymentMethod,
-                    TransactionId = suppliedTransactionId,
-                    ReceiptNumber = $"REC-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}"[..35],
-                    Remarks = request.Remarks,
-                    Status = PaymentStatus.Completed,
-                    ReceivedByUserId = GetCurrentUserId()
+                    foreach (var payment in payments)
+                    {
+                        payment.TransactionId = $"MM-PAY-{payment.Id:D8}";
+                    }
+                }
+
+                // Generate receipt
+                var receipt = new FeeReceipt
+                {
+                    ReceiptNumber = $"RCP-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}"[..35],
+                    StudentId = request.StudentId,
+                    TotalAmount = totalSelectedAmount,
+                    PaidAmount = payments.Sum(payment => payment.Amount),
+                    BalanceAmount = totalRemainingBalance,
+                    PaymentMethod = request.PaymentMethod.ToString(),
+                    Payment = payments.First(),
+                    StudentName = $"{student.FirstName} {student.LastName}",
+                    StudentClass = student.StudentClasses.FirstOrDefault()?.Class?.Name ?? "N/A",
+                    FeeDescription = string.Join(", ", request.FeeItems.Select(fi => fi.Description)),
+                    FeePeriod = request.FeeItems.FirstOrDefault()?.Period ?? "",
+                    ParentName = FirstNonBlank(student.MotherName, student.FatherName, student.ParentName, "Parent/Guardian"),
+                    ParentEmail = student.ParentEmail ?? string.Empty,
+                    ParentMobile = student.ParentMobile ?? string.Empty,
+                    GeneratedByUserId = GetCurrentUserId(),
+                    InstitutionName = "MasterMind Coaching Classes",
+                    InstitutionAddress = "Kedia Palace, Sikar, Rajasthan",
+                    InstitutionContact = "9887258679",
+                    ReceiptItems = receiptItems
                 };
 
-                _context.Payments.Add(payment);
-                payments.Add(payment);
-
-                // Update student fee
-                studentFee.PaidAmount += feeItem.Amount;
-                if (studentFee.PaidAmount >= studentFee.FinalAmount)
+                _context.FeeReceipts.Add(receipt);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                try
                 {
-                    studentFee.Status = FeeStatus.Paid;
-                    studentFee.PaidAmount = studentFee.FinalAmount;
+                    await LogFeeReceiptTemplateUsageAsync(receipt);
                 }
-                else
+                catch (Exception logException)
                 {
-                    studentFee.Status = FeeStatus.PartiallyPaid;
+                    _logger.LogWarning(logException,
+                        "Payment {ReceiptNumber} was saved, but Template Zone logging could not be completed",
+                        receipt.ReceiptNumber);
                 }
-                totalSelectedAmount += studentFee.FinalAmount;
-                totalRemainingBalance += studentFee.FinalAmount - studentFee.PaidAmount;
 
-                // Create receipt item
-                var receiptItem = new FeeReceiptItem
+                // Map to DTO
+                var receiptDto = new FeeReceiptDto
                 {
-                    ItemDescription = $"{studentFee.FeeStructure.Name} - {feeItem.Description}",
-                    ItemAmount = studentFee.FinalAmount,
-                    DiscountAmount = feeItem.DiscountAmount,
-                    FinalAmount = feeItem.Amount,
-                    Period = feeItem.Period,
-                    StudentFeeId = studentFee.Id
+                    Id = receipt.Id,
+                    ReceiptNumber = receipt.ReceiptNumber,
+                    StudentName = receipt.StudentName,
+                    StudentClass = receipt.StudentClass,
+                    TotalAmount = receipt.TotalAmount,
+                    PaidAmount = receipt.PaidAmount,
+                    BalanceAmount = receipt.BalanceAmount,
+                    PaymentMethod = receipt.PaymentMethod,
+                    ReceiptDate = receipt.ReceiptDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                    FeeDescription = receipt.FeeDescription,
+                    FeePeriod = receipt.FeePeriod,
+                    ParentName = receipt.ParentName,
+                    ParentEmail = receipt.ParentEmail,
+                    ParentMobile = receipt.ParentMobile,
+                    ReceiptItems = receipt.ReceiptItems.Select(ri => new FeeReceiptItemDto
+                    {
+                        ItemDescription = ri.ItemDescription,
+                        ItemAmount = ri.ItemAmount,
+                        DiscountAmount = ri.DiscountAmount,
+                        FinalAmount = ri.FinalAmount,
+                        Period = ri.Period
+                    }).ToList()
                 };
 
-                receiptItems.Add(receiptItem);
-            }
+                _logger.LogInformation($"Payment collected and receipt generated: {receipt.ReceiptNumber} for {receipt.StudentName}");
 
-            // Persist payments first so a blank external reference can safely fall back to
-            // the database-generated, monotonically increasing payment ID. This remains
-            // inside the transaction, so a later receipt failure still rolls everything back.
-            await _context.SaveChangesAsync();
-            if (suppliedTransactionId == null)
-            {
-                foreach (var payment in payments)
+                return CreatedAtAction(nameof(GetReceipt), new { id = receipt.Id }, new ApiResponse<FeeReceiptDto>
                 {
-                    payment.TransactionId = $"MM-PAY-{payment.Id:D8}";
-                }
-            }
-
-            // Generate receipt
-            var receipt = new FeeReceipt
-            {
-                ReceiptNumber = $"RCP-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}"[..35],
-                StudentId = request.StudentId,
-                TotalAmount = totalSelectedAmount,
-                PaidAmount = payments.Sum(payment => payment.Amount),
-                BalanceAmount = totalRemainingBalance,
-                PaymentMethod = request.PaymentMethod.ToString(),
-                Payment = payments.First(),
-                StudentName = $"{student.FirstName} {student.LastName}",
-                StudentClass = student.StudentClasses.FirstOrDefault()?.Class?.Name ?? "N/A",
-                FeeDescription = string.Join(", ", request.FeeItems.Select(fi => fi.Description)),
-                FeePeriod = request.FeeItems.FirstOrDefault()?.Period ?? "",
-                ParentName = FirstNonBlank(student.MotherName, student.FatherName, student.ParentName, "Parent/Guardian"),
-                ParentEmail = student.ParentEmail ?? string.Empty,
-                ParentMobile = student.ParentMobile ?? string.Empty,
-                GeneratedByUserId = GetCurrentUserId(),
-                InstitutionName = "MasterMind Coaching Classes",
-                InstitutionAddress = "Kedia Palace, Sikar, Rajasthan",
-                InstitutionContact = "9887258679",
-                ReceiptItems = receiptItems
-            };
-
-            _context.FeeReceipts.Add(receipt);
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-            try
-            {
-                await LogFeeReceiptTemplateUsageAsync(receipt);
-            }
-            catch (Exception logException)
-            {
-                _logger.LogWarning(logException,
-                    "Payment {ReceiptNumber} was saved, but Template Zone logging could not be completed",
-                    receipt.ReceiptNumber);
-            }
-
-            // Map to DTO
-            var receiptDto = new FeeReceiptDto
-            {
-                Id = receipt.Id,
-                ReceiptNumber = receipt.ReceiptNumber,
-                StudentName = receipt.StudentName,
-                StudentClass = receipt.StudentClass,
-                TotalAmount = receipt.TotalAmount,
-                PaidAmount = receipt.PaidAmount,
-                BalanceAmount = receipt.BalanceAmount,
-                PaymentMethod = receipt.PaymentMethod,
-                ReceiptDate = receipt.ReceiptDate.ToString("yyyy-MM-dd HH:mm:ss"),
-                FeeDescription = receipt.FeeDescription,
-                FeePeriod = receipt.FeePeriod,
-                ParentName = receipt.ParentName,
-                ParentEmail = receipt.ParentEmail,
-                ParentMobile = receipt.ParentMobile,
-                ReceiptItems = receipt.ReceiptItems.Select(ri => new FeeReceiptItemDto
-                {
-                    ItemDescription = ri.ItemDescription,
-                    ItemAmount = ri.ItemAmount,
-                    DiscountAmount = ri.DiscountAmount,
-                    FinalAmount = ri.FinalAmount,
-                    Period = ri.Period
-                }).ToList()
-            };
-
-            _logger.LogInformation($"Payment collected and receipt generated: {receipt.ReceiptNumber} for {receipt.StudentName}");
-
-            return CreatedAtAction(nameof(GetReceipt), new { id = receipt.Id }, new ApiResponse<FeeReceiptDto>
-            {
-                Success = true,
-                Message = "Payment collected successfully and receipt generated",
-                Data = receiptDto
+                    Success = true,
+                    Message = "Payment collected successfully and receipt generated",
+                    Data = receiptDto
+                });
             });
         }
         catch (Exception ex)
